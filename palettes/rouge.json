@@ -1,0 +1,12 @@
+{
+  "name": "Rouge the Bat",
+  "description": "Paleta canônica da Rouge. Rosa/magenta, branco, preto e turquesa.",
+  "colors": [
+    {"name": "Rosa/Magenta (corpo)",      "rgb": [220, 100, 140]},
+    {"name": "Branco (asa e decote)",    "rgb": [240, 240, 245]},
+    {"name": "Preto (detalhe da roupa)", "rgb": [20, 20, 25]},
+    {"name": "Turquesa (olhos)",         "rgb": [0, 160, 160]},
+    {"name": "Rosa claro",              "rgb": [250, 180, 200]}
+  ],
+  "notes": "Rouge tem muita variação de tom entre artistas. Use threshold=100 para mais flexibilidade."
+}

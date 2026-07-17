@@ -1,0 +1,2591 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+  <title>ArtFinder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  :root{
+    --bg:#0b0b0e;--surface:#151519;--surface2:#1e1e26;--surface3:#26262f;--border:#2c2c38;
+    --accent:#8b5cf6;--accent2:#a855f7;--accent3:#c084fc;--red:#ef4444;--green:#22c55e;
+    --yellow:#eab308;--blue:#3b82f6;--pink:#ec4899;--text:#e6e8f0;--muted:#6b7280;
+    --sel:rgba(139,92,246,.22);--sel-b:#8b5cf6;
+    --grad-accent:linear-gradient(135deg,#8b5cf6 0%,#a855f7 50%,#ec4899 100%);
+    --grad-brand:linear-gradient(115deg,#f43f5e 0%,#a855f7 52%,#ec4899 100%);
+    --shadow-sm:0 1px 3px rgba(0,0,0,.3);
+    --shadow-md:0 4px 16px rgba(0,0,0,.35);
+    --shadow-lg:0 12px 40px rgba(0,0,0,.5);
+    --shadow-glow:0 0 0 1px rgba(139,92,246,.35),0 8px 28px rgba(139,92,246,.28);
+    --ring:rgba(139,92,246,.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  /* fundo com brilho radial sutil atrás de tudo */
+  body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(1100px 600px at 82% -8%,rgba(139,92,246,.13),transparent 60%),
+      radial-gradient(900px 500px at 8% 108%,rgba(236,72,153,.09),transparent 60%);}
+  /* ── HEADER ── */
+  header{background:rgba(21,21,25,.72);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:54px;position:sticky;top:0;z-index:100}
+  .logo{display:flex;align-items:center;gap:9px}
+  .logo-mark{font-size:20px;line-height:1;filter:drop-shadow(0 0 8px rgba(168,85,247,.6));transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+  .logo:hover .logo-mark{transform:rotate(-12deg) scale(1.15)}
+  .logo-text{font-size:20px;font-weight:800;letter-spacing:-.02em;background:var(--grad-brand);background-size:180% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:brandShift 6s ease infinite}
+  @keyframes brandShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  .tabs{display:flex;gap:2px;background:var(--surface2);border-radius:9px;padding:3px;border:1px solid var(--border)}
+  .tab{padding:5px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .18s;border:none;background:transparent}
+  .tab.active{background:var(--grad-accent);color:#fff;box-shadow:0 2px 10px rgba(139,92,246,.45)}
+  .tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04)}
+  .hdr-right{display:flex;gap:6px;align-items:center}
+  .stat-badge{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:3px 11px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px}
+  .stat-badge b{color:var(--text);font-weight:600}
+  .btn-hdr{padding:5px 11px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text);transition:all .15s;white-space:nowrap}
+  .btn-hdr:hover{border-color:var(--accent);background:var(--surface3);transform:translateY(-1px)}
+  .btn-hdr.danger{border-color:#ef444455;color:#fca5a5}
+  .btn-hdr.danger:hover{border-color:var(--red);background:rgba(239,68,68,.1)}
+  @media (max-width:760px){
+    header{height:auto;flex-wrap:wrap;gap:6px;padding:8px 10px}
+    .stat-badge{display:none}
+    .tab{padding:5px 10px}
+    .logo-text{font-size:18px}
+    .tabs{margin-left:6px}
+  }
+  /* ── LAYOUT ── */
+  .layout{display:flex;flex:1;overflow:hidden}
+  .page{display:none;flex:1;overflow:hidden;flex-direction:column}
+  .page.active{display:flex}
+  /* ── SIDEBAR ── */
+  aside{width:238px;min-width:238px;background:linear-gradient(180deg,var(--surface),#121216);border-right:1px solid var(--border);padding:10px 9px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;transition:width .25s,min-width .25s,padding .25s,opacity .25s}
+  aside.collapsed{width:0;min-width:0;padding:0;opacity:0;overflow:hidden}
+  .sidebar-wrap{position:relative;display:flex;flex-shrink:0}
+  .side-tabs{display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px;flex-shrink:0}
+  .side-tab{flex:1;padding:6px;border:none;border-radius:6px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+  .side-tab.active{background:var(--grad-accent);color:#fff;box-shadow:0 2px 8px rgba(139,92,246,.35)}
+  .side-tab:hover:not(.active){color:var(--text)}
+  .sl{font-size:10px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:6px}
+  .sl::before{content:'';width:3px;height:11px;border-radius:2px;background:var(--grad-accent);flex-shrink:0}
+  .sl[style*="justify-content"]::before{display:none}
+  .check-group{display:flex;flex-direction:column;gap:1px}
+  .check-item{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:5px;cursor:pointer;transition:background .1s;user-select:none;font-size:12px}
+  .check-item:hover{background:var(--surface2)}
+  .check-item input[type=checkbox]{appearance:none;width:13px;height:13px;border:2px solid var(--border);border-radius:3px;cursor:pointer;transition:all .12s;flex-shrink:0}
+  .check-item input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent);background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 6l3 3 5-5' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-size:8px;background-repeat:no-repeat;background-position:center}
+  .cat-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  /* pills */
+  .tag-pills{display:flex;gap:4px;flex-wrap:wrap}
+  .tag-pill{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .15s;user-select:none}
+  .tag-pill:hover{border-color:var(--accent);color:var(--text);transform:translateY(-1px)}
+  .tag-pill.on{border-color:currentColor}
+  .tag-pill.rating-sfw.on{color:#86efac;background:rgba(34,197,94,.12)}
+  .tag-pill.rating-sensitive.on{color:#fde047;background:rgba(234,179,8,.12)}
+  .tag-pill.rating-nsfw.on{color:#fca5a5;background:rgba(239,68,68,.12)}
+  .tag-pill.content.on{color:#a5b4fc;background:rgba(99,102,241,.12)}
+  .tag-pill[data-group="media"].on,.tag-pill[data-galmedia].on{color:#c4b5fd;background:rgba(124,58,237,.14)}
+  .tag-pill.aval-none.on{color:#a7f3d0;background:rgba(16,185,129,.12)}
+  .tag-pill.aval-usar.on{color:#fbbf24;background:rgba(234,179,8,.14)}
+  .tag-pill.aval-talvez.on{color:#93c5fd;background:rgba(59,130,246,.13)}
+  .tag-pill.aval-depois.on{color:#c4b5fd;background:rgba(139,92,246,.14)}
+  .tag-pill.aval-nao.on{color:#fca5a5;background:rgba(239,68,68,.13)}
+  .badge-aval-usar{background:rgba(234,179,8,.3);color:#fde047}
+  .badge-aval-talvez{background:rgba(59,130,246,.3);color:#93c5fd}
+  .badge-aval-depois{background:rgba(139,92,246,.32);color:#c4b5fd}
+  .badge-aval-nao{background:rgba(239,68,68,.3);color:#fca5a5}
+  .lb-rate{padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font-size:11px;cursor:pointer;transition:all .12s}
+  .lb-rate:hover{background:rgba(255,255,255,.16)}
+  .lb-rate.active{border-color:var(--accent);background:rgba(139,92,246,.4);box-shadow:0 0 10px rgba(139,92,246,.4)}
+  /* modo comparação */
+  #compareOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:450;align-items:center;justify-content:center;cursor:zoom-out}
+  #compareOverlay.open{display:flex}
+  #compareGrid{display:flex;gap:14px;width:96vw;height:90vh;cursor:default}
+  .cmp-item{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .cmp-item img{flex:1;min-height:0;object-fit:contain;width:100%;border-radius:8px;background:rgba(255,255,255,.03)}
+  .cmp-cap{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,.55)}
+  .cmp-rates{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+  .tag-suggest{position:absolute;left:0;right:0;top:100%;z-index:60;background:var(--surface2);border:1px solid var(--border);border-radius:7px;max-height:210px;overflow-y:auto;box-shadow:0 8px 22px rgba(0,0,0,.55);margin-top:3px}
+  .tag-sug-item{padding:6px 10px;font-size:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .tag-sug-item:hover,.tag-sug-item.active{background:var(--accent);color:#fff}
+  .tag-sug-count{color:var(--muted);font-size:10px;flex-shrink:0;white-space:nowrap}
+  .tag-sug-item>span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .tag-sug-item:hover .tag-sug-count,.tag-sug-item.active .tag-sug-count{color:#e9d5ff}
+  .chip-area{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 2px;min-height:22px}
+  .quick-label{font-size:10px;color:var(--muted);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.08em}
+  .quick-area{display:flex;flex-wrap:wrap;gap:5px}
+  .tagchip{display:inline-flex;align-items:center;gap:5px;padding:3px 6px 3px 8px;font-size:11px;border-radius:12px;background:rgba(124,58,237,.16);color:#c4b5fd;border:1px solid rgba(124,58,237,.35)}
+  .tagchip.adhoc{background:rgba(34,197,94,.14);color:#86efac;border-color:rgba(34,197,94,.35)}
+  .tagchip-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .tagchip-x{cursor:pointer;font-size:10px;opacity:.7;margin-left:1px}
+  .tagchip-x:hover{opacity:1}
+  .quickpill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;font-size:11px;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .12s}
+  .quickpill:hover{border-color:var(--accent);color:var(--text)}
+  .quickpill.on{background:rgba(124,58,237,.16);color:#c4b5fd;border-color:var(--accent)}
+  /* sliders */
+  .slider-wrap{display:flex;align-items:center;gap:6px}
+  input[type=range]{flex:1;-webkit-appearance:none;height:3px;border-radius:2px;background:var(--border);outline:none;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 5px rgba(124,58,237,.5)}
+  .slider-val{font-size:12px;font-weight:700;color:var(--accent2);min-width:30px;text-align:right}
+  .btn-search{width:100%;padding:11px;border:none;border-radius:9px;background:var(--grad-accent);background-size:150% auto;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .25s;box-shadow:0 4px 16px rgba(139,92,246,.38);letter-spacing:.01em}
+  .btn-search:hover{transform:translateY(-2px);background-position:right center;box-shadow:0 8px 24px rgba(139,92,246,.5)}
+  .btn-search:active{transform:translateY(0)}
+  .btn-search:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .divider{height:1px;background:var(--border)}
+  /* blacklist input */
+  .blacklist-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;padding:5px 7px;font-family:inherit;resize:none;outline:none;height:48px}
+  .blacklist-input:focus{border-color:var(--red)}
+  .blacklist-hint{font-size:10px;color:var(--muted);margin-top:2px}
+  /* score input */
+  .score-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px;padding:6px;outline:none}
+  .score-input:focus{border-color:var(--accent)}
+  /* period filter pills */
+  .period-pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+  .period-pill{font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .15s;user-select:none}
+  .period-pill:hover{border-color:var(--accent);color:var(--accent2)}
+  .period-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  /* ── SEARCH PROGRESS ── */
+  .search-progress{background:var(--surface2);border-bottom:1px solid var(--border);padding:8px 14px;display:none;gap:10px;align-items:center;font-size:12px}
+  .search-progress.visible{display:flex}
+  .progress-mini{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+  .progress-mini-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2),var(--pink));background-size:200% 100%;border-radius:2px;transition:width .4s ease;width:0%;animation:progShimmer 1.4s linear infinite}
+  @keyframes progShimmer{to{background-position:-200% 0}}
+  .progress-txt{color:var(--muted);white-space:nowrap;font-size:11px}
+  /* ── TOOLBAR ── */
+  .toolbar{background:rgba(21,21,25,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .toolbar-left{display:flex;gap:5px;align-items:center;flex:1;flex-wrap:wrap}
+  .toolbar-right{display:flex;gap:5px;align-items:center}
+  .btn-sm{padding:5px 11px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text);transition:all .15s;white-space:nowrap}
+  .btn-sm:hover{border-color:var(--accent);background:var(--surface3);transform:translateY(-1px)}
+  .btn-sm.on{border-color:var(--accent);color:var(--accent2);background:rgba(139,92,246,.14)}
+  .select-count{font-size:11px;color:var(--muted)}
+  .select-count b{color:var(--accent2)}
+  .sort-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:4px 6px;cursor:pointer;outline:none}
+  .btn-dl{padding:6px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;transition:all .2s;white-space:nowrap;box-shadow:0 3px 12px rgba(16,185,129,.35)}
+  .btn-dl:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 18px rgba(16,185,129,.5)}
+  .btn-dl:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+  .btn-export{padding:5px 10px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text);transition:all .12s}
+  .btn-export:hover{border-color:#a855f7;color:var(--accent2)}
+  /* ── GRID ── */
+  .grid-area{flex:1;overflow-y:auto;padding:10px 12px}
+  .grid{display:flex;gap:12px;align-items:flex-start}
+  .card{border-radius:12px;overflow:hidden;background:var(--surface2);border:2px solid transparent;cursor:pointer;transition:transform .22s cubic-bezier(.34,1.4,.64,1),box-shadow .22s,border-color .18s;position:relative;box-shadow:var(--shadow-sm);user-select:none}
+  /* hover neutro (branco suave) — roxo é SÓ de selecionado, pra não confundir */
+  .card:hover{border-color:rgba(255,255,255,.28);transform:translateY(-4px);box-shadow:0 14px 32px rgba(0,0,0,.5)}
+  .card.selected,.card.selected:hover{border-color:var(--sel-b);background:var(--sel);box-shadow:var(--shadow-glow)}
+  .card:not(.already-dl){animation:cardIn .32s ease both}
+  .card.already-dl{opacity:.5}
+  @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.card,.gal-card,.stat-card,.modal{animation:none!important}}
+  .card img{width:100%;display:block;min-height:40px;background:var(--surface);transition:opacity .25s,transform .3s ease}
+  .card:hover img{transform:scale(1.03)}
+  .card img.loading{opacity:.2}
+  .card img.img-failed,.gal-card img.img-failed{min-height:120px;object-fit:contain;background:var(--surface2);opacity:.8}
+  .card-check{position:absolute;top:6px;left:6px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;transition:all .15s;backdrop-filter:blur(4px);opacity:0}
+  .card:hover .card-check,.card.selected .card-check{opacity:1}
+  .card.selected .card-check{background:var(--accent);border-color:var(--accent);box-shadow:0 0 10px rgba(139,92,246,.7)}
+  .card-check::after{content:'';display:none}
+  .card.selected .card-check::after{display:block;content:'✓';color:#fff;font-size:10px;font-weight:700}
+  .card-meta{position:absolute;bottom:0;left:0;right:0;padding:20px 6px 6px;background:linear-gradient(transparent,rgba(0,0,0,.55) 45%,rgba(0,0,0,.92));display:flex;flex-wrap:wrap;gap:3px;align-items:flex-end;opacity:0;transform:translateY(4px);transition:opacity .18s,transform .18s}
+  .card:hover .card-meta,.card.selected .card-meta{opacity:1;transform:translateY(0)}
+  .badge{padding:2px 6px;border-radius:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .badge-source-danbooru{background:#f97316;color:#fff}
+  .badge-source-gelbooru{background:#0ea5e9;color:#fff}
+  .badge-source-safebooru{background:#10b981;color:#fff}
+  .badge-source-e621{background:#0d9488;color:#fff}
+  .badge-source-deviantart{background:#16a34a;color:#fff}
+  .badge-source-tumblr{background:#1d4ed8;color:#fff}
+  .badge-source-bsky{background:#0085ff;color:#fff}
+  .badge-source-pixiv{background:#0096fa;color:#fff}
+  /* setas de navegação do lightbox */
+  .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:76px;display:flex;align-items:center;justify-content:center;font-size:36px;color:rgba(255,255,255,.55);cursor:pointer;user-select:none;border-radius:10px;transition:all .15s;z-index:5}
+  .lb-nav:hover{background:rgba(255,255,255,.09);color:#fff}
+  .lb-prev{left:10px}
+  .lb-next{right:10px}
+  .lb-nav.hidden{display:none}
+  .badge-sfw{background:rgba(34,197,94,.28);color:#86efac}
+  .badge-sensitive{background:rgba(234,179,8,.28);color:#fde047}
+  .badge-nsfw{background:rgba(239,68,68,.28);color:#fca5a5}
+  .badge-score{background:rgba(0,0,0,.5);color:#fbbf24}
+  .card-actions{position:absolute;top:5px;right:5px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
+  .card:hover .card-actions{opacity:1}
+  .card-btn{background:rgba(0,0,0,.65);border:none;border-radius:4px;color:var(--text);font-size:10px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s;backdrop-filter:blur(3px);text-decoration:none}
+  .card-btn:hover{background:rgba(124,58,237,.7)}
+  .badge-res{background:rgba(59,130,246,.3);color:#93c5fd;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.04em}
+  .badge-4k{background:rgba(168,85,247,.3);color:#d8b4fe}
+  /* ── CONTEXT MENU ── */
+  #ctxMenu{display:none;position:fixed;z-index:600;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px;box-shadow:0 8px 28px rgba(0,0,0,.6);min-width:170px}
+  #ctxMenu.open{display:block}
+  .ctx-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:5px;cursor:pointer;font-size:12px;transition:background .1s;white-space:nowrap}
+  .ctx-item:hover{background:rgba(124,58,237,.18);color:var(--accent2)}
+  .ctx-sep{height:1px;background:var(--border);margin:3px 0}
+  /* ── LOAD MORE ── */
+  .pagination-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0;flex-wrap:wrap}
+  .page-btn{padding:6px 12px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;transition:all .15s}
+  .page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  .page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;pointer-events:none}
+  .page-btn:disabled{opacity:.4;cursor:not-allowed}
+  .page-info{font-size:11px;color:var(--muted);width:100%;text-align:center;margin-top:4px}
+  /* ── STATE ── */
+  .state-center{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--muted)}
+  .state-icon{font-size:44px;opacity:.3}
+  .state-text{font-size:13px}
+  .spinner{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* ── GALERIA ── */
+  .gal-toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .gal-card.sel{outline:3px solid var(--accent);outline-offset:-3px}
+  .gal-card.sel::after{content:'✓';position:absolute;top:6px;left:6px;width:20px;height:20px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;z-index:2}
+  .dup-group{border:1px solid var(--border);border-radius:8px;padding:10px;margin:10px 14px;background:var(--surface2)}
+  .dup-group h4{margin:0 0 8px;font-size:12px;color:var(--muted)}
+  .dup-row{display:flex;gap:8px;flex-wrap:wrap}
+  .dup-item{position:relative;width:150px}
+  .dup-item img{width:150px;height:150px;object-fit:cover;border-radius:6px;display:block;background:var(--surface)}
+  .dup-item.keep img{outline:3px solid var(--green);outline-offset:-3px}
+  .dup-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.7);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px}
+  .gal-filters{display:flex;gap:5px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--surface)}
+  .gal-pill{padding:3px 10px;border-radius:12px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .12s;user-select:none}
+  .gal-pill.on{border-color:var(--accent);color:var(--accent2);background:rgba(124,58,237,.12)}
+  .gallery-grid{columns:5;column-gap:12px;padding:12px 14px}
+  @media(max-width:1400px){.gallery-grid{columns:4}}
+  @media(max-width:900px){.gallery-grid{columns:3}}
+  .gal-card{break-inside:avoid;margin-bottom:12px;border-radius:12px;overflow:hidden;background:var(--surface2);position:relative;cursor:pointer;transition:transform .22s cubic-bezier(.34,1.4,.64,1),box-shadow .22s;box-shadow:var(--shadow-sm)}
+  .gal-card:hover{transform:translateY(-4px);box-shadow:0 14px 32px rgba(0,0,0,.5),0 0 20px rgba(139,92,246,.25)}
+  .gal-card img{width:100%;display:block;transition:transform .3s ease}
+  .gal-card:hover img{transform:scale(1.03)}
+  .gal-card-meta{position:absolute;bottom:0;left:0;right:0;padding:12px 5px 5px;background:linear-gradient(transparent,rgba(0,0,0,.88));opacity:0;transition:opacity .12s;display:flex;gap:2px;flex-wrap:wrap}
+  .gal-card:hover .gal-card-meta{opacity:1}
+  .gal-actions{position:absolute;top:4px;right:4px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
+  .gal-card:hover .gal-actions{opacity:1}
+  .gal-card.selected{border:2px solid var(--accent);opacity:0.9;}
+  .gal-card.selected::after{content:'✓';position:absolute;top:8px;left:8px;background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;z-index:10;box-shadow:0 0 4px rgba(0,0,0,0.5)}
+  .vid-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.6);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;pointer-events:none;z-index:5;text-shadow:0 0 5px black;backdrop-filter:blur(3px)}
+  .gal-card.nsfw-blur img{filter:blur(25px);transition:filter .2s}
+  .gal-card.nsfw-blur:hover img{filter:blur(0)}
+  .card.nsfw-blur img{filter:blur(25px);transition:filter .2s}
+  .card.nsfw-blur:hover img{filter:blur(0)}
+  body.no-nsfw-blur .nsfw-blur img{filter:none !important}
+  .gal-empty{display:flex;align-items:center;justify-content:center;height:300px;color:var(--muted);font-size:13px}
+  /* ── STATS ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:16px}
+  .stat-card{background:linear-gradient(150deg,var(--surface2),var(--surface));border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s,border-color .2s}
+  .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad-accent);opacity:.8}
+  .stat-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 12px 28px rgba(0,0,0,.4)}
+  .stat-card-label{font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+  .stat-card-val{font-size:26px;font-weight:800;background:var(--grad-accent);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.02em}
+  .stat-card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .bar-chart{display:flex;flex-direction:column;gap:6px;padding:0 16px 16px}
+  .bar-row{display:flex;align-items:center;gap:8px;font-size:11px}
+  .bar-label{width:90px;color:var(--muted);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar-track{flex:1;height:18px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative}
+  .bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent3));transition:width .7s cubic-bezier(.22,1,.36,1);box-shadow:0 0 12px rgba(139,92,246,.4)}
+  .bar-count{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:rgba(255,255,255,.7)}
+  .bar-section-title{font-size:12px;font-weight:600;color:var(--muted);padding:12px 16px 4px;text-transform:uppercase;letter-spacing:.08em}
+  /* ── LIGHTBOX ── */
+  #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:400;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:zoom-out}
+  #lightbox.open{display:flex}
+  #lightbox img{max-width:90vw;max-height:84vh;border-radius:7px;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.7);cursor:default}
+  .lb-bar{display:flex;gap:8px;align-items:center;cursor:default}
+  .lb-btn{padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font-size:11px;cursor:pointer;text-decoration:none;transition:background .12s}
+  .lb-btn:hover{background:rgba(255,255,255,.16)}
+  .lb-close{position:absolute;top:12px;right:14px;font-size:20px;cursor:pointer;color:rgba(255,255,255,.5);line-height:1;transition:color .12s}
+  .lb-close:hover{color:#fff}
+  .lb-info{font-size:11px;color:rgba(255,255,255,.4)}
+  /* ── MODAL ── */
+  .modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:300;align-items:center;justify-content:center}
+  .modal-back.open{display:flex}
+  .modal{background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--border);border-radius:16px;padding:24px 32px;width:380px;text-align:center;box-shadow:var(--shadow-lg);animation:modalPop .25s cubic-bezier(.34,1.4,.64,1)}
+  @keyframes modalPop{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
+  .modal h2{font-size:16px;margin-bottom:4px}
+  .modal p{color:var(--muted);font-size:12px;margin-bottom:16px}
+  .prog-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:7px}
+  .prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),#a855f7);border-radius:2px;transition:width .3s ease;width:0%}
+  .modal-status{font-size:11px;color:var(--muted);margin-bottom:14px}
+  .btn-close-modal{padding:6px 18px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;display:none}
+  .btn-close-modal.show{display:inline-block}
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent);background-clip:content-box}
+  /* ── TOAST ── */
+  #toast{position:fixed;bottom:16px;right:16px;background:rgba(30,30,38,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;z-index:500;transform:translateY(60px);opacity:0;transition:transform .28s cubic-bezier(.34,1.4,.64,1),opacity .28s;max-width:280px;box-shadow:var(--shadow-lg)}
+  #toast.show{transform:translateY(0);opacity:1}
+  #toast.success{border-left:3px solid var(--green)}
+  #toast.error{border-left:3px solid var(--red)}
+  #toast.info{border-left:3px solid var(--accent)}
+  /* ── CATEGORY MANAGER ── */
+  .cat-group-header{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:6px 6px 2px;display:flex;align-items:center;justify-content:space-between}
+  .cat-group-header .sel-all-group{font-size:9px;cursor:pointer;color:var(--muted);text-decoration:none;transition:color .1s}
+  .cat-group-header .sel-all-group:hover{color:var(--accent2)}
+  .cat-manager-btn{width:100%;padding:7px;border:1px dashed var(--border);border-radius:6px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;transition:all .15s;margin-top:4px}
+  .cat-manager-btn:hover{border-color:var(--accent);color:var(--accent2)}
+  .cm-field-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  .cat-group-details summary{cursor:pointer;list-style:none;}
+  .cat-group-details summary::-webkit-details-marker{display:none;}
+  .cat-group-details[open] summary{border-bottom:1px dashed rgba(255,255,255,0.1);padding-bottom:4px;margin-bottom:4px;}
+  /* Cat Manager Modal */
+  .cm-modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:500;align-items:center;justify-content:center}
+  .cm-modal-back.open{display:flex}
+  .cm-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:640px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
+  .cm-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .cm-header h2{font-size:15px;font-weight:700}
+  .cm-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;transition:color .1s}
+  .cm-close:hover{color:var(--text)}
+  .cm-body{flex:1;overflow-y:auto;padding:14px 22px;display:flex;flex-direction:column;gap:18px}
+  .cm-list{display:flex;flex-direction:column;gap:3px}
+  .cm-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);transition:opacity .15s,background .15s}
+  .cm-row.drag-over{border:1px dashed var(--accent);background:rgba(124,58,237,.12)}
+  .cm-row.dragging{opacity:.4}
+  .cm-drag-handle{cursor:grab;color:var(--muted);font-size:14px;flex-shrink:0;user-select:none;padding:0 2px;line-height:1}
+  .cm-drag-handle:active{cursor:grabbing}
+  .cm-row-color{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .cm-row-label{flex:1;font-size:12px;font-weight:500}
+  .cm-row-group{font-size:10px;color:var(--muted);background:rgba(255,255,255,.06);padding:1px 6px;border-radius:10px}
+  .cm-row-tags{font-size:9px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cm-row-fav{font-size:13px;cursor:pointer;opacity:.4;transition:opacity .15s}
+  .cm-row-fav.on{opacity:1}
+  .cm-row-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:all .1s}
+  .cm-row-del:hover{color:var(--red);background:rgba(239,68,68,.15)}
+  .cm-section-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+  .cm-form{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+  .cm-form input,.cm-form textarea,.cm-form select{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 9px;font-family:inherit;outline:none;width:100%}
+  .cm-form input:focus,.cm-form textarea:focus,.cm-form select:focus{border-color:var(--accent)}
+  .cm-form textarea{height:90px;resize:vertical}
+  .cm-form-row{display:flex;gap:8px}
+  .cm-form-row input{flex:1}
+  .cm-form-hint{font-size:10px;color:var(--muted)}
+  .cm-save-btn{padding:8px;border:none;border-radius:7px;background:linear-gradient(135deg,var(--accent),#a855f7);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+  .cm-save-btn:hover{transform:translateY(-1px)}
+  /* Fav art badge */
+  .fav-art-badge{position:absolute;top:4px;right:4px;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,0.8);z-index:5;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" title="ArtFinder">
+    <svg class="logo-mark" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="lgBrand" x1="0" y1="0" x2="24" y2="24">
+          <stop offset="0" stop-color="#f43f5e"/><stop offset=".55" stop-color="#a855f7"/><stop offset="1" stop-color="#ec4899"/>
+        </linearGradient>
+      </defs>
+      <path d="M7 3h10l4 6-9 12L3 9l4-6z" fill="url(#lgBrand)"/>
+      <path d="M3 9h18M7 3l2.5 6L12 21l2.5-12L17 3M9.5 9L12 3l2.5 6" stroke="rgba(255,255,255,.45)" stroke-width=".9" fill="none"/>
+      <path d="M7 3h10l4 6-9 12L3 9l4-6z" stroke="rgba(255,255,255,.25)" stroke-width=".8" fill="none"/>
+    </svg>
+    <span class="logo-text">ArtFinder</span>
+  </div>
+  <div class="tabs" style="margin-left:14px">
+    <button class="tab active" onclick="switchTab('search',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px;margin-right:5px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Buscar</button>
+    <button class="tab" onclick="switchTab('gallery',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px;margin-right:5px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Galeria</button>
+    <button class="tab" onclick="switchTab('stats',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px;margin-right:5px"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+  </div>
+  <div class="hdr-right">
+    <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--muted);margin-right:8px;" title="Ativa/Desativa o efeito de blur global em imagens NSFW"><input type="checkbox" id="globalBlurToggle" checked onchange="document.body.classList.toggle('no-nsfw-blur', !this.checked)" style="accent-color:var(--accent);cursor:pointer;margin:0"> Blur +18</label>
+    <div class="stat-badge">Banco: <b id="totalDb">...</b> imgs · <b id="diskMb">...</b> MB</div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ═══ BUSCAR ═══ -->
+  <div class="page active" id="pageSearch" style="flex-direction:row">
+    <div class="sidebar-wrap">
+      <aside id="sidebar">
+        <!-- Botão de busca fixo no topo -->
+        <div style="position:sticky;top:-10px;background:var(--surface);padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:10px;z-index:20;display:flex;gap:8px">
+            <button class="btn-search" id="btnSearch" onclick="doSearch()" style="flex:1">Buscar</button>
+            <button id="btnCancel" onclick="cancelSearch()" style="display:none;padding:8px 14px;border-radius:7px;background:rgba(239,68,68,.1);border:1px solid var(--red);color:#fca5a5;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s">Cancelar</button>
+          </div>
+
+        <!-- Abas do painel: Busca (o que buscar) | Filtros (refinam na hora) -->
+        <div class="side-tabs">
+          <button class="side-tab active" data-stab="busca" onclick="switchSideTab('busca',this)">Busca</button>
+          <button class="side-tab" data-stab="filtros" onclick="switchSideTab('filtros',this)">Filtros</button>
+        </div>
+
+        <div id="sideBusca" style="display:flex;flex-direction:column;gap:10px">
+        <!-- Conteúdo (personagens / ships / fandoms) -->
+        <div>
+          <div class="sl" style="display:flex;align-items:center;justify-content:space-between">
+            <span>Conteúdo</span>
+            <span style="font-size:10px;color:var(--muted);cursor:pointer" onclick="toggleAreaChecks('catGroupsArea',this)" title="Selecionar/limpar tudo">Todos</span>
+          </div>
+          <input type="text" id="catQuickFilter" placeholder="🔍 Buscar conteúdo..." oninput="filterSidebarCats(this.value)" style="width:100%;margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text)">
+          <div id="catGroupsArea"></div>
+        </div>
+        <div class="divider"></div>
+
+        <!-- Artistas (separados do conteúdo, recolhível) -->
+        <div>
+          <details class="cat-group-details" id="artistDetails">
+            <summary class="cat-group-header">
+              <span>🎨 Artistas <span id="artistCount" style="font-weight:400;opacity:.6"></span></span>
+              <a class="sel-all-group" href="#" onclick="event.preventDefault();event.stopPropagation();toggleAreaChecks('catArtistsArea',this)" title="Selecionar/limpar todos os artistas">Todos</a>
+            </summary>
+            <input type="text" id="artistFilter" placeholder="🔍 Filtrar artistas..." oninput="filterArtists(this.value)" style="width:100%;margin:6px 0 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--text)">
+            <div id="catArtistsArea"></div>
+          </details>
+          <button class="cat-manager-btn" onclick="openCatManager()">Gerenciar categorias</button>
+        </div>
+        <div class="divider"></div>
+
+        <!-- Fontes -->
+        <div>
+          <div class="sl">Fontes</div>
+          <div class="check-group" id="srcGroup"><div style="color:var(--muted);font-size:11px">Carregando...</div></div>
+        </div>
+        <div class="divider"></div>
+
+        <!-- Páginas por fonte (faz parte da configuração da busca) -->
+        <div>
+          <div class="sl">Páginas por fonte</div>
+          <div class="slider-wrap">
+            <input type="range" id="pagesSlider" min="1" max="50" value="1"
+              oninput="updatePagesHint()">
+            <span class="slider-val" id="pagesVal">1</span>
+          </div>
+          <div id="pagesHint" style="font-size:9px;color:var(--muted);margin-top:4px">≈ 20 posts por fonte</div>
+        </div>
+        </div><!-- /sideBusca -->
+
+        <div id="sideFiltros" style="display:none;flex-direction:column;gap:10px">
+        <div style="font-size:10px;color:var(--muted);line-height:1.5;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 9px">Estes filtros aplicam <b style="color:var(--accent2)">na hora</b> sobre os resultados — sem precisar buscar de novo.</div>
+
+        <!-- Avaliação (triagem) -->
+        <div>
+          <div class="sl">Avaliação</div>
+          <div class="tag-pills">
+            <span class="tag-pill aval-none on"   data-group="aval" data-val="none">Não avaliadas</span>
+            <span class="tag-pill aval-usar on"   data-group="aval" data-val="usar">Usar</span>
+            <span class="tag-pill aval-talvez on" data-group="aval" data-val="talvez">Talvez</span>
+            <span class="tag-pill aval-depois"    data-group="aval" data-val="depois">Rever depois</span>
+            <span class="tag-pill aval-nao"       data-group="aval" data-val="nao">Não gostei</span>
+          </div>
+          <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.5">Avalie no zoom com as teclas <b>1</b> Usar · <b>2</b> Talvez · <b>3</b> Rever depois · <b>4</b> Não gostei. Repetir a tecla remove a avaliação.</div>
+        </div>
+        <div class="divider"></div>
+        <!-- Rating -->
+        <div>
+          <div class="sl">Classificação</div>
+          <div class="tag-pills">
+            <span class="tag-pill rating-sfw on"      data-group="rating" data-val="sfw">SFW</span>
+            <span class="tag-pill rating-sensitive on" data-group="rating" data-val="sensitive">Sensível</span>
+            <span class="tag-pill rating-nsfw on"      data-group="rating" data-val="nsfw">NSFW</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+
+        <!-- Tipo de mídia -->
+        <div>
+          <div class="sl">Tipo de mídia</div>
+          <div class="tag-pills">
+            <span class="tag-pill on" data-group="media" data-val="image">🖼️ Imagem</span>
+            <span class="tag-pill on" data-group="media" data-val="gif">🎞️ GIF</span>
+            <span class="tag-pill on" data-group="media" data-val="webp">WebP</span>
+            <span class="tag-pill on" data-group="media" data-val="video">▶️ Vídeo</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+
+
+
+        <!-- Blacklist (única, sem duplicata) -->
+        <div>
+          <div class="sl">Blacklist de Tags</div>
+          <textarea id="blacklistInput" class="blacklist-input" placeholder="ex: comic, gore, diaper" onchange="localStorage.setItem('blacklist',this.value); applyFilterAndSort()"></textarea>
+          <div class="blacklist-hint">Tags separadas por vírgula — excluídas dos resultados</div>
+        </div>
+        <div class="divider"></div>
+
+        <!-- Score mínimo (campo numérico) -->
+        <div>
+          <div class="sl">Score mínimo</div>
+          <input type="number" id="scoreInput" class="score-input" min="0" value="0"
+            onchange="minScore=parseInt(this.value)||0; localStorage.setItem('minScore',minScore); applyFilterAndSort()">
+        </div>
+        <div class="divider"></div>
+
+        <!-- Per&#237;odo -->
+        <div>
+          <div class="sl">Per&#237;odo</div>
+          <div class="period-pills">
+            <span class="period-pill on" data-days="0" onclick="setPeriod(this)">Todos</span>
+            <span class="period-pill" data-days="7" onclick="setPeriod(this)">7 dias</span>
+            <span class="period-pill" data-days="30" onclick="setPeriod(this)">30 dias</span>
+            <span class="period-pill" data-days="90" onclick="setPeriod(this)">3 meses</span>
+            <span class="period-pill" data-days="180" onclick="setPeriod(this)">6 meses</span>
+            <span class="period-pill" data-days="365" onclick="setPeriod(this)">1 ano</span>
+          </div>
+        </div>
+
+        </div><!-- /sideFiltros -->
+      </aside>
+    </div>
+    <main style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <!-- Barra de progresso da busca -->
+      <div class="search-progress" id="searchProgress">
+        <div class="progress-mini"><div class="progress-mini-fill" id="searchProgFill"></div></div>
+        <span class="progress-txt" id="searchProgTxt">Buscando...</span>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="btn-sm" onclick="toggleSidebar()" title="Mostrar/esconder painel lateral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>Painel</button>
+          <button class="btn-sm" onclick="selectAll()">Sel. Tudo</button>
+          <button class="btn-sm" onclick="selectNone()">Desmarcar</button>
+          <button class="btn-sm on" id="btnHideDl" onclick="toggleHideDl()">👁️ Ocultar da galeria</button>
+          <span class="select-count"><b id="selCount">0</b> sel. / <b id="totalCount">0</b></span>
+          <span id="pageInfo" style="font-size:10px;color:var(--muted);display:none">pág <b id="curPage">1</b>/<b id="totalPages">1</b></span>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn-export" id="btnCompare" onclick="openCompare()" disabled title="Selecione 2 a 4 imagens para comparar lado a lado">⧉ Comparar</button>
+          <button class="btn-export" onclick="exportURLs()" title="Exportar URLs selecionadas como .txt">📋 Exportar URLs</button>
+          <select class="sort-select" id="sortSelect" onchange="applyFilterAndSort()">
+            <option value="score_desc">Score ↓</option>
+            <option value="score_asc">Score ↑</option>
+            <option value="score_recent">✨ Em Alta</option>
+            <option value="source">Por fonte</option>
+            <option value="category">Por categoria</option>
+          </select>
+          <button class="btn-export" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.3)" id="btnSave" onclick="doSave()" disabled title="Guardar URL sem baixar (aparece na Galeria)">📌 Guardar</button>
+          <button class="btn-dl" id="btnDownload" onclick="doDownload()" disabled>⬇ Baixar</button>
+        </div>
+      </div>
+
+      <div class="grid-area" id="gridArea">
+        <div class="state-center" id="emptyState">
+          <div class="state-icon">🎨</div>
+          <div class="state-text">Configure os filtros e clique em <b>Buscar</b></div>
+        </div>
+        <div id="gridWrap" style="display:none">
+          <div class="grid" id="grid"></div>
+          <div class="pagination-bar" id="paginationBar" style="display:none">
+            <!-- Os botões de página serão gerados aqui -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══ GALERIA (downloads + favoritos) ═══ -->
+  <div class="page" id="pageGallery" style="flex-direction:column;overflow:hidden">
+    <!-- Toolbar -->
+    <div class="gal-toolbar" style="flex-wrap:wrap;gap:6px">
+      <span class="select-count"><b id="galleryCount">0</b> imagens</span>
+      <input id="galSearchInput" type="text" placeholder="🔍 artista, fonte, tags..." oninput="galDebounce()"
+        style="flex:1;min-width:150px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text);outline:none">
+      <select class="sort-select" id="gallerySortSelect" onchange="renderGallery()">
+        <option value="date_desc">📅 Mais recentes</option>
+        <option value="score_desc">⭐ Score ↓</option>
+          <option value="score_recent">✨ Em Alta</option>
+        <option value="source">Por fonte</option>
+        <option value="category">Por categoria</option>
+        <option value="res_desc">📐 Resolução ↓</option>
+      </select>
+      <select class="sort-select" id="galResFilter" onchange="renderGallery()">
+        <option value="0">Qualquer res.</option>
+        <option value="1280">HD+</option>
+        <option value="1920">FHD+</option>
+        <option value="3840">4K+</option>
+      </select>
+      <button class="btn-sm" onclick="loadGallery()">🔄 Atualizar</button>
+      <button class="btn-sm" id="galSelectBtn" onclick="toggleGalSelectMode()">☑️ Selecionar</button>
+      <button class="btn-sm" onclick="showDuplicates()">🧬 Duplicatas</button>
+    </div>
+    <!-- Barra de ações em lote (escondida até entrar no modo seleção) -->
+    <div id="galSelBar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:rgba(124,58,237,.12);border-bottom:1px solid var(--border);flex-shrink:0">
+      <span style="font-size:12px"><b id="galSelCount">0</b> selecionada(s)</span>
+      <button class="btn-sm" onclick="galSelectAllVisible()">Selecionar tudo</button>
+      <button class="btn-sm" onclick="galClearSelection()">Limpar</button>
+      <span style="flex:1"></span>
+      <button class="btn-sm" style="background:rgba(239,68,68,.25)" onclick="bulkHideSelected()">🚫 Ocultar</button>
+      <button class="btn-sm" style="background:rgba(239,68,68,.55)" onclick="bulkDeleteSelected()">🗑 Apagar do disco</button>
+    </div>
+    <!-- Rating + View pills -->
+    <div style="display:flex;gap:6px;align-items:center;padding:5px 14px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap">
+      <span style="font-size:10px;color:var(--muted)">Rating:</span>
+      <span class="tag-pill rating-sfw on"       data-galrating="sfw"       onclick="toggleGalRating(this)">SFW</span>
+      <span class="tag-pill rating-sensitive on" data-galrating="sensitive" onclick="toggleGalRating(this)">Sensível</span>
+      <span class="tag-pill rating-nsfw on"      data-galrating="nsfw"      onclick="toggleGalRating(this)">NSFW</span>
+      <span style="font-size:10px;color:var(--muted);margin-left:10px">Tipo:</span>
+      <span class="tag-pill on" data-galmedia="image" onclick="toggleGalMedia(this)">🖼️ Img</span>
+      <span class="tag-pill on" data-galmedia="gif"   onclick="toggleGalMedia(this)">🎞️ GIF</span>
+      <span class="tag-pill on" data-galmedia="webp"  onclick="toggleGalMedia(this)">WebP</span>
+      <span class="tag-pill on" data-galmedia="video" onclick="toggleGalMedia(this)">▶️ Vídeo</span>
+      <span style="font-size:10px;color:var(--muted);margin-left:10px">Ver:</span>
+      <span class="tag-pill on" id="galViewDownloaded" onclick="toggleGalView(this,'downloaded')">⬇ Baixados (Disco)</span>
+      <span class="tag-pill on" id="galViewFavorites"  onclick="toggleGalView(this,'favorite')">📌 Guardados (Só URL)</span>
+      <span class="tag-pill" id="galViewRated" onclick="toggleGalView(this,'rated')" title="Artes avaliadas na triagem que não foram baixadas nem guardadas">★ Avaliadas</span>
+      <select class="sort-select" id="galAvalFilter" onchange="renderGallery()" title="Filtrar pela pilha de triagem">
+        <option value="">Pilha: todas</option>
+        <option value="usar">Usar</option>
+        <option value="talvez">Talvez</option>
+        <option value="depois">Rever depois</option>
+        <option value="nao">Não gostei</option>
+        <option value="none">Sem avaliação</option>
+      </select>
+      <div class="gal-filters" id="galFilterBar" style="flex:1;flex-wrap:wrap">
+        <span class="gal-pill on" data-gf="all" onclick="setGalFilter(this,'all')">Todas</span>
+      </div>
+    </div>
+    <!-- Grid -->
+    <div style="flex:1;overflow-y:auto">
+      <div class="gal-empty" id="galleryEmpty">Clique em <b style="margin:0 4px">Atualizar</b> para carregar</div>
+      <div class="gallery-grid" id="galleryGrid" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ═══ STATS ═══ -->
+  <div class="page" id="pageStats">
+    <div style="flex:1;overflow-y:auto">
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="stat-card-label">Total no banco</div><div class="stat-card-val" id="statsTotal">—</div><div class="stat-card-sub">imagens únicas</div></div>
+        <div class="stat-card"><div class="stat-card-label">Espaço no disco</div><div class="stat-card-val" id="statsDisk">—</div><div class="stat-card-sub">MB em downloads/</div></div>
+      </div>
+      <div class="bar-section-title">Triagem</div>
+      <div class="stats-grid" id="statsTriagem" style="padding-top:4px">
+        <div class="stat-card"><div class="stat-card-label">Usar</div><div class="stat-card-val" id="stAvalUsar">0</div><div class="stat-card-sub">escolhidas</div></div>
+        <div class="stat-card"><div class="stat-card-label">Talvez</div><div class="stat-card-val" id="stAvalTalvez">0</div><div class="stat-card-sub">em dúvida</div></div>
+        <div class="stat-card"><div class="stat-card-label">Rever depois</div><div class="stat-card-val" id="stAvalDepois">0</div><div class="stat-card-sub">adiadas</div></div>
+        <div class="stat-card"><div class="stat-card-label">Não gostei</div><div class="stat-card-val" id="stAvalNao">0</div><div class="stat-card-sub">descartadas (reversível)</div></div>
+      </div>
+      <div class="bar-section-title">Por fonte</div>
+      <div class="bar-chart" id="barSource"></div>
+      <div class="bar-section-title">Por categoria</div>
+      <div class="bar-chart" id="barCategory"></div>
+
+      <div class="bar-section-title">Manutenção</div>
+      <div style="padding:0 16px 24px;display:flex;flex-direction:column;gap:10px;max-width:580px">
+        <div style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;margin-bottom:2px">Sincronizar banco com o disco</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.45">Se você apagou imagens manualmente da pasta downloads/, o banco ainda acha que elas existem. Isto remove esses registros órfãos.</div>
+          </div>
+          <button class="btn-hdr" onclick="doSyncDb()">Sincronizar</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;margin-bottom:2px">Limpar registro de downloads</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.45">Zera o histórico de downloads no banco — <b>nenhum arquivo é apagado</b>. Serve para permitir baixar tudo de novo (o app deixa de pular imagens "já baixadas").</div>
+          </div>
+          <button class="btn-hdr danger" onclick="doClearDb()">Limpar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLb()">
+  <span class="lb-close" onclick="closeLb()">✕</span>
+  <div class="lb-nav lb-prev" id="lbPrev" onclick="event.stopPropagation();lbStep(-1)" title="Anterior (←)">‹</div>
+  <div class="lb-nav lb-next" id="lbNext" onclick="event.stopPropagation();lbStep(1)" title="Próxima (→)">›</div>
+  <img id="lbImg" src="" alt="" onclick="event.stopPropagation()">
+    <video id="lbVideo" controls loop autoplay style="display:none; max-width:90%; max-height:90vh; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,.8); z-index:10" onclick="event.stopPropagation()"></video>
+  <div class="lb-bar" onclick="event.stopPropagation()" id="lbRateBar">
+    <span class="lb-info" style="margin-right:2px">Triagem:</span>
+    <button class="lb-rate" data-aval="usar"   onclick="lbRate('usar')"   title="tecla 1">1 · Usar</button>
+    <button class="lb-rate" data-aval="talvez" onclick="lbRate('talvez')" title="tecla 2">2 · Talvez</button>
+    <button class="lb-rate" data-aval="depois" onclick="lbRate('depois')" title="tecla 3">3 · Rever depois</button>
+    <button class="lb-rate" data-aval="nao"    onclick="lbRate('nao')"    title="tecla 4">4 · Não gostei</button>
+  </div>
+  <div class="lb-bar" onclick="event.stopPropagation()">
+    <button id="lbSelBtn" class="lb-btn" onclick="lbToggleSel()" title="Selecionar (espaço)">☐ Selecionar</button>
+    <a id="lbLink" class="lb-btn" href="#" target="_blank">↗ Ver original</a>
+    <a id="lbSauce" class="lb-btn" href="#" target="_blank">🍜 SauceNAO</a>
+    <span id="lbInfo" class="lb-info"></span>
+  </div>
+</div>
+
+<!-- MODO COMPARAÇÃO -->
+<div id="compareOverlay" onclick="closeCompare()">
+  <span class="lb-close" onclick="closeCompare()">✕</span>
+  <div id="compareGrid" onclick="event.stopPropagation()"></div>
+</div>
+
+<!-- MODAL DE DOWNLOAD -->
+<div class="modal-back" id="dlModal">
+  <div class="modal">
+    <h2>Baixando imagens</h2>
+    <p id="dlSub">Aguarde...</p>
+    <div class="prog-bar"><div class="prog-fill" id="dlProg"></div></div>
+    <div class="modal-status" id="dlStatus">Preparando...</div>
+    <button class="btn-close-modal" id="btnCloseMod" onclick="closeModal()">Fechar</button>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-back" id="confirmModal">
+  <div class="modal" style="width: 420px; padding: 20px;">
+    <h2 id="confTitle" style="color:var(--text);margin-bottom:8px">Confirmação</h2>
+    <p id="confText" style="margin-bottom:12px;color:var(--muted)"></p>
+    <img id="confImg" src="" style="max-width:100%;max-height:220px;border-radius:6px;margin-bottom:16px;display:none;object-fit:contain;background:var(--surface2)">
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn-sm" onclick="closeConfirm()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">Cancelar</button>
+      <button class="btn-sm" id="btnConfirmAction" style="background:var(--red);color:#fff">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY MANAGER MODAL -->
+<div class="cm-modal-back" id="catManagerModal">
+  <div class="cm-modal">
+    <div class="cm-header">
+      <h2>Gerenciar Categorias</h2>
+      <button class="cm-close" onclick="closeCatManager()">✕</button>
+    </div>
+    <div class="cm-body">
+      <!-- Lista de categorias existentes -->
+      <div>
+        <div class="cm-section-title">Categorias salvas</div>
+        <div class="cm-list" id="cmList"></div>
+      </div>
+      <!-- Formulário de nova categoria -->
+      <div>
+        <div class="cm-section-title">Adicionar / Editar</div>
+        <div class="cm-form">
+          <div class="cm-form-row">
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+              <div class="cm-field-label">Nome</div>
+              <input type="text" id="cmLabel" placeholder="ex: Shadow Solo, Loona...">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <div class="cm-field-label">Cor</div>
+              <input type="color" id="cmColor" value="#6366f1" style="max-width:44px;padding:2px 4px;height:32px;cursor:pointer">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+              <div class="cm-field-label">Chave única</div>
+              <input type="text" id="cmKey" placeholder="gerada automaticamente a partir do nome">
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+              <div class="cm-field-label">Grupo / Fandom</div>
+              <input type="text" id="cmGroup" placeholder="ex: Sonic, Helluva Boss...">
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div class="cm-field-label">Tags de busca</div>
+            <div style="position:relative">
+              <textarea id="cmTags" placeholder="shadow_the_hedgehog -rouge_the_bat
+rouge_the_bat -shadow_the_hedgehog"></textarea>
+              <div id="cmTagSuggest" class="tag-suggest" style="display:none"></div>
+            </div>
+            <div class="cm-form-hint">Cada linha (ou <b>;</b>) = busca independente — resultados são unidos (OR). Espaço entre tags = AND. Prefixo <b>-tag</b> exclui. <b>Digite 2+ letras pra sugerir tags.</b></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap">
+              <input type="checkbox" id="cmFav"> Favoritar no sidebar
+            </label>
+            <input type="text" id="cmEmoji" placeholder="Emoji (opcional)" style="max-width:130px">
+            <button class="cm-save-btn" style="flex:1" onclick="saveCmCategory()">Salvar</button>
+          </div>
+          <div style="text-align:right;margin-top:2px">
+            <button class="btn-sm" onclick="clearCmForm()" style="font-size:10px">Limpar formulário</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU (sem IDs duplicados) -->
+<div id="ctxMenu">
+  <div class="ctx-item" id="ctxSelect">✓ Selecionar / Desmarcar</div>
+  <div class="ctx-item" id="ctxSaveArt" style="color:#c084fc">📌 Guardar (só URL)</div>
+  <div class="ctx-item" id="ctxFavArt">⬇️ Baixar pro PC</div>
+  <div class="ctx-item" id="ctxFavArtist" style="display:none">⭐ Favoritar Artista</div>
+  <div class="ctx-item" id="ctxArtist">🎨 Buscar este artista</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctxOpen">↗️ Ver original</div>
+  <div class="ctx-item" id="ctxSauce">🍜 SauceNAO</div>
+  <div class="ctx-item" id="ctxLb">🔍 Ampliar</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctxBlockArtist" style="color:var(--red)">🚫 Bloquear Artista</div>
+  <div class="ctx-item" id="ctxHide" style="color:var(--red)">&#128683; Ocultar para sempre</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══ KEYWORD MAPS ═══════════════════════════════════════════════════
+
+
+// ══ STATE ══════════════════════════════════════════════════════════
+let allPosts=[],filteredPosts=[],pageSize=60;
+let searchAbortController=null;
+let selectedIds=new Set(),hideGalleryItems=true,downloadedIds=new Set(),favoriteUids=new Set();
+let galleryData=[],galFilter="all",minScore=0,activePeriodDays=0;
+let ratingsMap={};   // uid -> 'usar'|'talvez'|'depois'|'nao'
+const AVAL_LABEL={usar:"Usar",talvez:"Talvez",depois:"Rever depois",nao:"Não gostei"};
+let galRendered=[], galLbIdx=-1;   // lista renderizada da galeria + posição no lightbox
+
+// Escape de HTML para dados vindos de APIs externas (nomes de artista, tags).
+// Sem isso, um nome malicioso poderia injetar script na página (XSS).
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+let sidebarCollapsed=false;
+let ctxPost=null;
+let userCats={};
+let allFavs=[];
+
+// ══ TABS ═══════════════════════════════════════════════════════════
+function switchTab(name, btn){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  if(btn) btn.classList.add("active");
+  document.getElementById("page"+name.charAt(0).toUpperCase()+name.slice(1)).classList.add("active");
+  if(name==="gallery") loadGallery();
+  if(name==="stats")   loadStats();
+}
+
+// ══ GALERIA STATE ═══════════════════════════════════════════════════
+let galActiveRatings = new Set(["sfw","sensitive","nsfw"]);
+let galActiveMedia = new Set(["image","gif","webp","video"]);
+function toggleGalMedia(pill){
+  const m=pill.dataset.galmedia;
+  if(galActiveMedia.has(m)) galActiveMedia.delete(m);
+  else galActiveMedia.add(m);
+  pill.classList.toggle("on", galActiveMedia.has(m));
+  renderGallery();
+}
+let galActiveViews   = new Set(["downloaded","favorite"]);
+let galDebounceTimer = null;
+
+// ══ INIT ════════════════════════════════════════════════════════════
+
+async function init(){
+  // Restaurar configurações salvas
+  const bl=localStorage.getItem("blacklist");
+  if(bl) document.getElementById("blacklistInput").value=bl;
+  const ms=localStorage.getItem("minScore");
+  if(ms){ minScore=parseInt(ms)||0; document.getElementById("scoreInput").value=minScore; }
+
+  // Restore saved period
+  const sp=localStorage.getItem("activePeriodDays");
+  if(sp){
+    activePeriodDays=parseInt(sp)||0;
+    document.querySelectorAll(".period-pill").forEach(p=>{
+      p.classList.toggle("on", parseInt(p.dataset.days)===activePeriodDays);
+    });
+  }
+
+  // Fontes
+  try{
+    const {sources}=await(await fetch("/api/sources")).json();
+    document.getElementById("srcGroup").innerHTML=sources.map(s=>`<label class="check-item"><input type="checkbox" name="src" value="${s}" checked><span>${s}</span></label>`).join("");
+  }catch(e){document.getElementById("srcGroup").innerHTML=`<span style="color:var(--muted);font-size:11px">Erro</span>`}
+
+  // Categorias dinâmicas
+  await loadCategories();
+  loadHeaderStats();
+
+  // Slider páginas
+  linkSlider("pagesSlider","pagesVal",()=>{});
+  pageSize=50;
+
+  // Tag-pills (estilo/tema/rating) - Apenas da sidebar (Busca)
+  document.querySelectorAll("#sidebar .tag-pill").forEach(p=>p.addEventListener("click",()=>{p.classList.toggle("on");applyFilterAndSort()}));
+  document.addEventListener("keydown",onKeyDown);
+  document.addEventListener("click",()=>document.getElementById("ctxMenu").classList.remove("open"));
+  initContextMenu();
+}
+
+// ══ SIDEBAR TOGGLE ════════════════════════════════════════════════
+function toggleSidebar(){
+  sidebarCollapsed=!sidebarCollapsed;
+  document.getElementById("sidebar").classList.toggle("collapsed",sidebarCollapsed);
+}
+
+function switchSideTab(name, btn){
+  document.querySelectorAll(".side-tab").forEach(t=>t.classList.remove("active"));
+  (btn||document.querySelector(`.side-tab[data-stab="${name}"]`))?.classList.add("active");
+  document.getElementById("sideBusca").style.display   = name==="busca"   ? "flex" : "none";
+  document.getElementById("sideFiltros").style.display = name==="filtros" ? "flex" : "none";
+}
+
+function linkSlider(id,valId,cb){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const u=()=>{document.getElementById(valId).textContent=el.value;cb(el.value)};
+  el.addEventListener("input",u);u();
+}
+
+async function loadHeaderStats(){
+  try{
+    const s=await(await fetch("/api/stats")).json();
+    document.getElementById("totalDb").textContent=s.total||0;
+    document.getElementById("diskMb").textContent=(s.disk_mb||0);
+  }catch(e){}
+}
+
+// ══ CATEGORY MANAGER ════════════════════════════════════════════
+async function loadCategories(){
+  try{
+    const {categories}=await(await fetch("/api/categories")).json();
+    userCats=categories||{};
+    renderCatSidebar();
+  }catch(e){ console.error("Erro ao carregar categorias",e); }
+}
+
+function _groupOpen(g){ try{return JSON.parse(localStorage.getItem('groupOpen')||'{}')[g]===true;}catch(e){return false;} }
+function _setGroupOpen(g,open){ let s={}; try{s=JSON.parse(localStorage.getItem('groupOpen')||'{}');}catch(e){} s[g]=!!open; localStorage.setItem('groupOpen',JSON.stringify(s)); }
+
+function renderCatSidebar(){
+  const groups={}; const artistKeys=[];
+  Object.entries(userCats).forEach(([k,c])=>{
+    if((c.group||"")==="Artistas"){ artistKeys.push(k); return; }
+    const g=c.group||"Outros";
+    if(!groups[g]) groups[g]=[];
+    groups[g].push(k);
+  });
+  // ── Conteúdo ── (grupos recolhidos por padrão; lembra o que você abriu)
+  const area=document.getElementById("catGroupsArea");
+  if(area){
+    area.innerHTML=Object.entries(groups).map(([g,keys])=>`
+      <details class="cat-group-details" data-group="${g}" ${_groupOpen(g)?'open':''}>
+        <summary class="cat-group-header">
+          <span>${g} <span style="opacity:.5;font-weight:400">${keys.length}</span></span>
+          <a class="sel-all-group" href="#" onclick="event.preventDefault();event.stopPropagation();toggleSelectGroup('${g}',this)" data-all="0">Sel.</a>
+        </summary>
+        <div class="check-group" data-group="${g}">${keys.map(k=>catCheckHtml(k,userCats[k])).join("")}</div>
+      </details>
+    `).join("");
+    area.querySelectorAll('details.cat-group-details > summary').forEach(s=>{
+      s.addEventListener('click',()=>{ const d=s.parentElement; setTimeout(()=>_setGroupOpen(d.dataset.group, d.open),0); });
+    });
+  }
+  // ── Artistas (zona própria, ordem alfabética) ──
+  const aarea=document.getElementById("catArtistsArea");
+  if(aarea){
+    const cnt=document.getElementById("artistCount");
+    if(cnt) cnt.textContent = artistKeys.length ? `(${artistKeys.length})` : "";
+    if(!artistKeys.length){
+      aarea.innerHTML=`<div style="font-size:11px;color:var(--muted);padding:4px 6px;line-height:1.4">Nenhum artista favoritado. Clique com o botão direito numa arte → <b>Favoritar artista</b>.</div>`;
+    }else{
+      artistKeys.sort((a,b)=>(userCats[a].label||a).toLowerCase().localeCompare((userCats[b].label||b).toLowerCase()));
+      aarea.innerHTML=`<div class="check-group" data-group="Artistas">${artistKeys.map(k=>catCheckHtml(k,userCats[k])).join("")}</div>`;
+    }
+    const ad=document.getElementById("artistDetails");
+    if(ad){
+      ad.open=_groupOpen("__artists__");
+      if(!ad._wired){ ad._wired=true; const s=ad.querySelector("summary"); if(s) s.addEventListener("click",()=>setTimeout(()=>_setGroupOpen("__artists__",ad.open),0)); }
+    }
+  }
+}
+
+function catCheckHtml(key,cat){
+  const isChecked = cat.favorite && cat.group !== "Artistas";
+  return `<label class="check-item">
+    <input type="checkbox" name="cat" value="${key}" ${isChecked?"checked":""}>
+    <span class="cat-dot" style="background:${cat.color||"#6366f1"}"></span>
+    <span style="flex:1">${cat.label}</span>
+  </label>`;
+}
+
+function selectAllCats(){document.querySelectorAll("input[name=cat]").forEach(c=>c.checked=true);}
+function deselectAllCats(){document.querySelectorAll("input[name=cat]").forEach(c=>c.checked=false);}
+function toggleAreaChecks(areaId, el){
+  const inputs=document.querySelectorAll(`#${areaId} input[name=cat]`);
+  if(!inputs.length) return;
+  const allOn=[...inputs].every(c=>c.checked);
+  inputs.forEach(c=>c.checked=!allOn);
+  if(el) el.textContent = allOn ? "Todos" : "Limpar";
+}
+function filterArtists(query){
+  const q=(query||"").toLowerCase().trim();
+  document.querySelectorAll('#catArtistsArea .check-item').forEach(el=>{
+    el.style.display = (!q || el.textContent.toLowerCase().includes(q)) ? 'flex' : 'none';
+  });
+}
+function toggleSelectGroup(group, btn){
+  const g = document.querySelector(`.check-group[data-group="${group}"]`);
+  if(!g) return;
+  const inputs = g.querySelectorAll("input");
+  const allChecked = [...inputs].every(c=>c.checked);
+  inputs.forEach(c=>c.checked=!allChecked);
+  btn.textContent = allChecked ? 'Sel.' : 'Des.';
+  btn.dataset.all = allChecked ? '0' : '1';
+}
+
+function setPeriod(pill){
+  activePeriodDays = parseInt(pill.dataset.days) || 0;
+  localStorage.setItem("activePeriodDays", activePeriodDays);
+  document.querySelectorAll(".period-pill").forEach(p=>p.classList.remove("on"));
+  pill.classList.add("on");
+  if(allPosts.length) applyFilterAndSort();
+}
+
+function updatePagesHint(){
+  const pages = parseInt(document.getElementById("pagesSlider").value) || 1;
+  const posts = pages * 20;
+  const hint = document.getElementById("pagesHint");
+  if(!hint) return;
+  let msg = `≈ ${posts} posts por fonte`;
+  if(pages >= 30) msg += " — ⚠️ Busca lenta";
+  else if(pages >= 10) msg += " — pode demorar";
+  hint.textContent = msg;
+  hint.style.color = pages >= 30 ? "var(--accent2)" : pages >= 10 ? "#f59e0b" : "var(--muted)";
+}
+
+function openCatManager(){document.getElementById("catManagerModal").classList.add("open");renderCmList();}
+function closeCatManager(){document.getElementById("catManagerModal").classList.remove("open");}
+let _dragSrcKey = null;
+function renderCmList(){
+  const el=document.getElementById("cmList");
+  const entries=Object.entries(userCats);
+  if(!entries.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px">Nenhuma categoria</div>`;return;}
+  el.innerHTML=entries.map(([k,c])=>`
+    <div class="cm-row" draggable="true" data-key="${k}">
+      <span class="cm-drag-handle" title="Arrastar para reordenar">⠿</span>
+      <span class="cm-row-color" style="background:${c.color||"#6366f1"}"></span>
+      <span class="cm-row-label">${esc(c.emoji||"")} ${esc(c.label)}</span>
+      <span class="cm-row-group">${esc(c.group||"Geral")}</span>
+      <span class="cm-row-tags" title="${esc(c.tags)}">${esc(c.tags)}</span>
+      <span class="cm-row-fav ${c.favorite?"on":""}" onclick="toggleFavCat('${k}',this)" title="Favoritar">&#x2B50;</span>
+      <span style="font-size:11px;color:var(--muted);cursor:pointer;padding:2px 4px" onclick="editCmCat('${k}')" title="Editar">&#x270F;&#xFE0F;</span>
+      <button class="cm-row-del" onclick="deleteCmCat('${k}')" title="Remover">&#x1F5D1;</button>
+    </div>`).join("");
+  // Drag-and-drop reordering
+  el.querySelectorAll('.cm-row').forEach(row=>{
+    row.addEventListener('dragstart', e=>{
+      _dragSrcKey = row.dataset.key;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', ()=>row.classList.remove('dragging'));
+    row.addEventListener('dragover', e=>{ e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', ()=>row.classList.remove('drag-over'));
+    row.addEventListener('drop', async e=>{
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if(!_dragSrcKey || _dragSrcKey===row.dataset.key) return;
+      // Reorder userCats in memory
+      const keys = Object.keys(userCats);
+      const fromIdx = keys.indexOf(_dragSrcKey);
+      const toIdx = keys.indexOf(row.dataset.key);
+      if(fromIdx<0||toIdx<0) return;
+      keys.splice(fromIdx,1);
+      keys.splice(toIdx,0,_dragSrcKey);
+      const newCats = {};
+      keys.forEach(k=>newCats[k]=userCats[k]);
+      userCats = newCats;
+      renderCmList();
+      // Save new order via API (save each category to preserve order)
+      try{
+        await fetch('/api/categories/reorder', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({order: keys})
+        });
+        await loadCategories();
+      } catch(err){ toast('Erro ao salvar ordem: '+err.message,'error'); }
+    });
+  });
+}
+function clearCmForm(){
+  ["cmEmoji","cmLabel","cmKey","cmGroup","cmTags"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("cmColor").value="#6366f1";
+  document.getElementById("cmFav").checked=false;
+}
+function editCmCat(key){
+  const c=userCats[key];if(!c)return;
+  document.getElementById("cmEmoji").value=c.emoji||"";
+  document.getElementById("cmLabel").value=c.label||"";
+  document.getElementById("cmKey").value=key;
+  document.getElementById("cmGroup").value=c.group||"";
+  document.getElementById("cmTags").value=c.tags||"";
+  document.getElementById("cmColor").value=c.color||"#6366f1";
+  document.getElementById("cmFav").checked=!!c.favorite;
+  document.getElementById("cmTags").focus();
+}
+
+function removeFavGrid(src,pid,cardEl){
+  const imgUrl = cardEl.querySelector('img').src;
+  confirmAction("Remover Guardado", "Você quer remover essa imagem dos guardados?", imgUrl, () => {
+    fetch(`/api/favorites/${src}/${pid}`,{method:"DELETE"})
+    .then(r=>r.json()).then(d=>{
+      if(d.error)return toast("Erro: "+d.error,"error");
+      cardEl.style.transition="opacity .3s";cardEl.style.opacity="0";
+      setTimeout(()=>cardEl.remove(),300);
+      galleryData=galleryData.filter(it=>`${it.source}:${it.post_id||it.uid?.split(':')[1]}`!==`${src}:${pid}`);
+      toast("Removida dos guardados.","success");
+    }).catch(e=>toast("Erro: "+e.message,"error"));
+  });
+}
+
+
+async function saveCmCategory(){
+  const label=document.getElementById("cmLabel").value.trim();
+  const tags=document.getElementById("cmTags").value.trim();
+  if(!label||!tags){toast("Nome e tags são obrigatórios.","error");return}
+  const rawKey=document.getElementById("cmKey").value.trim();
+  const key=rawKey||(label.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/(^_|_$)/g,""));
+  const body={key,label,tags,
+    emoji:document.getElementById("cmEmoji").value.trim()||"\uD83C\uDFA8",
+    group:document.getElementById("cmGroup").value.trim()||"Geral",
+    color:document.getElementById("cmColor").value,
+    favorite:document.getElementById("cmFav").checked,
+  };
+  try{
+    const r=await(await fetch("/api/categories",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
+    if(r.error){toast("Erro: "+r.error,"error");return}
+    toast(`"${label}" salvo!`,"success");
+    clearCmForm();
+    await loadCategories();
+    renderCmList();
+  }catch(e){toast("Erro: "+e.message,"error")}
+}
+async function deleteCmCat(key){
+  if(!confirm(`Remover "${userCats[key]?.label||key}"?`))return;
+  try{
+    const r=await(await fetch(`/api/categories/${key}`,{method:"DELETE"})).json();
+    if(r.error){toast("Erro: "+r.error,"error");return}
+    toast("Removida.","success");
+    await loadCategories();
+    renderCmList();
+  }catch(e){toast("Erro: "+e.message,"error")}
+}
+async function toggleFavCat(key,el){
+  try{
+    const r=await(await fetch(`/api/categories/${key}/favorite`,{method:"POST"})).json();
+    el.classList.toggle("on",r.favorite);
+    await loadCategories();
+    renderCmList();
+  }catch(e){toast("Erro: "+e.message,"error")}
+}
+
+// ══ SEARCH (SSE) ════════════════════════════════════════════════════
+async function doSearch(){
+  const cats=[...document.querySelectorAll("input[name=cat]:checked")].map(e=>e.value);
+  const srcs=[...document.querySelectorAll("input[name=src]:checked")].map(e=>e.value);
+  const pages=parseInt(document.getElementById("pagesSlider").value);
+  if(!cats.length){toast("Selecione ao menos uma categoria.","error");return}
+  if(!srcs.length){toast("Selecione ao menos uma fonte.","error");return}
+
+  const btn=document.getElementById("btnSearch");
+  const btnCancel=document.getElementById("btnCancel");
+  btn.style.display="none";
+  btnCancel.style.display="block";
+  btnCancel.textContent="Cancelar";
+  
+  if(searchAbortController) searchAbortController.abort();
+  searchAbortController = new AbortController();
+  document.getElementById("searchProgress").classList.add("visible");
+  setSearchProg(0,"Iniciando...");
+  showEmpty(`<div class="spinner"></div><div class="state-text">Aguarde, buscando...</div>`);
+  document.getElementById("gridWrap").style.display="none";
+  allPosts=[];selectedIds.clear();updateCounts();
+
+  try{
+    const [dl, favs, rt]=await Promise.all([
+      fetch("/api/downloaded-ids").then(r=>r.json()),
+      fetch("/api/favorites").then(r=>r.json()),
+      fetch("/api/ratings").then(r=>r.json()),
+    ]);
+    downloadedIds=new Set(dl.ids||[]);
+    favoriteUids=new Set((favs.favorites||[]).map(f=>`${f.source}:${f.post_id}`));
+    ratingsMap=rt.ratings||{};
+  }catch(e){downloadedIds=new Set();favoriteUids=new Set()}
+
+  const body={categories:cats,sources:srcs,pages,custom_categories:[], min_score: minScore};
+  try{
+    const resp=await fetch("/api/search-stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:searchAbortController.signal});
+    const reader=resp.body.getReader();
+    const decoder=new TextDecoder();
+    let buf="", event="", data="";
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lines=buf.split("\n");
+      buf=lines.pop();
+      for(const line of lines){
+        if(line.startsWith("event:"))event=line.slice(6).trim();
+        else if(line.startsWith("data:")){
+          data=line.slice(5).trim();
+          if(!event||!data)continue;
+          try{
+            const d=JSON.parse(data);
+            if(event==="progress"){
+              const pct=d.total?Math.round((d.done/d.total)*100):0;
+              setSearchProg(pct,`${d.source} / ${d.cat}${d.error?" ❌":""}`);
+            }else if(event==="posts"){
+              const newPosts = d.posts||[]; for(let i=0; i<newPosts.length; i++){ allPosts.push(newPosts[i]); }
+              const pct=d.total?Math.round((d.done/d.total)*100):100;
+              setSearchProg(pct,`${d.source}: ${d.posts?.length||0} novos (total: ${allPosts.length})`);
+              filteredPosts=getFilteredPosts();
+              document.getElementById("totalCount").textContent=filteredPosts.length; if(currentPage === 1) applyFilterAndSort();
+            }else if(event==="done"){
+              setSearchProg(100,"Concluído ✓");
+              applyFilterAndSort();
+              toast(`${allPosts.length} resultado(s) encontrado(s).`,"info");
+            }
+          }catch(e){ toast("Erro JSON no EventSource: " + e.message, "error"); }
+          event="";data="";
+        }
+      }
+    }
+  }catch(e){
+    if(e.name === "AbortError"){
+      toast("Busca cancelada.","info");
+      setSearchProg(100,"Cancelada");
+      // Renderiza o que já chegou — sem isso o spinner ficava travado
+      // e a tela parecia quebrada até a próxima busca.
+      if(allPosts.length){
+        applyFilterAndSort();
+      }else{
+        showEmpty(`<div class="state-icon">🎨</div><div class="state-text">Busca cancelada. Configure os filtros e busque de novo.</div>`);
+      }
+    }else{
+      showEmpty(`<div class="state-icon">⚠️</div><div class="state-text">Erro: ${e.message}</div>`);
+      toast("Erro na busca.","error");
+    }
+  }finally{
+    searchAbortController=null;
+    btn.style.display="block";
+    btn.disabled=false;
+    btn.textContent="Buscar";
+    if(btnCancel) btnCancel.style.display="none";
+    setTimeout(()=>document.getElementById("searchProgress").classList.remove("visible"),2000);
+  }
+}
+
+function cancelSearch(){
+  if(searchAbortController){
+    searchAbortController.abort();
+    searchAbortController=null;
+  }
+}
+
+function setSearchProg(pct,txt){
+  document.getElementById("searchProgFill").style.width=pct+"%";
+  document.getElementById("searchProgTxt").textContent=txt;
+}
+
+// ══ FILTER + SORT ════════════════════════════════════════════════════
+function getActive(g){return[...document.querySelectorAll(`.tag-pill[data-group="${g}"].on`)].map(p=>p.dataset.val)}
+function mediaTypeOf(u){
+  u=(u||"").toLowerCase().split("?")[0].split("#")[0];
+  if(u.endsWith(".webm")||u.endsWith(".mp4")||u.endsWith(".m4v")) return "video";
+  if(u.endsWith(".gif")) return "gif";
+  if(u.endsWith(".webp")) return "webp";
+  return "image";
+}
+function normTagStr(s){ return " "+(s||"").toLowerCase().replace(/_/g," ")+" "; }
+function hasTag(normStr,kw){ return normStr.includes(" "+kw.replace(/_/g," ")+" "); }
+
+
+
+function getBlacklist(){
+  return document.getElementById("blacklistInput").value
+    .split(",").map(t=>t.trim().toLowerCase().replace(/ /g,"_")).filter(Boolean);
+}
+
+function getFilteredPosts(){
+  const blacklist=getBlacklist();
+  const ar=getActive("rating");
+  let posts=[...allPosts];
+  if(ar.length<3) {
+    posts=posts.filter(p=>{
+      let r=(p.rating||"sfw").toLowerCase();
+      if(["general","g","safe"].includes(r)) r="sfw";
+      if(["questionable","q","explicit","e"].includes(r)) r="nsfw";
+      if(["sensitive","s"].includes(r)) r="sensitive";
+      return ar.includes(r);
+    });
+  }
+
+  // Triagem: cada post cai numa das 5 categorias (none = não avaliada)
+  const av=getActive("aval");
+  if(av.length<5){
+    posts=posts.filter(p=>av.includes(ratingsMap[`${p.source}:${p.id||p.post_id}`]||"none"));
+  }
+
+  const am=getActive("media");
+  if(am.length<4) posts=posts.filter(p=>am.includes(mediaTypeOf(p.url||p.orig_url||p.preview_url)));
+  if(minScore>0) posts=posts.filter(p=>(p.score||0)>=minScore);
+  if(activePeriodDays>0){
+    const cutoff = Math.floor(Date.now()/1000) - activePeriodDays*86400;
+    posts=posts.filter(p=>{
+      const pd = p.post_date || parseInt(p.id||p.post_id||0) || 0;
+      return pd===0 || pd>=cutoff; // se post_date=0 (desconhecido), deixa passar
+    });
+  }
+  if(hideGalleryItems) posts=posts.filter(p=>!downloadedIds.has(`${p.source}:${p.id}`) && !favoriteUids.has(`${p.source}:${p.id}`));
+  if(blacklist.length){
+    posts=posts.filter(p=>{
+      const norm=normTagStr(p.tags);
+      return !blacklist.some(bl=>hasTag(norm,bl));
+    });
+  }
+  const mode=document.getElementById("sortSelect").value;
+  if(mode==="score_desc") posts.sort((a,b)=>(b.score||0)-(a.score||0));
+  if(mode==="score_asc")  posts.sort((a,b)=>(a.score||0)-(b.score||0));
+  if(mode==="score_recent") posts.sort((a,b)=>{
+    let diff = (b.score||0) - (a.score||0);
+    if(diff !== 0) return diff;
+    let dA = a.post_date || parseInt(a.id||a.post_id||0) || 0;
+    let dB = b.post_date || parseInt(b.id||b.post_id||0) || 0;
+    return dB - dA;
+  });
+  if(mode==="source")     posts.sort((a,b)=>(a.source||"").localeCompare(b.source||""));
+  if(mode==="category")   posts.sort((a,b)=>(a.category||"").localeCompare(b.category||""));
+    return posts;
+}
+
+function applyFilterAndSort(keepPage=false){
+  filteredPosts=getFilteredPosts();
+  // Remove da seleção itens que saíram do filtro — sem isso o contador
+  // mostrava "N selecionadas" invisíveis, impossíveis de desmarcar.
+  const visiveis=new Set(filteredPosts.map(p=>`${p.source}:${p.id||p.post_id}`));
+  for(const uid of [...selectedIds]){
+    if(!visiveis.has(uid)) selectedIds.delete(uid);
+  }
+  renderPage(keepPage ? currentPage : 1);
+}
+
+let currentPage = 1;
+
+const IMG_PLACEHOLDER="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='160'%3E%3Crect width='240' height='160' fill='%231e1e24'/%3E%3Ctext x='120' y='84' fill='%23718096' font-family='sans-serif' font-size='12' text-anchor='middle'%3Eimagem indisponivel%3C/text%3E%3C/svg%3E";
+function onImgError(img){
+  // 1ª falha: tenta recarregar uma vez (resolve rate-limit/erro temporário do CDN)
+  if(!img.dataset.retried){
+    img.dataset.retried='1';
+    const s=img.src; img.removeAttribute('src');
+    setTimeout(()=>{ img.src=s; }, 700);
+    return;
+  }
+  // 2ª falha: mostra placeholder (mantém a altura do card em vez de virar uma linha)
+  img.onerror=null; img.classList.add('img-failed'); img.src=IMG_PLACEHOLDER;
+}
+
+function renderPage(page){
+  const total=filteredPosts.length;
+  document.getElementById("totalCount").textContent = total;
+  if(total===0){
+    showEmpty(`<div class="state-icon">🔍</div><div class="state-text">Nenhum resultado para este filtro.</div>`);
+    document.getElementById("gridWrap").style.display="none";
+    updateCounts();return;
+  }
+  document.getElementById("emptyState").style.display="none";
+  document.getElementById("gridWrap").style.display="block";
+
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  if(page < 1) page = 1;
+  if(page > totalPages) page = totalPages;
+  currentPage = page;
+  
+  // Scroll to top
+  const mainEl = document.querySelector(".main") || document.documentElement;
+  mainEl.scrollTo({top: 0, behavior: 'smooth'});
+  window.scrollTo({top: 0, behavior: 'smooth'});
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const slice = filteredPosts.slice(startIndex, startIndex + pageSize);
+  
+  const grid = document.getElementById("grid");
+  grid.innerHTML = ""; 
+
+  const numCols=window.innerWidth<=900?2:window.innerWidth<=1400?3:4;
+  const cols=[];
+  for(let i=0;i<numCols;i++){
+    const col=document.createElement("div");
+    col.className="grid-col";
+    col.style.cssText="flex:1;display:flex;flex-direction:column;gap:12px;";
+    grid.appendChild(col);
+    cols.push(col);
+  }
+
+  let colIdx=0;
+  slice.forEach((p, i) => {
+    const uid=`${p.source}:${p.id}`;
+    const sel=selectedIds.has(uid);
+    const src=(p.source||"").toLowerCase().replace(".","");
+    const prv=`/api/proxy-image?url=${encodeURIComponent(p.preview_url||p.url)}`;
+    const rl={sfw:"SFW",sensitive:"Sens.",nsfw:"NSFW"}[p.rating]||"SFW";
+    const dl=downloadedIds.has(uid);
+    const fav=favoriteUids.has(uid);
+    const w=p.width||0,h=p.height||0;
+    const resBadge=w>=3840?`<span class="badge badge-res badge-4k">4K</span>`
+      :w>=1920?`<span class="badge badge-res">FHD</span>`
+      :w>=1280?`<span class="badge badge-res" style="opacity:.7">HD</span>`:"";
+    const artistHtml=p.artist?`<span class="badge" style="background:rgba(255,255,255,.1);color:#cbd5e1;cursor:pointer" onclick="event.stopPropagation();searchArtist(decodeURIComponent('${encodeURIComponent(p.artist)}'))">🎨 ${esc(p.artist)}</span>`:"";
+    let pr=(p.rating||"sfw").toLowerCase();
+    const isNsfw = (["questionable","q","explicit","e","nsfw","sensitive","s"].includes(pr)) ? " nsfw-blur" : "";
+    const isVid = (p.url||"").toLowerCase().endsWith(".webm") || (p.url||"").toLowerCase().endsWith(".mp4");
+
+    const div=document.createElement("div");
+    div.className=`card${sel?" selected":""}${isNsfw}`;
+    div.dataset.uid=uid; div.dataset.rating=p.rating||"sfw";
+    div.title="clique: selecionar · duplo clique: ampliar";
+    div.onclick=()=>toggleCard(div);
+    // Duplo clique amplia. Os 2 cliques simples que o precedem se anulam
+    // (seleciona + desseleciona), então a seleção não muda.
+    div.ondblclick=(e)=>{e.preventDefault();openLb(uid);};
+    div.oncontextmenu=(e)=>{e.preventDefault();showCtxMenu(e,uid,div);};
+    div.innerHTML=`
+      <div class="card-check"></div>
+      <img src="${prv}" loading="lazy" class="loading" onload="this.classList.remove('loading')" onerror="onImgError(this)">
+        ${isVid ? '<div class="vid-icon">▶</div>' : ''}
+      <div class="card-actions">
+        ${p.page_url?`<a class="card-btn" href="${p.page_url}" target="_blank" onclick="event.stopPropagation()" title="Ver no site">↗</a>`:""}
+        <button class="card-btn" onclick="event.stopPropagation();openLb('${uid}')" title="Ampliar">⤢</button>
+        <a class="card-btn" href="https://saucenao.com/search.php?url=${encodeURIComponent(p.url)}" target="_blank" onclick="event.stopPropagation()" title="SauceNAO">🍜</a>
+      </div>
+      <div class="card-meta">
+        ${ratingsMap[uid]?`<span class="badge badge-aval-${ratingsMap[uid]}">${AVAL_LABEL[ratingsMap[uid]]}</span>`:""}
+        <span class="badge badge-source-${src}">${p.source}</span>
+        <span class="badge badge-${p.rating||"sfw"}">${rl}</span>
+        ${resBadge}
+        ${p.score?`<span class="badge badge-score">⭐${p.score}</span>`:""}
+        ${artistHtml}
+        ${dl?`<span class="badge" style="background:rgba(34,197,94,.22);color:#86efac">✓</span>`:""}
+        ${fav?`<span class="badge" style="background:rgba(217,70,239,.22);color:#f0abfc">📌</span>`:""}
+      </div>`;
+    cols[colIdx].appendChild(div);
+    colIdx=(colIdx+1)%cols.length;
+  });
+
+  renderPagination(totalPages);
+  updateCounts();
+  document.getElementById("gridArea").scrollTo({top:0,behavior:"smooth"});
+}
+
+function renderPagination(totalPages){
+  const pBar = document.getElementById("paginationBar");
+  pBar.innerHTML = "";
+  if(totalPages <= 1) {
+    pBar.style.display = "none";
+    return;
+  }
+  pBar.style.display = "flex";
+
+  const prev = document.createElement("button");
+  prev.className = "page-btn";
+  prev.textContent = "« Anterior";
+  prev.disabled = currentPage === 1;
+  prev.onclick = () => renderPage(currentPage - 1);
+  pBar.appendChild(prev);
+
+  let startP = Math.max(1, currentPage - 3);
+  let endP = Math.min(totalPages, currentPage + 3);
+  
+  if (startP > 1) {
+    const first = document.createElement("button");
+    first.className = "page-btn";
+    first.textContent = "1";
+    first.onclick = () => renderPage(1);
+    pBar.appendChild(first);
+    if (startP > 2) pBar.insertAdjacentHTML("beforeend", `<span style="color:var(--muted);padding:0 5px">...</span>`);
+  }
+
+  for(let i=startP; i<=endP; i++){
+    const btn = document.createElement("button");
+    btn.className = "page-btn" + (i===currentPage ? " active" : "");
+    btn.textContent = i;
+    btn.onclick = () => renderPage(i);
+    pBar.appendChild(btn);
+  }
+
+  if (endP < totalPages) {
+    if (endP < totalPages - 1) pBar.insertAdjacentHTML("beforeend", `<span style="color:var(--muted);padding:0 5px">...</span>`);
+    const last = document.createElement("button");
+    last.className = "page-btn";
+    last.textContent = totalPages;
+    last.onclick = () => renderPage(totalPages);
+    pBar.appendChild(last);
+  }
+
+  const next = document.createElement("button");
+  next.className = "page-btn";
+  next.textContent = "Próxima »";
+  next.disabled = currentPage === totalPages;
+  next.onclick = () => renderPage(currentPage + 1);
+  pBar.appendChild(next);
+
+  pBar.insertAdjacentHTML("beforeend", `<div class="page-info">Mostrando página ${currentPage} de ${totalPages} (${filteredPosts.length} imagens no total)</div>`);
+}
+
+// ══ LIGHTBOX ══════════════════════════════════════════════════════
+let lbIdx=-1, lbMode="search";
+function lbStep(d){
+  if(lbMode==="gallery"){
+    const n=galLbIdx+d;
+    if(n>=0 && n<galRendered.length) openGalLbIdx(n);
+    return;
+  }
+  const n=lbIdx+d;
+  if(n>=0 && n<filteredPosts.length) openLb(n);
+}
+function lbCurUid(){
+  if(lbMode==="gallery"){
+    const it=galRendered[galLbIdx];
+    return it ? (it.uid||`${it.source}:${it.post_id}`) : null;
+  }
+  const p=filteredPosts[lbIdx];
+  return p ? `${p.source}:${p.id||p.post_id}` : null;
+}
+function lbToggleSel(){
+  if(lbMode!=="search") return;
+  const uid=lbCurUid(); if(!uid) return;
+  const card=document.querySelector(`.card[data-uid="${(window.CSS&&CSS.escape)?CSS.escape(uid):uid}"]`);
+  if(card){ toggleCard(card); }
+  else { selectedIds.has(uid)?selectedIds.delete(uid):selectedIds.add(uid); updateCounts(); }
+  updateLbSelBtn();
+}
+function updateLbSelBtn(){
+  const btn=document.getElementById("lbSelBtn"); if(!btn) return;
+  const uid=lbCurUid();
+  const on=uid&&selectedIds.has(uid);
+  btn.textContent=on?"✓ Selecionada":"☐ Selecionar";
+  btn.style.borderColor=on?"var(--accent)":"";
+  btn.style.background=on?"rgba(139,92,246,.3)":"";
+}
+
+function updateLbRateBtns(){
+  const uid=lbCurUid();
+  const cur=uid?ratingsMap[uid]:null;
+  document.querySelectorAll("#lbRateBar .lb-rate").forEach(b=>{
+    b.classList.toggle("active", b.dataset.aval===cur);
+  });
+}
+
+async function lbRate(aval){
+  const emGaleria = lbMode==="gallery";
+  const p = emGaleria ? galRendered[galLbIdx] : filteredPosts[lbIdx];
+  if(!p) return;
+  const uid = emGaleria ? (p.uid||`${p.source}:${p.post_id}`) : `${p.source}:${p.id||p.post_id}`;
+  const removing = ratingsMap[uid]===aval;   // repetir = remover avaliação
+
+  if(removing) delete ratingsMap[uid];
+  else ratingsMap[uid]=aval;
+  p.aval = removing ? null : aval;
+
+  // Persiste em background (não trava a triagem)
+  const payload = {...p, id: p.id||p.post_id, aval: removing?"":aval};
+  fetch("/api/ratings",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload)})
+    .catch(()=>toast("Erro ao salvar avaliação","error"));
+
+  toast(removing?"Avaliação removida":`${AVAL_LABEL[aval]} ✓`,"info");
+
+  if(emGaleria){
+    const oldIdx=galLbIdx;
+    renderGallery();   // atualiza badges e refiltra (galRendered é recriado)
+    if(!galRendered.length){ closeLb(); return; }
+    const still=galRendered.findIndex(x=>(x.uid||`${x.source}:${x.post_id}`)===uid);
+    const next=still>=0 ? Math.min(still+1, galRendered.length-1)
+                        : Math.min(oldIdx, galRendered.length-1);
+    openGalLbIdx(next);
+    return;
+  }
+
+  // A imagem continua visível com o filtro atual?
+  const visiveis=new Set(getActive("aval"));
+  const aindaVisivel=visiveis.has(ratingsMap[uid]||"none");
+
+  const oldIdx=lbIdx;
+  applyFilterAndSort(true);   // atualiza grade + badges
+
+  if(!filteredPosts.length){ closeLb(); return; }
+  // Se saiu da lista, o próximo já ocupa o índice atual; senão avança 1
+  const next=Math.min(aindaVisivel?oldIdx+1:oldIdx, filteredPosts.length-1);
+  openLb(next);
+}
+function openLb(idxOrUid){
+  let idx = typeof idxOrUid === 'number' ? idxOrUid : filteredPosts.findIndex(x=>`${x.source}:${x.id||x.post_id}`===idxOrUid);
+  if(idx < 0) return;
+  lbIdx=idx; lbMode="search";
+  const p=filteredPosts[idx];if(!p)return;
+  const originalUrl = p.url || p.preview_url || "";
+    const isVid = originalUrl.toLowerCase().endsWith(".webm") || originalUrl.toLowerCase().endsWith(".mp4");
+    if(isVid) {
+      document.getElementById("lbImg").style.display = "none";
+      document.getElementById("lbVideo").style.display = "block";
+      document.getElementById("lbVideo").src = originalUrl;
+    } else {
+      document.getElementById("lbVideo").style.display = "none";
+      document.getElementById("lbVideo").pause();
+      document.getElementById("lbVideo").src = "";
+      document.getElementById("lbImg").style.display = "block";
+      document.getElementById("lbImg").src = `/api/proxy-image?url=${encodeURIComponent(originalUrl)}`;
+    }
+  document.getElementById("lbLink").href=p.page_url||p.url;
+  document.getElementById("lbLink").style.display=p.page_url?"":"none";
+  document.getElementById("lbSauce").href=`https://saucenao.com/search.php?url=${encodeURIComponent(p.url)}`;
+  document.getElementById("lbInfo").textContent=`${idx+1}/${filteredPosts.length} · ${p.source} · ${p.width||"?"}×${p.height||"?"} · score: ${p.score||0}`;
+  document.getElementById("lbSelBtn").style.display="";
+  document.getElementById("lbRateBar").style.display="";
+  document.getElementById("lbPrev").classList.toggle("hidden", idx<=0);
+  document.getElementById("lbNext").classList.toggle("hidden", idx>=filteredPosts.length-1);
+  updateLbSelBtn();
+  updateLbRateBtns();
+  document.getElementById("lightbox").classList.add("open");
+  // pré-carrega a próxima imagem para navegação instantânea
+  const nx=filteredPosts[idx+1];
+  if(nx && !/\.(webm|mp4)$/i.test(nx.url||"")){
+    const im=new Image();
+    im.src=`/api/proxy-image?url=${encodeURIComponent(nx.url||nx.preview_url||"")}`;
+  }
+}
+function closeLb(){
+  document.getElementById("lightbox").classList.remove("open");
+  document.getElementById("lbImg").src="";
+  const vid = document.getElementById("lbVideo");
+  vid.pause();
+  vid.src = "";
+}
+
+// ══ MODO COMPARAÇÃO ═══════════════════════════════════════════════
+function openCompare(){
+  const posts=filteredPosts.filter(p=>selectedIds.has(`${p.source}:${p.id||p.post_id}`)).slice(0,4);
+  if(posts.length<2){ toast("Selecione 2 a 4 imagens para comparar.","error"); return; }
+  const grid=document.getElementById("compareGrid");
+  grid.innerHTML=posts.map(p=>{
+    const uid=`${p.source}:${p.id||p.post_id}`;
+    const src=`/api/proxy-image?url=${encodeURIComponent(p.url||p.preview_url||"")}`;
+    const cur=ratingsMap[uid];
+    const rateBtns=["usar","talvez","depois","nao"].map(a=>
+      `<button class="lb-rate${cur===a?" active":""}" data-cmp-uid="${uid}" data-aval="${a}"
+        onclick="cmpRate('${uid}','${a}',this)">${AVAL_LABEL[a]}</button>`).join("");
+    return `<div class="cmp-item">
+      <img src="${src}" onerror="onImgError(this)">
+      <div class="cmp-cap">
+        <span>${esc(p.source)}</span><span>·</span>
+        <span>${p.width||"?"}×${p.height||"?"}</span><span>·</span>
+        <span>score ${p.score||0}</span>
+        ${p.artist?`<span>· ${esc(p.artist)}</span>`:""}
+      </div>
+      <div class="cmp-rates">${rateBtns}</div>
+    </div>`;
+  }).join("");
+  document.getElementById("compareOverlay").classList.add("open");
+}
+
+function closeCompare(){
+  document.getElementById("compareOverlay").classList.remove("open");
+  applyFilterAndSort(true);   // reflete avaliações feitas na comparação
+}
+
+function cmpRate(uid, aval, btn){
+  const removing = ratingsMap[uid]===aval;
+  if(removing) delete ratingsMap[uid];
+  else ratingsMap[uid]=aval;
+  const p=filteredPosts.find(x=>`${x.source}:${x.id||x.post_id}`===uid) || {};
+  fetch("/api/ratings",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({...p, source:uid.split(":")[0], id:uid.split(":").slice(1).join(":"), aval:removing?"":aval})})
+    .catch(()=>toast("Erro ao salvar avaliação","error"));
+  // Atualiza só os botões desta imagem
+  document.querySelectorAll(`#compareGrid .lb-rate[data-cmp-uid="${(window.CSS&&CSS.escape)?CSS.escape(uid):uid}"]`)
+    .forEach(b=>b.classList.toggle("active", b.dataset.aval===(removing?null:aval)));
+  toast(removing?"Avaliação removida":`${AVAL_LABEL[aval]} ✓`,"info");
+}
+
+// ══ KEYBOARD SHORTCUTS ════════════════════════════════════════════
+function onKeyDown(e){
+  const cmp=document.getElementById("compareOverlay");
+  if(cmp&&cmp.classList.contains("open")){
+    if(e.key==="Escape") closeCompare();
+    return;
+  }
+  const lb=document.getElementById("lightbox");
+  if(lb.classList.contains("open")){
+    if(e.key==="Escape") closeLb();
+    if(e.key==="ArrowRight") lbStep(1);
+    if(e.key==="ArrowLeft")  lbStep(-1);
+    if(lbMode==="search" && e.key===" "){e.preventDefault();lbToggleSel();}
+    const aval={"1":"usar","2":"talvez","3":"depois","4":"nao"}[e.key];
+    if(aval){e.preventDefault();lbRate(aval);}
+    return;
+  }
+  if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA") return;
+  if(e.key===" "){e.preventDefault();const hov=document.querySelector(".card:hover");if(hov)toggleCard(hov);}
+}
+
+// ══ SELECTION ══════════════════════════════════════════════════════
+function toggleCard(el){const uid=el.dataset.uid;if(selectedIds.has(uid)){selectedIds.delete(uid);el.classList.remove("selected")}else{selectedIds.add(uid);el.classList.add("selected")}updateCounts()}
+function selectAll(){filteredPosts.forEach(p=>selectedIds.add(`${p.source}:${p.id}`));document.querySelectorAll(".card").forEach(c=>c.classList.add("selected"));updateCounts()}
+function selectNone(){selectedIds.clear();document.querySelectorAll(".card").forEach(c=>c.classList.remove("selected"));updateCounts()}
+function updateCounts(){
+  const size = selectedIds.size;
+  document.getElementById("selCount").textContent=size;
+  document.getElementById("btnDownload").disabled = size===0;
+  if(document.getElementById("btnSave")) document.getElementById("btnSave").disabled = size===0;
+  const bc=document.getElementById("btnCompare");
+  if(bc) bc.disabled = !(size>=2 && size<=4);
+}
+function showEmpty(html){const el=document.getElementById("emptyState");el.innerHTML=html;el.style.display="flex"}
+
+// ══ TOGGLE HIDE GALLERY ITEMS ══════════════════════════════════════
+function toggleHideDl(){
+  hideGalleryItems=!hideGalleryItems;
+  const btn=document.getElementById("btnHideDl");
+  btn.classList.toggle("on",hideGalleryItems);
+  btn.textContent=hideGalleryItems?"👁️ Ocultar da galeria":"👁️ Mostrar todas";
+  applyFilterAndSort();
+}
+
+// ══ EXPORT URLs ════════════════════════════════════════════════════
+function exportURLs(){
+  const posts=allPosts.filter(p=>selectedIds.has(`${p.source}:${p.id}`));
+  if(!posts.length){toast("Selecione imagens primeiro.","error");return}
+  const txt=posts.map(p=>`${p.url}\t${p.source}\t${p.score||0}\t${p.page_url||""}`).join("\n");
+  const blob=new Blob([txt],{type:"text/plain"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="artfinder_urls.txt";a.click();
+  toast(`${posts.length} URLs exportadas.`,"success");
+}
+
+async function doSave(){
+  const posts=allPosts.filter(p=>selectedIds.has(`${p.source}:${p.id}`));
+  if(!posts.length)return;
+  toast(`Guardando ${posts.length} arte(s)...`);
+  let ok = 0;
+  for(const p of posts){
+    try{
+      await fetch('/api/favorites',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          source:p.source, id:String(p.id||p.post_id),
+          artist:p.artist||'', url:p.url||'',
+          preview_url:p.preview_url||'', page_url:p.page_url||'',
+          category:p.category||'favoritos', score:p.score||0,
+          width:p.width||0, height:p.height||0,
+          tags:p.tags||'', rating:p.rating||'sfw',
+          skip_download: true
+        })
+      });
+      ok++;
+    }catch(e){}
+  }
+  toast(`${ok} arte(s) guardada(s) na Galeria!`,"success");
+  selectNone();
+}
+
+async function doSaveSingle(post){
+  if(!post) return;
+  toast(`Guardando arte...`);
+  try{
+    await fetch('/api/favorites',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        source:post.source, id:String(post.id||post.post_id),
+        artist:post.artist||'', url:post.url||'',
+        preview_url:post.preview_url||'', page_url:post.page_url||'',
+        category:post.category||'favoritos', score:post.score||0,
+        width:post.width||0, height:post.height||0,
+        tags:post.tags||'', rating:post.rating||'sfw',
+        skip_download: true
+      })
+    });
+    toast("📌 Arte guardada na Galeria!", "success");
+  }catch(e){
+    toast("Erro ao guardar: " + e.message, "error");
+  }
+}
+
+// ══ DOWNLOAD (SSE streaming) ══════════════════════════════════════
+async function doDownload(postArray = null){
+  const posts = postArray || allPosts.filter(p=>selectedIds.has(`${p.source}:${p.id}`));
+  if(!posts.length)return;
+  openModal(posts.length);
+  try{
+    const resp=await fetch("/api/download-stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({posts})});
+    const reader=resp.body.getReader();
+    const decoder=new TextDecoder();
+    let buf="",event="",data="";
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lines=buf.split("\n");buf=lines.pop();
+      for(const line of lines){
+        if(line.startsWith("event:"))event=line.slice(6).trim();
+        else if(line.startsWith("data:")){
+          data=line.slice(5).trim();
+          if(!event||!data)continue;
+          try{
+            const d=JSON.parse(data);
+            if(event==="progress"){
+              const pct=d.total?Math.round((d.done/d.total)*100):0;
+              setProgress(pct,`✅ ${d.ok} ok │ ❌ ${d.done-d.ok} falhas │ ${d.done}/${d.total}`);
+            }else if(event==="done"){
+              setProgress(100,`✅ ${d.downloaded} baixadas, ❌ ${d.failed} falhas`);
+              document.getElementById("btnCloseMod").classList.add("show");
+              posts.forEach(p=>downloadedIds.add(`${p.source}:${p.id}`));
+              loadHeaderStats();
+              toast(`${d.downloaded} imagem(ns) baixada(s)!`,d.downloaded>0?"success":"info");
+            }
+          }catch(ex){}
+          event="";data="";
+        }
+      }
+    }
+  }catch(e){
+    setProgress(0,"❌ Erro: "+e.message);
+    document.getElementById("btnCloseMod").classList.add("show");
+    toast("Erro no download.","error");
+  }
+}
+function openModal(c){document.getElementById("dlModal").classList.add("open");document.getElementById("dlSub").textContent=`${c} selecionada(s)`;document.getElementById("dlStatus").textContent="Iniciando...";document.getElementById("btnCloseMod").classList.remove("show");setProgress(0,"Conectando...")}
+function closeModal(){document.getElementById("dlModal").classList.remove("open")}
+function setProgress(p,s){document.getElementById("dlProg").style.width=p+"%";document.getElementById("dlStatus").textContent=s}
+
+// ══ GALERIA ═══════════════════════════════════════════════════════
+function toggleGalRating(pill){
+  const r = pill.dataset.galrating;
+  if(galActiveRatings.has(r)) galActiveRatings.delete(r);
+  else galActiveRatings.add(r);
+  pill.classList.toggle("on", galActiveRatings.has(r));
+  renderGallery();
+}
+function toggleGalView(pill, view){
+  if(galActiveViews.has(view)) galActiveViews.delete(view);
+  else galActiveViews.add(view);
+  pill.classList.toggle("on", galActiveViews.has(view));
+  renderGallery();
+}
+function galDebounce(){
+  clearTimeout(galDebounceTimer);
+  galDebounceTimer = setTimeout(renderGallery, 350);
+}
+
+async function loadGallery(){
+  try{
+    // Baixados
+    const dlData = await(await fetch("/api/gallery-items")).json().then(d=>d.items||[]);
+    galleryData = dlData.map(i=>({...i, _type:"downloaded"}));
+
+    // Favoritos
+    const favsData = await(await fetch("/api/favorites")).json().then(d=>d.favorites||[]);
+    allFavs = favsData;
+    // Merge favoritos que ainda não estão nos downloads
+    const dlUids = new Set(galleryData.map(i=>i.uid||`${i.source}:${i.rel_path}`));
+    favsData.forEach(f=>{
+      const uid = `${f.source}:${f.post_id}`;
+      if(!dlUids.has(uid)){
+        galleryData.push({...f, uid, _type:"favorite",
+          rel_path: null, rating: f.rating||"sfw",
+          downloaded_at: f.added_at||0, category: f.category||""});
+      }
+    });
+
+    // Avaliadas (triagem): pilhas direto do banco, sem precisar buscar
+    try{
+      const rt = await(await fetch("/api/ratings")).json();
+      ratingsMap = rt.ratings||{};
+      const rated = await(await fetch("/api/rated-posts")).json().then(d=>d.items||[]);
+      const haveUids = new Set(galleryData.map(i=>i.uid||`${i.source}:${i.post_id}`));
+      rated.forEach(r=>{
+        if(!haveUids.has(r.uid) && (r.url||r.preview_url)){
+          galleryData.push({...r, _type:"rated", rel_path:null,
+            downloaded_at: r.rated_at||0});
+        }
+      });
+      // Anota a pilha em TODOS os itens (baixados e guardados também)
+      galleryData.forEach(i=>{
+        i.uid = i.uid || `${i.source}:${i.post_id}`;
+        i.aval = ratingsMap[i.uid] || null;
+      });
+    }catch(e){ console.error("ratings:", e); }
+
+    // Rebuild filter pills
+    const sources=[...new Set(galleryData.map(i=>i.source))].filter(Boolean);
+    const cats=[...new Set(galleryData.map(i=>{
+      if(i._type==="downloaded" && i.rel_path){
+        const m=i.rel_path.match(/^([^/]+)\//);
+        return m?m[1]:null;
+      }
+      return i.category||null;
+    }))].filter(Boolean);
+    const bar=document.getElementById("galFilterBar");
+    if(bar) {
+      bar.innerHTML=`<span class="gal-pill on" data-gf="all" onclick="setGalFilter(this,'all')">Todas</span>`
+        +sources.map(s=>`<span class="gal-pill" data-gf="src:${s}" onclick="setGalFilter(this,'src:${s}')">  ${s}</span>`).join("")
+        +cats.map(c=>`<span class="gal-pill" data-gf="cat:${c}" onclick="setGalFilter(this,'cat:${c}')">  ${c.replace(/_/g," ")}</span>`).join("");
+    }
+    galFilter="all";
+    renderGallery();
+  }catch(e){
+    console.error(e);
+    toast("Erro ao carregar galeria: "+e.message,"error");
+  }
+}
+
+function setGalFilter(el,f){
+  galFilter=f;
+  document.querySelectorAll(".gal-pill").forEach(p=>p.classList.remove("on"));
+  el.classList.add("on");
+  renderGallery();
+}
+
+function renderGallery(){
+  try {
+    const grid=document.getElementById("galleryGrid");
+    const empty=document.getElementById("galleryEmpty");
+    const query=(document.getElementById("galSearchInput")?.value||"").toLowerCase().trim();
+    const minRes=parseInt(document.getElementById("galResFilter")?.value)||0;
+
+    let items=[...galleryData];
+
+    // Filtro: view (downloaded / favorites / rated)
+    items=items.filter(i=>galActiveViews.has(i._type));
+
+    // Filtro: pilha de triagem
+    const pile=document.getElementById("galAvalFilter")?.value||"";
+    if(pile) items=items.filter(i=> pile==="none" ? !i.aval : i.aval===pile);
+
+    // Filtro: rating
+    items=items.filter(i=>galActiveRatings.has(i.rating||"sfw"));
+    if(galActiveMedia.size<4) items=items.filter(i=>galActiveMedia.has(mediaTypeOf(i.orig_url||i.url||i.rel_path)));
+
+    // Filtro: resolução mínima
+    if(minRes>0) items=items.filter(i=>(i.width||0)>=minRes);
+
+    // Filtro: busca texto
+    if(query) items=items.filter(i=>{
+      const haystack=`${i.source||""} ${i.artist||""} ${i.tags||""} ${i.category||""} ${i.rel_path||""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+
+    // Filtro: pills (fonte/categoria)
+    if(galFilter.startsWith("src:")) items=items.filter(i=>i.source===galFilter.slice(4));
+    else if(galFilter.startsWith("cat:")) items=items.filter(i=>(i.category||i.rel_path||"").startsWith(galFilter.slice(4)));
+
+    // Ordenação
+    const mode=document.getElementById("gallerySortSelect")?.value || "date_desc";
+    if(mode==="date_desc")  items.sort((a,b)=>b.downloaded_at-a.downloaded_at);
+    if(mode==="score_desc") items.sort((a,b)=>b.score-a.score);
+    if(mode==="score_recent") items.sort((a,b)=>{
+        let diff = (b.score||0) - (a.score||0);
+        if(diff !== 0) return diff;
+        return b.downloaded_at - a.downloaded_at;
+      });
+    if(mode==="source")     items.sort((a,b)=>(a.source||"").localeCompare(b.source||""));
+    if(mode==="category")   items.sort((a,b)=>(a.category||a.rel_path||"").localeCompare(b.category||b.rel_path||""));
+    if(mode==="res_desc")   items.sort((a,b)=>(b.width||0)-(a.width||0));
+
+    const countEl = document.getElementById("galleryCount");
+    if(countEl) countEl.textContent=items.length;
+
+    function getCardActionsHtml(idx, it, isDownloaded){
+  let html=`<div class="card-actions">`;
+  if(!isDownloaded){
+    html+=`<button class="card-btn" onclick="event.stopPropagation();doDownload([filteredPosts[${idx}]])" title="Baixar">⬇</button>`;
+  }else{
+    html+=`<span class="card-btn" style="background:var(--green);cursor:default" title="Já baixado">✔️</span>`;
+  }
+  const favCls=it.favorite?" fav-on":"";
+  html+=`<button class="card-btn fav-btn${favCls}" onclick="event.stopPropagation();toggleFavArt(filteredPosts[${idx}])" title="Guardar (só URL)">📌</button>`;
+  if(it.page_url) html+=`<a class="card-btn" href="${it.page_url}" target="_blank" onclick="event.stopPropagation()">↗</a>`;
+  html+=`<button class="card-btn" onclick="event.stopPropagation();window.open('https://saucenao.com/search.php?url=${encodeURIComponent(it.url)}','_blank')" title="SauceNAO">🍜</button>`;
+  html+=`</div>`;
+  return html;
+}  if(!items.length){grid.style.display="none";empty.style.display="flex";empty.textContent="Nenhuma imagem encontrada.";return}
+    empty.style.display="none";grid.style.display="block";
+
+    galRendered=items;   // lista atual para navegação no lightbox
+    grid.innerHTML=items.map((it,gi)=>{
+      const src=(it.source||"").toLowerCase().replace(".","");
+      const isDownloaded = it._type==="downloaded" && it.rel_path;
+      const img = isDownloaded
+        ? `/api/thumb?rel_path=${encodeURIComponent(it.rel_path)}`
+        : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}` ;
+      const fullImg = isDownloaded ? `/downloads/${it.rel_path}` : img;
+      const relEsc=(it.rel_path||"").replace(/'/g,"\\'");
+      const pgUrl=(it.page_url||'').replace(/'/g,"\\'");
+      const w=it.width||0, h=it.height||0;
+      const resBadge=w>=3840?'<span class="badge badge-res badge-4k">4K</span>'
+        :w>=1920?'<span class="badge badge-res">FHD</span>'
+        :w>=1280?'<span class="badge badge-res" style="opacity:.7">HD</span>':'';
+      const checkVid = it.orig_url || it.url || img; const isVid = checkVid.toLowerCase().endsWith(".webm") || checkVid.toLowerCase().endsWith(".mp4");
+        let r=(it.rating||"sfw").toLowerCase();
+      const ratingCls=(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(r)) ? " nsfw-blur" : "";
+      const typeBadge=it._type==="favorite"&&!isDownloaded?'<span class="badge" style="background:rgba(236,72,153,.25);color:#f9a8d4">📌 Guardado</span>':'';
+
+      const deleteBtn = isDownloaded
+        ? `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();deleteGalImage('${relEsc}',this.closest('.gal-card'))" title="Apagar do disco">🗑</button>`
+        : it._type==="rated"
+        ? `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();unrateGal('${it.source}','${it.post_id||it.uid?.split(':')[1]}',this.closest('.gal-card'))" title="Remover avaliação">✕</button>`
+        : `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();removeFavGrid('${it.source}','${it.post_id||it.uid?.split(':')[1]}',this.closest('.gal-card'))" title="Remover dos guardados">💔</button>`;
+
+      const realUid = it.uid || `${it.source}:${it.post_id||it.source_id}`;
+      const pid = it.post_id || it.uid?.split(':')[1] || '';
+      return `<div class="gal-card${ratingCls}" data-uid="${realUid}" data-rel="${relEsc}" data-type="${it._type||''}" data-source="${it.source||''}" data-pid="${pid}" onclick="openGalLbIdx(${gi})" oncontextmenu="showCtxMenuGal(event, '${realUid}')">
+        <img src="${img}" loading="lazy" ${isDownloaded?`onerror="this.onerror=null;this.src='${fullImg}'"`:'onerror="onImgError(this)"'}>
+          ${isVid ? '<div class="vid-icon">▶</div>' : ''}
+        <div class="gal-actions">
+          ${it.page_url?`<a class="card-btn" href="${pgUrl}" target="_blank" onclick="event.stopPropagation()">↗</a>`:""}
+          <a class="card-btn" href="https://saucenao.com/search.php?url=${encodeURIComponent(img)}" target="_blank" onclick="event.stopPropagation()">🍜</a>
+          ${deleteBtn}
+        </div>
+        <div class="gal-card-meta">
+          ${it.aval?`<span class="badge badge-aval-${it.aval}">${AVAL_LABEL[it.aval]}</span>`:""}
+          <span class="badge badge-source-${src}">${it.source}</span>
+          ${resBadge}
+          ${typeBadge}
+          ${it.score?`<span class="badge badge-score">⭐${it.score}</span>`:""}
+          ${it.artist?`<span class="badge" style="background:rgba(255,255,255,.08);color:#cbd5e1">🎨 ${esc(it.artist)}</span>`:""}
+        </div></div>`;
+    }).join("");
+  } catch(e) {
+    console.error("Erro no renderGallery:", e);
+    toast("Erro visualizando galeria: " + e.message, "error");
+  }
+}
+
+function openGalLbIdx(i){
+  const it=galRendered[i]; if(!it) return;
+  galLbIdx=i;
+  const isDl = it._type==="downloaded" && it.rel_path;
+  const full = isDl ? `/downloads/${it.rel_path}`
+                    : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}`;
+  openGalLb(full, it.page_url||"", (it.source||"").toLowerCase(), it.score||0, it.orig_url||it.url||"");
+  // Habilita navegação e triagem (openGalLb esconde por padrão p/ compat)
+  document.getElementById("lbPrev").classList.toggle("hidden", i<=0);
+  document.getElementById("lbNext").classList.toggle("hidden", i>=galRendered.length-1);
+  document.getElementById("lbRateBar").style.display="";
+  document.getElementById("lbInfo").textContent=`${i+1}/${galRendered.length} · ${it.source||""} · score: ${it.score||0}`;
+  updateLbRateBtns();
+}
+
+async function unrateGal(source, postId, card){
+  try{
+    await fetch("/api/ratings",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({source, id:postId, aval:""})});
+    delete ratingsMap[`${source}:${postId}`];
+    galleryData=galleryData.filter(i=>!(i._type==="rated"&&i.source===source&&String(i.post_id)===String(postId)));
+    galleryData.forEach(i=>{ if(i.uid===`${source}:${postId}`) i.aval=null; });
+    if(card) card.remove();
+    toast("Avaliação removida","info");
+    renderGallery();
+  }catch(e){ toast("Erro: "+e.message,"error"); }
+}
+
+function openGalLb(src,pageUrl,source,score,origUrl){
+    lbMode="gallery";
+    document.getElementById("lbPrev").classList.add("hidden");
+    document.getElementById("lbNext").classList.add("hidden");
+    document.getElementById("lbSelBtn").style.display="none";
+    document.getElementById("lbRateBar").style.display="none";
+    let checkUrl = origUrl || src;
+    const isVid = checkUrl.toLowerCase().endsWith(".webm") || checkUrl.toLowerCase().endsWith(".mp4");
+    if(isVid) {
+      document.getElementById("lbImg").style.display = "none";
+      document.getElementById("lbVideo").style.display = "block";
+      document.getElementById("lbVideo").src = checkUrl;
+    } else {
+      document.getElementById("lbVideo").style.display = "none";
+      document.getElementById("lbVideo").pause();
+      document.getElementById("lbVideo").src = "";
+      document.getElementById("lbImg").style.display = "block";
+      document.getElementById("lbImg").src = src;
+    }
+  document.getElementById("lbLink").href=pageUrl||src;
+  document.getElementById("lbLink").style.display=pageUrl?"":"none";
+  document.getElementById("lbSauce").href=`https://saucenao.com/search.php?url=${encodeURIComponent(src)}`;
+  document.getElementById("lbInfo").textContent=`${source} · score: ${score}`;
+  document.getElementById("lightbox").classList.add("open");
+}
+
+// -- QUICK FILTER CATEGORIES ----------------------------------------
+function filterSidebarCats(query){
+  const q=(query||'').toLowerCase().trim();
+  document.querySelectorAll('#catGroupsArea .check-item').forEach(el=>{
+    el.style.display = el.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
+  });
+  // ao filtrar, abre os grupos pra mostrar os resultados; ao limpar, volta ao estado salvo
+  document.querySelectorAll('#catGroupsArea details.cat-group-details').forEach(d=>{
+    d.open = q ? true : _groupOpen(d.dataset.group);
+  });
+}
+
+// -- FAVORITES (helpers) ------------------------------------------
+async function loadFavorites(){
+  // Redireciona para a galeria unificada
+  loadGallery();
+}
+
+// ══ FAV ART (from search grid) ════════════════════════════════════
+async function toggleFavArt(post){
+  if(!post)return;
+  const src=post.source;
+  const pid=String(post.id||post.post_id||"");
+  if(!pid)return;
+  if(post.favorite){
+    const r=await(await fetch(`/api/favorites/${src}/${pid}`,{method:'DELETE'})).json();
+    if(r.ok){post.favorite=false;toast("Arte removida da galeria.");}
+  }else{
+    const r=await(await fetch('/api/favorites',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        source:src, id:pid,
+        artist:post.artist||'',
+        url:post.url||'',
+        preview_url:post.preview_url||'',
+        page_url:post.page_url||'',
+        category:post.category||'favoritos',
+        score:post.score||0,
+        width:post.width||0,
+        height:post.height||0,
+        tags:post.tags||'',
+        rating:post.rating||'sfw',
+        skip_download: true
+      })
+    })).json();
+    if(r.ok){post.favorite=true;toast("📌 Guardado na Galeria!", "success");}
+  }
+  // Atualiza badge no card
+  const card=document.querySelector(`.card[data-uid="${src}:${pid}"]`);
+  if(card){
+    let badge=card.querySelector('.fav-art-badge');
+    if(post.favorite){
+      if(!badge){badge=document.createElement('div');badge.className='fav-art-badge';badge.textContent='📌';card.appendChild(badge);}
+    }else if(badge){badge.remove();}
+  }
+}
+
+async function hidePostForever(post){
+  if(!post) return;
+  const uid=`${post.source}:${post.id||post.post_id}`;
+  const imgUrl = post.preview_url || post.url;
+  
+  confirmAction("Ocultar Arte", "Ocultar esta arte permanentemente? Ela nunca mais aparecerá nas buscas.", imgUrl, async () => {
+    try{
+      await fetch('/api/blacklist',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({uids:[uid]})
+      });
+      // Remove da Busca
+      const card=document.querySelector(`.card[data-uid="${uid}"]`);
+      if(card){
+        card.style.transition='opacity .3s';
+        card.style.opacity='0';
+        setTimeout(()=>{card.remove();allPosts=allPosts.filter(p=>p!==post);filteredPosts=filteredPosts.filter(p=>p!==post);updateCounts();},300);
+      }
+      // Remove da Galeria se estiver lá
+      const galCard=document.querySelector(`.gal-card[data-uid="${uid}"]`);
+      if(galCard){
+        galCard.style.transition='opacity .3s';
+        galCard.style.opacity='0';
+        setTimeout(()=>{galCard.remove();galleryData=galleryData.filter(i=>(i.uid||`${i.source}:${i.post_id||i.source_id}`)!==uid);},300);
+      }
+      toast('🚫 Arte ocultada permanentemente.');
+    }catch(e){toast('Erro: '+e.message,'error');}
+  });
+}
+
+async function favArtistAction(artist){
+  if(!artist)return;
+  const norm=artist.replace(/ /g,"_").toLowerCase();
+  await fetch("/api/categories",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({key:norm,label:artist,tags:norm,group:"Artistas",emoji:"🎨",color:"#8b5cf6",favorite:true})});
+  await loadCategories();
+  toast(`⭐ Artista ${artist} favoritado!`,"success");
+}
+
+// ══ ARTIST SEARCH ════════════════════════════════════════════════
+async function searchArtist(artist){
+  if(!artist){toast("Este post não tem artista identificado.","info");return}
+  const norm=artist.replace(/ /g,"_").toLowerCase();
+  if(!userCats[norm]){
+    await fetch("/api/categories",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({key:norm,label:artist,tags:norm,group:"Artistas",emoji:"🎨",color:"#8b5cf6",favorite:false})});
+    await loadCategories();
+  }
+  const cb=document.querySelector(`input[name=cat][value="${norm}"]`);
+  if(cb)cb.checked=true;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelector(".tab[onclick*='search']").classList.add("active");
+  document.getElementById("pageSearch").classList.add("active");
+  toast(`Buscando obras de ${artist}...`,"info");
+  doSearch();
+}
+
+// ══ GALLERY DELETE ════════════════════════════════════════════════
+function deleteGalImage(relPath,cardEl){
+  const imgUrl = `/downloads/${relPath}`;
+  confirmAction("Apagar Arquivo", "Você quer excluir definitivamente este arquivo do seu HD e da galeria?", imgUrl, () => {
+    fetch("/api/delete-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:relPath})})
+    .then(r=>r.json()).then(d=>{
+      if(d.error){toast("Erro: "+d.error,"error");return}
+      cardEl.style.transition="opacity .3s";cardEl.style.opacity="0";
+      setTimeout(()=>cardEl.remove(),300);
+      galleryData=galleryData.filter(it=>it.rel_path!==relPath);
+      const gc = document.getElementById("galleryCount");
+      if(gc) gc.textContent=galleryData.length;
+      loadHeaderStats();
+      toast("Imagem apagada.","success");
+    }).catch(e=>toast("Erro: "+e.message,"error"));
+  });
+}
+
+// ══ SELEÇÃO EM LOTE NA GALERIA ════════════════════════════════════
+let galSelectMode=false;
+const galSelected=new Set();
+let galSelWired=false;
+
+function toggleGalSelectMode(){
+  galSelectMode=!galSelectMode;
+  const btn=document.getElementById("galSelectBtn");
+  const bar=document.getElementById("galSelBar");
+  if(galSelectMode){
+    if(btn) btn.style.background="var(--accent)";
+    if(bar) bar.style.display="flex";
+    wireGalSelection();
+  }else{
+    if(btn) btn.style.background="";
+    if(bar) bar.style.display="none";
+    galClearSelection();
+  }
+}
+
+function wireGalSelection(){
+  if(galSelWired) return;
+  const grid=document.getElementById("galleryGrid");
+  if(!grid) return;
+  // capture:true -> roda ANTES do onclick do card (openGalLb) e cancela ele
+  grid.addEventListener("click",(e)=>{
+    if(!galSelectMode) return;
+    const card=e.target.closest(".gal-card");
+    if(!card) return;
+    e.stopPropagation(); e.preventDefault();
+    const uid=card.dataset.uid;
+    if(galSelected.has(uid)){ galSelected.delete(uid); card.classList.remove("sel"); }
+    else { galSelected.add(uid); card.classList.add("sel"); }
+    updateGalSelCount();
+  },true);
+  galSelWired=true;
+}
+
+function updateGalSelCount(){
+  const el=document.getElementById("galSelCount");
+  if(el) el.textContent=galSelected.size;
+}
+
+function galClearSelection(){
+  galSelected.clear();
+  document.querySelectorAll(".gal-card.sel").forEach(c=>c.classList.remove("sel"));
+  updateGalSelCount();
+}
+
+function galSelectAllVisible(){
+  document.querySelectorAll("#galleryGrid .gal-card").forEach(c=>{
+    galSelected.add(c.dataset.uid); c.classList.add("sel");
+  });
+  updateGalSelCount();
+}
+
+function _selectedGalCards(){ return [...document.querySelectorAll(".gal-card.sel")]; }
+
+async function bulkHideSelected(){
+  const cards=_selectedGalCards();
+  if(!cards.length){ toast("Nada selecionado.","info"); return; }
+  const uids=cards.map(c=>c.dataset.uid);
+  confirmAction("Ocultar selecionadas", `Ocultar ${uids.length} arte(s) permanentemente? Não aparecerão mais nas buscas nem na galeria.`, null, async ()=>{
+    try{
+      await fetch("/api/blacklist",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({uids})});
+      const set=new Set(uids);
+      cards.forEach(c=>c.remove());
+      galleryData=galleryData.filter(it=>!set.has(it.uid||`${it.source}:${it.post_id||it.source_id}`));
+      galClearSelection();
+      const gc=document.getElementById("galleryCount"); if(gc) gc.textContent=galleryData.length;
+      toast(`${uids.length} arte(s) ocultada(s).`,"success");
+    }catch(e){ toast("Erro: "+e.message,"error"); }
+  });
+}
+
+async function bulkDeleteSelected(){
+  const cards=_selectedGalCards();
+  if(!cards.length){ toast("Nada selecionado.","info"); return; }
+  const downloaded=cards.filter(c=>c.dataset.type==="downloaded" && c.dataset.rel);
+  const ignored=cards.length-downloaded.length;
+  if(!downloaded.length){ toast("As selecionadas são 'só-URL' — use Ocultar.","info"); return; }
+  confirmAction("Apagar do disco", `Apagar ${downloaded.length} arquivo(s) do HD definitivamente?`+(ignored?` (${ignored} guardada(s) só-URL serão ignoradas)`:""), null, async ()=>{
+    let ok=0;
+    for(const c of downloaded){
+      try{
+        const r=await fetch("/api/delete-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:c.dataset.rel})});
+        const d=await r.json();
+        if(!d.error){ c.remove(); ok++; const rel=c.dataset.rel; galleryData=galleryData.filter(it=>it.rel_path!==rel); }
+      }catch(e){}
+    }
+    galClearSelection();
+    const gc=document.getElementById("galleryCount"); if(gc) gc.textContent=galleryData.length;
+    loadHeaderStats();
+    toast(`${ok} arquivo(s) apagado(s).`,"success");
+  });
+}
+
+// ══ DUPLICATAS ════════════════════════════════════════════════════
+async function showDuplicates(){
+  const grid=document.getElementById("galleryGrid");
+  const empty=document.getElementById("galleryEmpty");
+  if(empty) empty.style.display="none";
+  if(!grid) return;
+  grid.style.display="block";
+  grid.innerHTML='<div style="padding:20px;color:var(--muted)">Procurando duplicatas…</div>';
+  try{
+    const r=await fetch("/api/duplicates?threshold=8");
+    const d=await r.json();
+    if(!d.groups || !d.groups.length){
+      grid.innerHTML='<div style="padding:20px;color:var(--muted)">Nenhuma duplicata encontrada entre as imagens baixadas. 🎉 <button class="btn-sm" onclick="renderGallery()" style="margin-left:8px">Voltar</button></div>';
+      return;
+    }
+    let html=`<div style="padding:8px 14px"><button class="btn-sm" onclick="renderGallery()">← Voltar à galeria</button> <span style="color:var(--muted);font-size:12px;margin-left:8px">${d.groups.length} grupo(s) de quase-duplicatas. A maior resolução está marcada em verde (recomendada pra manter).</span></div>`;
+    d.groups.forEach((g,gi)=>{
+      html+=`<div class="dup-group"><h4>Grupo ${gi+1} — ${g.length} imagens</h4><div class="dup-row">`;
+      g.forEach((m,mi)=>{
+        const keep=mi===0?" keep":"";
+        const relEsc=(m.rel_path||"").replace(/'/g,"\\'");
+        html+=`<div class="dup-item${keep}">
+          <span class="dup-badge">${m.width}×${m.height}${mi===0?' ★':''}</span>
+          <img src="/downloads/${m.rel_path}" loading="lazy">
+          <button class="btn-sm" style="width:100%;margin-top:4px;background:rgba(239,68,68,.55)" onclick="dupDelete('${relEsc}',this)">🗑 Apagar</button>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    });
+    grid.innerHTML=html;
+  }catch(e){
+    grid.innerHTML=`<div style="padding:20px;color:var(--red)">Erro: ${e.message} <button class="btn-sm" onclick="renderGallery()">Voltar</button></div>`;
+  }
+}
+
+function dupDelete(relPath,btn){
+  confirmAction("Apagar Arquivo","Apagar esta imagem do HD definitivamente?",`/downloads/${relPath}`,()=>{
+    fetch("/api/delete-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:relPath})})
+    .then(r=>r.json()).then(d=>{
+      if(d.error){ toast("Erro: "+d.error,"error"); return; }
+      const item=btn.closest(".dup-item"); if(item) item.remove();
+      galleryData=galleryData.filter(it=>it.rel_path!==relPath);
+      loadHeaderStats();
+      toast("Imagem apagada.","success");
+    }).catch(e=>toast("Erro: "+e.message,"error"));
+  });
+}
+
+// ══ CONTEXT MENU ════════════════════════════════════════════════
+function showCtxMenu(e,uid,cardEl){
+  e.preventDefault();
+  const post = filteredPosts.find(p => `${p.source}:${p.id||p.post_id}` === uid);
+  if(!post) return;
+  ctxPost = post;
+  const menu=document.getElementById("ctxMenu");
+  menu.style.left=Math.min(e.clientX,window.innerWidth-190)+"px";
+  menu.style.top=Math.min(e.clientY,window.innerHeight-220)+"px";
+  document.getElementById("ctxArtist").style.display=ctxPost?.artist?"flex":"none";
+  document.getElementById("ctxFavArtist").style.display=ctxPost?.artist?"flex":"none";
+  document.getElementById("ctxBlockArtist").style.display=ctxPost?.artist?"flex":"none";
+  document.getElementById("ctxOpen").style.display=ctxPost?.page_url?"flex":"none";
+  document.getElementById("ctxFavArt").textContent="⬇️ Baixar pro PC";
+  document.getElementById("ctxSaveArt").textContent="📌 Guardar (só URL)";
+  document.getElementById("ctxSelect").style.display="flex";
+  menu.classList.add("open");
+}
+
+function showCtxMenuGal(e, uid) {
+  e.preventDefault();
+  const item = galleryData.find(i => i.uid === uid || `${i.source}:${i.post_id||i.source_id}` === uid);
+  if (!item) return;
+
+  // Cria um mock do post para reusar as mesmas funções do menu
+  ctxPost = {
+    source: item.source,
+    id: uid.split(':')[1] || item.post_id || item.source_id,
+    artist: item.artist || '',
+    url: item.orig_url || item.url || '',
+    preview_url: item.preview_url || '',
+    page_url: item.page_url || '',
+    score: item.score || 0,
+    width: item.width || 0,
+    height: item.height || 0,
+    favorite: item._type === 'favorite',
+    rating: item.rating || 'sfw'
+  };
+  
+  const menu = document.getElementById("ctxMenu");
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 190) + "px";
+  menu.style.top = Math.min(e.clientY, window.innerHeight - 220) + "px";
+  
+  document.getElementById("ctxArtist").style.display = ctxPost?.artist ? "flex" : "none";
+  document.getElementById("ctxFavArtist").style.display = ctxPost?.artist ? "flex" : "none";
+  document.getElementById("ctxBlockArtist").style.display = ctxPost?.artist ? "flex" : "none";
+  document.getElementById("ctxOpen").style.display = ctxPost?.page_url ? "flex" : "none";
+  document.getElementById("ctxFavArt").textContent = "⬇️ Baixar pro PC";
+  document.getElementById("ctxSaveArt").textContent = ctxPost?.favorite ? "💔 Remover dos Guardados" : "📌 Guardar (só URL)";
+  
+  document.getElementById("ctxSelect").style.display = "none";
+  menu.classList.add("open");
+}
+
+function initContextMenu(){
+  document.getElementById("ctxSelect").onclick=()=>{
+    const card=document.querySelector(`.card[data-uid="${ctxPost?.source}:${ctxPost?.id}"]`);
+    if(card)toggleCard(card);
+  };
+  document.getElementById("ctxOpen").onclick=()=>{ if(ctxPost?.page_url)window.open(ctxPost.page_url,"_blank"); };
+  document.getElementById("ctxSauce").onclick=()=>{ if(ctxPost)window.open(`https://saucenao.com/search.php?url=${encodeURIComponent(ctxPost.url)}`,"_blank"); };
+  document.getElementById("ctxArtist").onclick=()=>{ if(ctxPost?.artist)searchArtist(ctxPost.artist); };
+  document.getElementById("ctxLb").onclick=()=>{ if(ctxPost)openLb(`${ctxPost.source}:${ctxPost.id||ctxPost.post_id}`); };
+  document.getElementById("ctxSaveArt").onclick=()=>{ doSaveSingle(ctxPost); };
+  document.getElementById("ctxFavArt").onclick=()=>{ doDownload([ctxPost]); };
+  document.getElementById("ctxFavArtist").onclick=()=>{ if(ctxPost?.artist)favArtistAction(ctxPost.artist); };
+  document.getElementById("ctxBlockArtist").onclick=()=>{ if(ctxPost?.artist)blockArtistAction(ctxPost.artist); };
+  document.getElementById("ctxHide").onclick=()=>{ hidePostForever(ctxPost); };
+}
+
+// ══ STATS PAGE ════════════════════════════════════════════════════
+async function loadStats(){
+  try{
+    const s=await(await fetch("/api/stats")).json();
+    document.getElementById("statsTotal").textContent=s.total||0;
+    document.getElementById("statsDisk").textContent=(s.disk_mb||0)+" MB";
+    const br=s.by_rating||{};
+    document.getElementById("stAvalUsar").textContent   = br.usar||0;
+    document.getElementById("stAvalTalvez").textContent = br.talvez||0;
+    document.getElementById("stAvalDepois").textContent = br.depois||0;
+    document.getElementById("stAvalNao").textContent    = br.nao||0;
+    const bySource=s.by_source||{};
+    const maxS=Math.max(1,...Object.values(bySource));
+    document.getElementById("barSource").innerHTML=Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+      <div class="bar-row">
+        <span class="bar-label">${k}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxS*100)}%"></div><span class="bar-count">${v}</span></div>
+      </div>`).join("")||`<span style="color:var(--muted);font-size:12px;padding:0 16px">Sem dados</span>`;
+    const byCat=s.by_category||{};
+    const maxC=Math.max(1,...Object.values(byCat));
+    document.getElementById("barCategory").innerHTML=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+      <div class="bar-row">
+        <span class="bar-label">${k.replace(/_/g," ")}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxC*100)}%"></div><span class="bar-count">${v}</span></div>
+      </div>`).join("")||`<span style="color:var(--muted);font-size:12px;padding:0 16px">Sem dados</span>`;
+  }catch(e){toast("Erro ao carregar stats.","error")}
+}
+
+// ══ DB ════════════════════════════════════════════════════════════
+async function doSyncDb(){if(!confirm("Remover do banco registros de arquivos apagados?"))return;try{const d=await(await fetch("/api/sync-db",{method:"POST"})).json();toast(`🔄 ${d.message} (${d.remaining} rest.)`,"info");loadHeaderStats()}catch(e){toast("Erro: "+e.message,"error")}}
+async function doClearDb(){if(!confirm("⚠️ Apagar TODOS os registros do banco? (HD não afetado)"))return;if(!confirm("Tem certeza?"))return;try{const d=await(await fetch("/api/clear-db",{method:"POST"})).json();toast(`🗑 ${d.message}`,"success");loadHeaderStats()}catch(e){toast("Erro: "+e.message,"error")}}
+
+// ══ TOAST ════════════════════════════════════════════════════════
+let toastT;
+function toast(msg,type="info"){const el=document.getElementById("toast");el.textContent=msg;el.className=`show ${type}`;clearTimeout(toastT);toastT=setTimeout(()=>{el.className=""},3500)}
+
+// ══ AUTOCOMPLETE DE TAGS (form de categoria) ═════════════════════
+let cmTagTimer=null, cmTagActive=-1;
+function _cmTagRange(ta){
+  const v=ta.value,pos=ta.selectionStart;
+  let s=pos; while(s>0 && !/[\s;\n]/.test(v[s-1])) s--;
+  let e=pos; while(e<v.length && !/[\s;\n]/.test(v[e])) e++;
+  return [s,e];
+}
+function _cmTagWord(ta){ const [s,e]=_cmTagRange(ta); return ta.value.slice(s,e).replace(/^-/,''); }
+async function cmTagSuggest(){
+  const ta=document.getElementById('cmTags'), box=document.getElementById('cmTagSuggest');
+  if(!ta||!box) return;
+  const w=_cmTagWord(ta);
+  if(w.length<2){ box.style.display='none'; return; }
+  try{
+    const d=await(await fetch('/api/tag-suggest?q='+encodeURIComponent(w))).json();
+    const tags=d.tags||[];
+    if(!tags.length){ box.style.display='none'; return; }
+    cmTagActive=-1;
+    box.innerHTML=tags.map(t=>`<div class="tag-sug-item" data-val="${(t.value||'').replace(/"/g,'&quot;')}"><span>${t.value}</span><span class="tag-sug-count">${(t.post_count||0).toLocaleString()}</span></div>`).join('');
+    [...box.children].forEach(el=>el.addEventListener('mousedown',ev=>{ev.preventDefault();cmTagPick(el.dataset.val);}));
+    box.style.display='block';
+  }catch(e){ box.style.display='none'; }
+}
+function cmTagPick(val){
+  const ta=document.getElementById('cmTags');
+  const [s,e]=_cmTagRange(ta);
+  const dash=ta.value.slice(s,e).startsWith('-')?'-':'';
+  const before=ta.value.slice(0,s), after=ta.value.slice(e);
+  const ins=dash+val+' ';
+  ta.value=before+ins+after;
+  const np=(before+ins).length;
+  ta.setSelectionRange(np,np);
+  document.getElementById('cmTagSuggest').style.display='none';
+  ta.focus();
+}
+(function(){
+  const ta=document.getElementById('cmTags');
+  if(!ta) return;
+  ta.addEventListener('input',()=>{ clearTimeout(cmTagTimer); cmTagTimer=setTimeout(cmTagSuggest,180); });
+  ta.addEventListener('blur',()=>setTimeout(()=>{const b=document.getElementById('cmTagSuggest'); if(b)b.style.display='none';},150));
+  ta.addEventListener('keydown',(e)=>{
+    const box=document.getElementById('cmTagSuggest');
+    if(!box||box.style.display==='none') return;
+    const items=[...box.children];
+    if(e.key==='ArrowDown'){ e.preventDefault(); cmTagActive=Math.min(cmTagActive+1,items.length-1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); cmTagActive=Math.max(cmTagActive-1,0); }
+    else if(e.key==='Enter'&&cmTagActive>=0){ e.preventDefault(); cmTagPick(items[cmTagActive].dataset.val); return; }
+    else if(e.key==='Escape'){ box.style.display='none'; return; }
+    else return;
+    items.forEach((el,i)=>el.classList.toggle('active',i===cmTagActive));
+    if(items[cmTagActive]) items[cmTagActive].scrollIntoView({block:'nearest'});
+  });
+})();
+
+init();
+// ══ CONFIRM MODAL LOGIC ═════════════════════════════════════════
+let pendingConfirmAction = null;
+function confirmAction(title, text, imgUrl, onConfirm) {
+  document.getElementById("confTitle").textContent = title;
+  document.getElementById("confText").textContent = text;
+  const imgEl = document.getElementById("confImg");
+  if (imgUrl) {
+    // Se a imagem tiver proxy api, usar direto.
+    imgEl.src = imgUrl.startsWith("/api/proxy-image") ? imgUrl : `/api/proxy-image?url=${encodeURIComponent(imgUrl)}`;
+    if (imgUrl.startsWith("/downloads")) imgEl.src = imgUrl; // se já for local, usa local
+    imgEl.style.display = "block";
+  } else {
+    imgEl.style.display = "none";
+  }
+  pendingConfirmAction = onConfirm;
+  document.getElementById("confirmModal").classList.add("open");
+}
+function closeConfirm() {
+  document.getElementById("confirmModal").classList.remove("open");
+  pendingConfirmAction = null;
+}
+document.getElementById("btnConfirmAction").onclick = () => {
+  if(pendingConfirmAction) pendingConfirmAction();
+  closeConfirm();
+};
+
+function blockArtistAction(artist){
+  if(!artist) return;
+  confirmAction("Bloquear Artista", `Você quer realmente bloquear o artista "${artist}"? Todas as artes desse artista sumirão da tela agora e não aparecerão em buscas futuras.`, null, () => {
+    fetch("/api/block-artist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artist: artist })
+    })
+    .then(r => r.json())
+    .then(d => {
+      if(d.error) { toast("Erro: " + d.error, "error"); return; }
+      const artistNorm = artist.trim().toLowerCase();
+      if(typeof allPosts !== 'undefined'){
+           allPosts = allPosts.filter(p => (p.artist || "").trim().toLowerCase() !== artistNorm);
+           if(typeof applyFilterAndSort === 'function') applyFilterAndSort(true);
+           if(typeof updateCounts === 'function') updateCounts();
+        }
+        if(typeof galleryData !== 'undefined'){
+           galleryData = galleryData.filter(p => (p.artist || "").trim().toLowerCase() !== artistNorm);
+           if(typeof renderGallery === 'function') renderGallery();
+           const gc = document.getElementById("galleryCount");
+           if(gc) gc.textContent = galleryData.length;
+        }
+      toast(`🚫 Artista ${artist} bloqueado permanentemente!`, "success");
+    })
+    .catch(e => toast("Erro ao bloquear: " + e.message, "error"));
+  });
+}
+</script>
+</body>
+</html>

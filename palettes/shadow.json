@@ -1,0 +1,12 @@
+{
+  "name": "Shadow the Hedgehog",
+  "description": "Paleta canônica do Shadow. Preto profundo, vermelho vivo, branco e dourado dos anéis.",
+  "colors": [
+    {"name": "Preto profundo (corpo)",    "rgb": [15, 15, 15]},
+    {"name": "Vermelho vivo (detalhes)", "rgb": [180, 0, 0]},
+    {"name": "Branco (peito e luvas)",   "rgb": [240, 240, 240]},
+    {"name": "Dourado (anéis)",          "rgb": [200, 155, 0]},
+    {"name": "Vermelho escuro",          "rgb": [120, 0, 0]}
+  ],
+  "notes": "Use COLOR_THRESHOLD=80 para tolerância razoável. Reduza para 50 para filtro mais estrito."
+}

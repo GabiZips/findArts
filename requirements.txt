@@ -1,0 +1,32 @@
+fastapi>=0.137.1
+uvicorn[standard]>=0.29.0
+pydantic>=2.13.4
+pydantic-core>=2.46.4
+starlette>=1.3.1
+annotated-types>=0.7.0
+typing-extensions>=4.16.0
+typing-inspection>=0.4.2
+anyio>=4.14.2
+idna>=3.18
+annotated-doc>=0.0.4
+# Streaming SSE da busca (sem isso a galeria não renderiza os resultados)
+sse-starlette>=2.1.0
+
+# Core HTTP e parsing
+requests>=2.31.0
+aiohttp>=3.9.0
+aiofiles>=23.2.1
+
+# Processamento de imagem e cores
+Pillow>=10.0.0
+colorthief>=0.2.1
+imagehash>=4.3.1
+
+# Distancia de cor perceptual (opcional)
+colormath>=3.0.0
+
+# Parsing HTML
+beautifulsoup4>=4.12.0
+
+# Pixiv (API oficial do app móvel)
+pixivpy3>=3.7.0

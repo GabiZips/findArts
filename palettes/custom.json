@@ -1,0 +1,10 @@
+{
+  "name": "Personalizada",
+  "description": "Paleta customizável. Edite os valores RGB para criar seu próprio filtro.",
+  "colors": [
+    {"name": "Cor 1", "rgb": [0, 0, 0]},
+    {"name": "Cor 2", "rgb": [128, 128, 128]},
+    {"name": "Cor 3", "rgb": [255, 255, 255]}
+  ],
+  "notes": "Copie as cores desejadas para TARGET_COLORS em config.py"
+}
