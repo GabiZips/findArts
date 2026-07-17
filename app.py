@@ -73,9 +73,18 @@ def _save_user_cats(cats: dict) -> None:
 
 app = FastAPI(title="artFinder")
 
-# Servir pasta downloads como static (para galeria)
+import os
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
+# 1. Força o diretório para a pasta temporária do Vercel
+DOWNLOAD_DIR = "/tmp/downloads"
 downloads_path = Path(DOWNLOAD_DIR)
+
+# 2. Cria a pasta no diretório /tmp (o único com permissão de escrita)
 downloads_path.mkdir(parents=True, exist_ok=True)
+
+# 3. Monta a rota estática para a galeria
 app.mount("/downloads", StaticFiles(directory=str(downloads_path)), name="downloads")
 
 # ── helpers ─────────────────────────────────────────────────────────
