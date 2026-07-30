@@ -25,6 +25,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+webview/
 
 # IDEs
 .vscode/
@@ -43,4 +44,4 @@ dump.json
 # Dados/relatórios pessoais gerados localmente
 relatorio_tags.md
 _sync_test.txt
-test_*.py
+/test_*.py

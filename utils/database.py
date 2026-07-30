@@ -9,6 +9,7 @@ Tabelas:
 """
 
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from config import DB_PATH
@@ -97,15 +98,25 @@ CREATE INDEX IF NOT EXISTS idx_ratings_rating ON ratings(rating);
 """
 
 
+_schema_ready = False
+_schema_lock = threading.Lock()
+
+
 def _connect() -> sqlite3.Connection:
     """Abre conexão com o banco e garante que todas as tabelas existem."""
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")   # melhor performance com reads concorrentes
+    global _schema_ready
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA synchronous=NORMAL")
-    conn.executescript(_CREATE_SQL)
-    conn.commit()
+    if not _schema_ready:
+        with _schema_lock:
+            if not _schema_ready:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.executescript(_CREATE_SQL)
+                conn.commit()
+                _schema_ready = True
     return conn
 
 
@@ -351,7 +362,6 @@ def is_downloaded(source: str, post_id: str) -> bool:
 
 # Cache em memória dos phashes (como ints). Evita reabrir o banco e varrer a
 # tabela inteira a cada download — com a coleção grande isso era o gargalo.
-import threading
 _phash_cache: list[int] | None = None
 _phash_lock = threading.Lock()
 

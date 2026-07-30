@@ -358,6 +358,63 @@
   .cm-save-btn:hover{transform:translateY(-1px)}
   /* Fav art badge */
   .fav-art-badge{position:absolute;top:4px;right:4px;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,0.8);z-index:5;pointer-events:none;}
+
+  /* ── ACESSIBILIDADE: foco visível por teclado ── */
+  :focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
+  button:focus-visible,.tab:focus-visible,.side-tab:focus-visible,.tag-pill:focus-visible,
+  .btn-sm:focus-visible,.btn-hdr:focus-visible,.btn-export:focus-visible,.gal-pill:focus-visible,
+  .period-pill:focus-visible,.page-btn:focus-visible,.lb-rate:focus-visible,.lb-btn:focus-visible{
+    outline:2px solid var(--accent3);outline-offset:2px}
+  input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  a:focus-visible{outline:2px solid var(--accent3);outline-offset:2px}
+  /* remove outline padrão só quando não é navegação por teclado */
+  button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
+
+  /* ── SKELETON DE CARREGAMENTO ── */
+  .skeleton-grid{columns:4;column-gap:12px;width:100%;align-self:stretch}
+  @media(max-width:1200px){.skeleton-grid{columns:3}}
+  @media(max-width:700px){.skeleton-grid{columns:2}}
+  .skel-card{break-inside:avoid;margin-bottom:12px;border-radius:12px;background:var(--surface2);
+    position:relative;overflow:hidden;border:1px solid var(--border)}
+  .skel-card::after{content:'';position:absolute;inset:0;
+    background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.07) 50%,transparent 100%);
+    transform:translateX(-100%);animation:skelShimmer 1.4s ease-in-out infinite}
+  @keyframes skelShimmer{100%{transform:translateX(100%)}}
+  .state-center:has(.skeleton-grid){justify-content:flex-start;align-items:stretch;height:auto}
+  @media (prefers-reduced-motion:reduce){.skel-card::after{animation:none}}
+
+  /* ── BACKDROP DO DRAWER (só aparece no mobile) ── */
+  .sidebar-backdrop{display:none}
+
+  /* ── MOBILE: sidebar vira drawer deslizante ── */
+  @media (max-width:760px){
+    .layout{overflow:visible}
+    .sidebar-wrap{position:static}
+    aside{position:fixed;top:0;left:0;bottom:0;z-index:320;
+      width:min(88vw,330px);min-width:min(88vw,330px);padding:16px 13px;
+      transform:translateX(0);opacity:1;
+      transition:transform .3s cubic-bezier(.4,0,.2,1);
+      box-shadow:16px 0 50px rgba(0,0,0,.6)}
+    aside.collapsed{width:min(88vw,330px);min-width:min(88vw,330px);padding:16px 13px;
+      opacity:1;transform:translateX(-108%)}
+    .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.58);
+      backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:310;
+      opacity:0;pointer-events:none;transition:opacity .25s}
+    body.sidebar-open .sidebar-backdrop{opacity:1;pointer-events:auto}
+    body.sidebar-open{overflow:hidden}
+    /* toolbar rola horizontalmente em vez de empilhar tudo */
+    .toolbar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .toolbar::-webkit-scrollbar{display:none}
+    .toolbar-left,.toolbar-right{flex-wrap:nowrap}
+    .btn-sm,.btn-export,.btn-dl{flex-shrink:0}
+    .grid-area{padding:8px}
+    .gal-toolbar,.gal-filters{gap:5px}
+    /* alvos de toque maiores */
+    .tab{padding:7px 12px}
+    .tag-pill,.gal-pill,.period-pill{padding:5px 11px}
+    .lb-nav{width:40px;height:64px;font-size:30px}
+    .lb-bar{flex-wrap:wrap;justify-content:center}
+  }
 </style>
 </head>
 <body>
@@ -376,16 +433,18 @@
     </svg>
     <span class="logo-text">ArtFinder</span>
   </div>
-  <div class="tabs" style="margin-left:14px">
-    <button class="tab active" onclick="switchTab('search',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px;margin-right:5px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Buscar</button>
-    <button class="tab" onclick="switchTab('gallery',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px;margin-right:5px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Galeria</button>
-    <button class="tab" onclick="switchTab('stats',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px;margin-right:5px"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
+  <div class="tabs" style="margin-left:14px" role="tablist" aria-label="Navegação principal">
+    <button class="tab active" role="tab" aria-selected="true" onclick="switchTab('search',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px;margin-right:5px" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Buscar</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('gallery',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px;margin-right:5px" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Galeria</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="switchTab('stats',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px;margin-right:5px" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
   </div>
   <div class="hdr-right">
     <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--muted);margin-right:8px;" title="Ativa/Desativa o efeito de blur global em imagens NSFW"><input type="checkbox" id="globalBlurToggle" checked onchange="document.body.classList.toggle('no-nsfw-blur', !this.checked)" style="accent-color:var(--accent);cursor:pointer;margin:0"> Blur +18</label>
     <div class="stat-badge">Banco: <b id="totalDb">...</b> imgs · <b id="diskMb">...</b> MB</div>
   </div>
 </header>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()" aria-hidden="true"></div>
 
 <div class="layout">
 
@@ -532,7 +591,7 @@
 
       <div class="toolbar">
         <div class="toolbar-left">
-          <button class="btn-sm" onclick="toggleSidebar()" title="Mostrar/esconder painel lateral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>Painel</button>
+          <button class="btn-sm" onclick="toggleSidebar()" aria-label="Mostrar ou esconder o painel de busca" title="Mostrar/esconder painel lateral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>Painel</button>
           <button class="btn-sm" onclick="selectAll()">Sel. Tudo</button>
           <button class="btn-sm" onclick="selectNone()">Desmarcar</button>
           <button class="btn-sm on" id="btnHideDl" onclick="toggleHideDl()">👁️ Ocultar da galeria</button>
@@ -671,6 +730,14 @@
             <div style="font-size:11px;color:var(--muted);line-height:1.45">Zera o histórico de downloads no banco — <b>nenhum arquivo é apagado</b>. Serve para permitir baixar tudo de novo (o app deixa de pular imagens "já baixadas").</div>
           </div>
           <button class="btn-hdr danger" onclick="doClearDb()">Limpar</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;margin-bottom:2px">Pastas do aplicativo</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.45">Abra as imagens baixadas ou a pasta onde ficam o .env, as categorias e o banco.</div>
+          </div>
+          <button class="btn-hdr" onclick="openNativeFolder('downloads')">Downloads</button>
+          <button class="btn-hdr" onclick="openNativeFolder('data')">Configuração</button>
         </div>
       </div>
     </div>
@@ -834,12 +901,13 @@ let allFavs=[];
 
 // ══ TABS ═══════════════════════════════════════════════════════════
 function switchTab(name, btn){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>{t.classList.remove("active");t.setAttribute("aria-selected","false");});
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  if(btn) btn.classList.add("active");
+  if(btn){ btn.classList.add("active"); btn.setAttribute("aria-selected","true"); }
   document.getElementById("page"+name.charAt(0).toUpperCase()+name.slice(1)).classList.add("active");
   if(name==="gallery") loadGallery();
   if(name==="stats")   loadStats();
+  closeSidebarIfMobile();
 }
 
 // ══ GALERIA STATE ═══════════════════════════════════════════════════
@@ -875,8 +943,10 @@ async function init(){
 
   // Fontes
   try{
-    const {sources}=await(await fetch("/api/sources")).json();
-    document.getElementById("srcGroup").innerHTML=sources.map(s=>`<label class="check-item"><input type="checkbox" name="src" value="${s}" checked><span>${s}</span></label>`).join("");
+    const sourceData=await(await fetch("/api/sources")).json();
+    const enabled=(sourceData.sources||[]).map(s=>`<label class="check-item"><input type="checkbox" name="src" value="${s}" checked><span>${s}</span></label>`);
+    const disabled=(sourceData.unavailable_sources||[]).map(s=>`<label class="check-item" title="${esc(s.reason||"Configuração necessária")}" style="opacity:.52"><input type="checkbox" disabled><span>${esc(s.name)} · configurar</span></label>`);
+    document.getElementById("srcGroup").innerHTML=[...enabled,...disabled].join("");
   }catch(e){document.getElementById("srcGroup").innerHTML=`<span style="color:var(--muted);font-size:11px">Erro</span>`}
 
   // Categorias dinâmicas
@@ -892,12 +962,30 @@ async function init(){
   document.addEventListener("keydown",onKeyDown);
   document.addEventListener("click",()=>document.getElementById("ctxMenu").classList.remove("open"));
   initContextMenu();
+
+  // No mobile o painel começa recolhido (vira drawer).
+  if(window.matchMedia("(max-width:760px)").matches){
+    sidebarCollapsed=true;
+    document.getElementById("sidebar").classList.add("collapsed");
+    document.body.classList.remove("sidebar-open");
+  }
+  // Fecha o drawer com a tecla Esc.
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape" && document.body.classList.contains("sidebar-open")) toggleSidebar();
+  });
+}
+
+// Fecha o drawer do painel se estiver aberto (usado no mobile).
+function closeSidebarIfMobile(){
+  if(window.matchMedia("(max-width:760px)").matches && !sidebarCollapsed) toggleSidebar();
 }
 
 // ══ SIDEBAR TOGGLE ════════════════════════════════════════════════
 function toggleSidebar(){
   sidebarCollapsed=!sidebarCollapsed;
   document.getElementById("sidebar").classList.toggle("collapsed",sidebarCollapsed);
+  // No mobile o painel é um drawer sobreposto: controla backdrop e trava de scroll.
+  document.body.classList.toggle("sidebar-open", !sidebarCollapsed);
 }
 
 function switchSideTab(name, btn){
@@ -1097,7 +1185,10 @@ function editCmCat(key){
   document.getElementById("cmLabel").value=c.label||"";
   document.getElementById("cmKey").value=key;
   document.getElementById("cmGroup").value=c.group||"";
-  document.getElementById("cmTags").value=c.tags||"";
+  const sourceLines=Object.entries(c.source_tags||{}).flatMap(([source,queries])=>
+    (Array.isArray(queries)?queries:[queries]).filter(Boolean).map(query=>`${source}: ${query}`)
+  );
+  document.getElementById("cmTags").value=[c.tags||"",...sourceLines].filter(Boolean).join(";\n");
   document.getElementById("cmColor").value=c.color||"#6366f1";
   document.getElementById("cmFav").checked=!!c.favorite;
   document.getElementById("cmTags").focus();
@@ -1158,7 +1249,7 @@ async function toggleFavCat(key,el){
   }catch(e){toast("Erro: "+e.message,"error")}
 }
 
-// ══ SEARCH (SSE) ════════════════════════════════════════════════════
+// ══ SEARCH (SSE) ════════════════════════════════════════════��═══════
 async function doSearch(){
   const cats=[...document.querySelectorAll("input[name=cat]:checked")].map(e=>e.value);
   const srcs=[...document.querySelectorAll("input[name=src]:checked")].map(e=>e.value);
@@ -1172,11 +1263,12 @@ async function doSearch(){
   btnCancel.style.display="block";
   btnCancel.textContent="Cancelar";
   
+  closeSidebarIfMobile();
   if(searchAbortController) searchAbortController.abort();
   searchAbortController = new AbortController();
   document.getElementById("searchProgress").classList.add("visible");
   setSearchProg(0,"Iniciando...");
-  showEmpty(`<div class="spinner"></div><div class="state-text">Aguarde, buscando...</div>`);
+  showEmpty(skeletonGridHtml(18));
   document.getElementById("gridWrap").style.display="none";
   allPosts=[];selectedIds.clear();updateCounts();
 
@@ -1718,7 +1810,14 @@ function updateCounts(){
   const bc=document.getElementById("btnCompare");
   if(bc) bc.disabled = !(size>=2 && size<=4);
 }
-function showEmpty(html){const el=document.getElementById("emptyState");el.innerHTML=html;el.style.display="flex"}
+  function showEmpty(html){const el=document.getElementById("emptyState");el.innerHTML=html;el.style.display="flex"}
+  // Cartões-fantasma com alturas variadas para dar sensação de carregamento (masonry).
+  function skeletonGridHtml(n){
+    const heights=[150,210,180,260,190,230,170,240,200,220];
+    let cells="";
+    for(let i=0;i<n;i++){ cells+=`<div class="skel-card" style="height:${heights[i%heights.length]}px"></div>`; }
+    return `<div class="skeleton-grid" aria-hidden="true">${cells}</div>`;
+  }
 
 // ══ TOGGLE HIDE GALLERY ITEMS ══════════════════════════════════════
 function toggleHideDl(){
@@ -1815,7 +1914,10 @@ async function doDownload(postArray = null){
             }else if(event==="done"){
               setProgress(100,`✅ ${d.downloaded} baixadas, ❌ ${d.failed} falhas`);
               document.getElementById("btnCloseMod").classList.add("show");
-              posts.forEach(p=>downloadedIds.add(`${p.source}:${p.id}`));
+        try{
+          const refreshed=await fetch("/api/downloaded-ids").then(r=>r.json());
+          downloadedIds=new Set(refreshed.ids||[]);
+        }catch(_e){}
               loadHeaderStats();
               toast(`${d.downloaded} imagem(ns) baixada(s)!`,d.downloaded>0?"success":"info");
             }
@@ -1994,7 +2096,7 @@ function renderGallery(){
       const img = isDownloaded
         ? `/api/thumb?rel_path=${encodeURIComponent(it.rel_path)}`
         : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}` ;
-      const fullImg = isDownloaded ? `/downloads/${it.rel_path}` : img;
+  const fullImg = isDownloaded ? `/api/file?rel_path=${encodeURIComponent(it.rel_path)}` : img;
       const relEsc=(it.rel_path||"").replace(/'/g,"\\'");
       const pgUrl=(it.page_url||'').replace(/'/g,"\\'");
       const w=it.width||0, h=it.height||0;
@@ -2041,7 +2143,7 @@ function openGalLbIdx(i){
   const it=galRendered[i]; if(!it) return;
   galLbIdx=i;
   const isDl = it._type==="downloaded" && it.rel_path;
-  const full = isDl ? `/downloads/${it.rel_path}`
+  const full = isDl ? `/api/file?rel_path=${encodeURIComponent(it.rel_path)}`
                     : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}`;
   openGalLb(full, it.page_url||"", (it.source||"").toLowerCase(), it.score||0, it.orig_url||it.url||"");
   // Habilita navegação e triagem (openGalLb esconde por padrão p/ compat)
@@ -2209,7 +2311,7 @@ async function searchArtist(artist){
 
 // ══ GALLERY DELETE ════════════════════════════════════════════════
 function deleteGalImage(relPath,cardEl){
-  const imgUrl = `/downloads/${relPath}`;
+  const imgUrl = `/api/file?rel_path=${encodeURIComponent(relPath)}`;
   confirmAction("Apagar Arquivo", "Você quer excluir definitivamente este arquivo do seu HD e da galeria?", imgUrl, () => {
     fetch("/api/delete-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:relPath})})
     .then(r=>r.json()).then(d=>{
@@ -2345,7 +2447,7 @@ async function showDuplicates(){
         const relEsc=(m.rel_path||"").replace(/'/g,"\\'");
         html+=`<div class="dup-item${keep}">
           <span class="dup-badge">${m.width}×${m.height}${mi===0?' ★':''}</span>
-          <img src="/downloads/${m.rel_path}" loading="lazy">
+          <img src="/api/file?rel_path=${encodeURIComponent(m.rel_path)}" loading="lazy">
           <button class="btn-sm" style="width:100%;margin-top:4px;background:rgba(239,68,68,.55)" onclick="dupDelete('${relEsc}',this)">🗑 Apagar</button>
         </div>`;
       });
@@ -2358,7 +2460,7 @@ async function showDuplicates(){
 }
 
 function dupDelete(relPath,btn){
-  confirmAction("Apagar Arquivo","Apagar esta imagem do HD definitivamente?",`/downloads/${relPath}`,()=>{
+  confirmAction("Apagar Arquivo","Apagar esta imagem do HD definitivamente?",`/api/file?rel_path=${encodeURIComponent(relPath)}`,()=>{
     fetch("/api/delete-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:relPath})})
     .then(r=>r.json()).then(d=>{
       if(d.error){ toast("Erro: "+d.error,"error"); return; }
@@ -2473,6 +2575,15 @@ async function doSyncDb(){if(!confirm("Remover do banco registros de arquivos ap
 async function doClearDb(){if(!confirm("⚠️ Apagar TODOS os registros do banco? (HD não afetado)"))return;if(!confirm("Tem certeza?"))return;try{const d=await(await fetch("/api/clear-db",{method:"POST"})).json();toast(`🗑 ${d.message}`,"success");loadHeaderStats()}catch(e){toast("Erro: "+e.message,"error")}}
 
 // ══ TOAST ════════════════════════════════════════════════════════
+async function openNativeFolder(kind){
+  try{
+    const api=window.pywebview?.api;
+    if(!api) return toast("Esta opção está disponível no aplicativo desktop.","info");
+    if(kind==="downloads") await api.open_downloads_folder();
+    else await api.open_data_folder();
+  }catch(e){toast("Não foi possível abrir a pasta: "+e.message,"error")}
+}
+
 let toastT;
 function toast(msg,type="info"){const el=document.getElementById("toast");el.textContent=msg;el.className=`show ${type}`;clearTimeout(toastT);toastT=setTimeout(()=>{el.className=""},3500)}
 

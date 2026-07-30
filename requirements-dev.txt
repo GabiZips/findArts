@@ -1,0 +1,4 @@
+-r requirements-desktop.txt
+
+# Windows executable packaging
+pyinstaller>=6.12

@@ -1,48 +1,146 @@
-# utils/downloader.py
-"""
-Downloader assíncrono com:
-- Verificação de qualidade (resolução, tamanho)
-- Deduplicação por source:id (SQLite)
-- Deduplicação por perceptual hash (imagehash)
-- Filtro de cor opcional
-- Salvamento de metadados JSON ao lado de cada imagem
-- Suporte a callback de progresso (para SSE streaming)
-"""
+"""Asynchronous, bounded and deduplicated artwork downloader."""
 
-import json
+from __future__ import annotations
+
 import asyncio
-import aiohttp
-import aiofiles
+import json
+import os
+import re
+from io import BytesIO
 from pathlib import Path
-from typing import Optional, Callable, Awaitable
+from typing import Awaitable, Callable, Optional
+from urllib.parse import urlsplit
+
+import aiofiles
+import aiohttp
 
 from config import (
-    DOWNLOAD_DIR, ORGANIZE_BY,
-    REQUEST_TIMEOUT, MAX_DOWNLOAD_WORKERS, USE_COLOR_FILTER,
+    DOWNLOAD_DIR,
+    MAX_DOWNLOAD_WORKERS,
+    MAX_FILE_MB,
+    ORGANIZE_BY,
+    REQUEST_TIMEOUT,
+    USE_COLOR_FILTER,
 )
-from filters.quality import passes_file_size
 from filters.color_filter import passes_color_filter
+from filters.quality import passes_file_size
 from utils.database import is_downloaded, is_duplicate_hash, register_download
+from utils.network import is_domain, validate_redirect, validate_remote_url
+
+
+_MAX_DOWNLOAD_BYTES = MAX_FILE_MB * 1024 * 1024
+_MAX_REDIRECTS = 5
 
 
 def get_extension(url: str) -> str:
-    """Extrai a extensão do arquivo a partir da URL."""
-    ext = url.split("?")[0].rsplit(".", 1)[-1].lower()
+    """Extract a supported image extension from a URL."""
+    ext = url.split("?", 1)[0].rsplit(".", 1)[-1].lower()
     allowed = {"jpg", "jpeg", "png", "gif", "webp"}
     return ext if ext in allowed else "jpg"
 
 
 def compute_phash(image_data: bytes) -> Optional[str]:
-    """Calcula o perceptual hash de uma imagem. Retorna hex string ou None."""
+    """Calculate a perceptual image hash."""
     try:
         import imagehash
         from PIL import Image
-        from io import BytesIO
-        img = Image.open(BytesIO(image_data))
-        h = imagehash.phash(img)
-        return str(h)
+
+        with Image.open(BytesIO(image_data)) as image:
+            return str(imagehash.phash(image))
     except Exception:
         return None
+
+
+def _safe_component(value: object, fallback: str = "unknown") -> str:
+    """Create a short Windows-safe filename component with no path semantics."""
+    clean = re.sub(r"[^a-zA-Z0-9_\- ]", "", str(value or "")).strip(" .")
+    return clean[:100] or fallback
+
+
+def _validate_image(image_data: bytes) -> bool:
+    """Reject mislabeled HTML/error pages and malformed image payloads."""
+    try:
+        from PIL import Image
+
+        with Image.open(BytesIO(image_data)) as image:
+            image.verify()
+        return True
+    except Exception:
+        return False
+
+
+def _request_headers(url: str) -> dict[str, str]:
+    parsed = urlsplit(url)
+    if is_domain(parsed.hostname, "pximg.net") or is_domain(parsed.hostname, "pixiv.net"):
+        referer = "https://www.pixiv.net/"
+    else:
+        referer = f"{parsed.scheme}://{parsed.netloc}/"
+    return {
+        "Referer": referer,
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+        ),
+        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+    }
+
+
+async def _fetch_image(
+    session: aiohttp.ClientSession,
+    url: str,
+) -> tuple[bytes, str]:
+    """Fetch an image with bounded streaming and validated redirects."""
+    current_url = url
+    for redirect_count in range(_MAX_REDIRECTS + 1):
+        validate_remote_url(current_url)
+        async with session.get(
+            current_url,
+            headers=_request_headers(current_url),
+            timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT),
+            allow_redirects=False,
+        ) as response:
+            if response.status in {301, 302, 303, 307, 308}:
+                if redirect_count >= _MAX_REDIRECTS:
+                    raise ValueError("Redirecionamentos demais")
+                location = response.headers.get("Location", "")
+                if not location:
+                    raise ValueError("Redirecionamento sem destino")
+                current_url = validate_redirect(current_url, location)
+                continue
+
+            if response.status != 200:
+                raise ValueError(f"HTTP {response.status}")
+
+            content_type = (
+                response.headers.get("Content-Type", "").split(";", 1)[0].lower()
+            )
+            if content_type not in {
+                "image/jpeg",
+                "image/png",
+                "image/gif",
+                "image/webp",
+                "image/avif",
+                "image/bmp",
+            }:
+                raise ValueError("O servidor nao retornou uma imagem")
+
+            try:
+                content_length = int(response.headers.get("Content-Length", "0"))
+            except ValueError:
+                content_length = 0
+            if content_length > _MAX_DOWNLOAD_BYTES:
+                raise ValueError("Arquivo maior que o limite configurado")
+            if content_length > 0 and not passes_file_size(content_length):
+                raise ValueError("Arquivo muito pequeno/grande")
+
+            chunks = bytearray()
+            async for chunk in response.content.iter_chunked(64 * 1024):
+                chunks.extend(chunk)
+                if len(chunks) > _MAX_DOWNLOAD_BYTES:
+                    raise ValueError("Arquivo maior que o limite configurado")
+            return bytes(chunks), current_url
+
+    raise ValueError("Falha ao seguir redirecionamento")
 
 
 async def download_single(
@@ -52,140 +150,104 @@ async def download_single(
     semaphore: asyncio.Semaphore,
     on_done: Optional[Callable[[bool, str], Awaitable[None]]] = None,
 ) -> bool:
-    """
-    Baixa uma única imagem de forma assíncrona.
+    """Download one artwork and register it when all checks pass."""
+    source = str(post.get("source", "unknown"))
+    post_id = str(post.get("id", ""))
+    url = str(post.get("url", ""))
 
-    Args:
-        session: sessão aiohttp compartilhada
-        post: dict com url, source, id, score, artist, tags, width, height
-        category: nome da pasta de destino (ex: "shadow_solo")
-        semaphore: limita concorrência
-        on_done: callback assíncrono chamado ao terminar cada imagem.
-                 Recebe (success: bool, message: str)
-
-    Returns:
-        True se a imagem foi baixada com sucesso.
-    """
-    source  = post.get("source", "unknown")
-    post_id = post.get("id", "")
-    url     = post.get("url", "")
-
-    async def _report(ok: bool, msg: str):
+    async def report(ok: bool, message: str) -> None:
         if on_done:
-            await on_done(ok, msg)
+            await on_done(ok, message)
 
     if not url or not post_id:
-        await _report(False, "URL ou ID ausente")
+        await report(False, "URL ou ID ausente")
         return False
-
-    # --- Verificação de duplicata por source:id ---
-    # (em thread: SQLite é bloqueante e congelaria o event loop/SSE)
     if await asyncio.to_thread(is_downloaded, source, post_id):
-        await _report(False, f"{source}:{post_id} já baixado")
+        await report(False, f"{source}:{post_id} ja baixado")
         return False
 
     async with semaphore:
         try:
-            import urllib.parse
-            netloc = urllib.parse.urlparse(url).netloc
-            # Pixiv (i.pximg.net) exige Referer da pixiv.net, senão retorna 403
-            referer = ("https://www.pixiv.net/" if "pximg.net" in netloc
-                       else f"https://{netloc}/")
-            req_headers = {
-                "Referer": referer,
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-            async with session.get(url, headers=req_headers, timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)) as resp:
-                if "text/html" in resp.headers.get("Content-Type", ""):
-                    await _report(False, "Bloqueado pelo servidor (HTML recebido)")
-                    return False
-                if resp.status != 200:
-                    await _report(False, f"HTTP {resp.status}")
-                    return False
-
-                content_length = int(resp.headers.get("Content-Length", 0))
-                if content_length > 0 and not passes_file_size(content_length):
-                    await _report(False, "Arquivo muito pequeno/grande")
-                    return False
-
-                image_data = await resp.read()
-
-        except Exception as e:
-            # sem emoji: em consola cp1252 (Windows) o print de "⚠️" levanta
-            # UnicodeEncodeError dentro do handler e derruba o lote inteiro
-            print(f"  [!] Erro ao baixar [{source}:{post_id}]: {e}")
-            await _report(False, str(e))
+            image_data, final_url = await _fetch_image(session, url)
+        except Exception as exc:
+            print(f"  [!] Erro ao baixar [{source}:{post_id}]: {exc}")
+            await report(False, str(exc))
             return False
 
     if not passes_file_size(len(image_data)):
-        await _report(False, "Arquivo muito pequeno/grande")
+        await report(False, "Arquivo muito pequeno/grande")
+        return False
+    if not await asyncio.to_thread(_validate_image, image_data):
+        await report(False, "Conteudo de imagem invalido")
         return False
 
-    # pHash é CPU-bound e a checagem lê o banco inteiro — ambos em thread
     phash = await asyncio.to_thread(compute_phash, image_data)
     if phash and await asyncio.to_thread(is_duplicate_hash, phash):
-        await _report(False, "Duplicata detectada")
+        await report(False, "Duplicata detectada")
+        return False
+    if USE_COLOR_FILTER and not await asyncio.to_thread(
+        passes_color_filter, None, image_data
+    ):
+        await report(False, "Filtro de cor")
         return False
 
-    if USE_COLOR_FILTER and not await asyncio.to_thread(passes_color_filter, None, image_data):
-        await _report(False, "Filtro de cor")
-        return False
-
-    # --- Salvar arquivo ---
-    import re as _re
-    def _safe(name: str) -> str:
-        # remove caracteres inválidos em nomes de pasta (Windows não aceita : \ / etc.)
-        return _re.sub(r'[^a-zA-Z0-9_\- ]', '', name or '').strip()
-
-    raw_artist = post.get("artist", "").strip()
-    raw_cat    = (post.get("category") or "").strip()
-
+    raw_artist = str(post.get("artist", "")).strip()
+    raw_category = str(post.get("category") or category or "").strip()
     if ORGANIZE_BY == "artist" and raw_artist:
-        # por artista (com fallback pra categoria, depois misc)
-        save_category = _safe(raw_artist.split(",")[0]) or _safe(raw_cat) or "misc"
+        save_category = (
+            _safe_component(raw_artist.split(",")[0], "")
+            or _safe_component(raw_category, "misc")
+        )
     else:
-        # por tag/categoria (padrão; fallback pra artista, depois misc)
-        save_category = _safe(raw_cat) or _safe(raw_artist.split(",")[0]) or "misc"
+        save_category = (
+            _safe_component(raw_category, "")
+            or _safe_component(raw_artist.split(",")[0], "misc")
+        )
 
     folder = Path(DOWNLOAD_DIR) / save_category
     folder.mkdir(parents=True, exist_ok=True)
-
-    ext      = get_extension(url)
-    filename = folder / f"{source}_{post_id}.{ext}"
+    safe_source = _safe_component(source)
+    safe_post_id = _safe_component(post_id)
+    filename = folder / f"{safe_source}_{safe_post_id}.{get_extension(final_url)}"
+    partial = filename.with_suffix(filename.suffix + ".part")
 
     try:
-        async with aiofiles.open(filename, "wb") as f:
-            await f.write(image_data)
-    except Exception as e:
-        print(f"  [!] Erro ao salvar [{filename.name}]: {e}")
-        await _report(False, str(e))
+        async with aiofiles.open(partial, "wb") as file:
+            await file.write(image_data)
+            await file.flush()
+        await asyncio.to_thread(os.replace, partial, filename)
+    except Exception as exc:
+        try:
+            partial.unlink(missing_ok=True)
+        except OSError:
+            pass
+        print(f"  [!] Erro ao salvar [{filename.name}]: {exc}")
+        await report(False, str(exc))
         return False
 
-    # --- Salvar metadados JSON ---
-    meta = {
-        "source":   source,
-        "id":       post_id,
-        "url":      url,
-        "artist":   post.get("artist", ""),
-        "score":    post.get("score", 0),
-        "tags":     post.get("tags", ""),
-        "width":    post.get("width", 0),
-        "height":   post.get("height", 0),
-        "rating":   post.get("rating", "sfw"),
+    metadata = {
+        "source": source,
+        "id": post_id,
+        "url": url,
+        "artist": post.get("artist", ""),
+        "score": post.get("score", 0),
+        "tags": post.get("tags", ""),
+        "width": post.get("width", 0),
+        "height": post.get("height", 0),
+        "rating": post.get("rating", "sfw"),
         "category": post.get("category", category),
         "page_url": post.get("page_url", ""),
-        "phash":    phash or "",
+        "phash": phash or "",
     }
-    meta_folder = Path(DOWNLOAD_DIR) / "metadata" / save_category
-    meta_folder.mkdir(parents=True, exist_ok=True)
-    meta_path = meta_folder / f"{source}_{post_id}.json"
+    metadata_folder = Path(DOWNLOAD_DIR) / "metadata" / save_category
+    metadata_folder.mkdir(parents=True, exist_ok=True)
+    metadata_path = metadata_folder / f"{safe_source}_{safe_post_id}.json"
     try:
-        async with aiofiles.open(meta_path, "w", encoding="utf-8") as f:
-            await f.write(json.dumps(meta, ensure_ascii=False, indent=2))
+        async with aiofiles.open(metadata_path, "w", encoding="utf-8") as file:
+            await file.write(json.dumps(metadata, ensure_ascii=False, indent=2))
     except Exception:
         pass
 
-    # --- Registrar no banco (em thread, SQLite bloqueante) ---
     await asyncio.to_thread(
         register_download,
         source=source,
@@ -198,60 +260,56 @@ async def download_single(
         height=post.get("height", 0),
         phash=phash or "",
     )
-
-    await _report(True, filename.name)
+    await report(True, filename.name)
     return True
 
 
 async def download_batch(
     posts: list[dict],
     category: str,
-    on_progress: Optional[Callable[[int, int, int, str], Awaitable[None]]] = None,
+    on_progress: Optional[
+        Callable[[int, int, int, str], Awaitable[None]]
+    ] = None,
 ) -> int:
-    """
-    Baixa um lote de imagens de forma assíncrona e concorrente.
-
-    Args:
-        posts: lista de dicts de posts
-        category: categoria (pasta de destino)
-        on_progress: callback assíncrono(done, total, ok_count, filename)
-
-    Returns:
-        Número de imagens baixadas com sucesso
-    """
-    semaphore  = asyncio.Semaphore(MAX_DOWNLOAD_WORKERS)
+    """Download a batch concurrently and report aggregate batch progress."""
+    semaphore = asyncio.Semaphore(MAX_DOWNLOAD_WORKERS)
     downloaded = 0
     done_count = 0
-    total      = len(posts)
-
+    total = len(posts)
     connector = aiohttp.TCPConnector(limit=MAX_DOWNLOAD_WORKERS)
-    headers   = {"User-Agent": "artFinder/2.0 (personal archiver)"}
+    headers = {"User-Agent": "artFinder/2.0 (personal archiver)"}
 
-    async def _cb(ok: bool, msg: str):
+    async def callback(ok: bool, message: str) -> None:
         nonlocal downloaded, done_count
         done_count += 1
         if ok:
             downloaded += 1
-        print(f"\r    [{done_count}/{total}] ok: {downloaded} | MSG: {msg}", flush=True)
+        print(
+            f"\r    [{done_count}/{total}] ok: {downloaded} | MSG: {message}",
+            flush=True,
+        )
         if on_progress:
-            await on_progress(done_count, total, downloaded, msg)
+            await on_progress(done_count, total, downloaded, message)
 
-    async with aiohttp.ClientSession(connector=connector, headers=headers) as session:
-        tasks = [
-            download_single(session, post, category, semaphore, on_done=_cb)
-            for post in posts
-        ]
-        # return_exceptions: um erro inesperado em um download não pode
-        # abortar o lote inteiro (os outros continuam)
-        outcomes = await asyncio.gather(*tasks, return_exceptions=True)
-        for out in outcomes:
-            if isinstance(out, BaseException):
-                print(f"  [!] Erro inesperado no lote: {out!r}")
+    async with aiohttp.ClientSession(
+        connector=connector,
+        headers=headers,
+    ) as session:
+        outcomes = await asyncio.gather(
+            *[
+                download_single(session, post, category, semaphore, callback)
+                for post in posts
+            ],
+            return_exceptions=True,
+        )
+        for outcome in outcomes:
+            if isinstance(outcome, BaseException):
+                print(f"  [!] Erro inesperado no lote: {outcome!r}")
 
     print()
     return downloaded
 
 
 def run_download_batch(posts: list[dict], category: str) -> int:
-    """Wrapper síncrono para asyncio.run (sem callback de progresso)."""
+    """Synchronous wrapper kept for CLI compatibility."""
     return asyncio.run(download_batch(posts, category))

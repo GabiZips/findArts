@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Native desktop window (uses Microsoft Edge WebView2 on Windows)
+pywebview>=5.4

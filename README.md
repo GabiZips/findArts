@@ -1,118 +1,127 @@
-# 💎 ArtFinder
+# ArtFinder
 
-Ferramenta local de **descoberta e curadoria de fan art**. Busca em várias
-plataformas ao mesmo tempo, junta tudo numa interface só e ajuda você a
-**escolher** o que presta — com um fluxo de triagem rápido em vez de só acumular.
+Aplicativo local para descobrir, comparar, organizar e baixar fan arts de
+várias fontes em uma só interface.
 
-Roda no seu PC e abre no navegador. Nada sai da sua máquina.
+## O que ele faz
 
-## ✨ O que faz
+- Busca em Danbooru, Gelbooru, Safebooru, e621, Pixiv, Tumblr, Bluesky e
+  DeviantArt.
+- Combina tags diferentes por fonte por meio de `source_tags`.
+- Permite criar e editar categorias sem alterar o código.
+- Mantém favoritos, avaliações, blacklist e histórico em SQLite.
+- Baixa imagens com limite de tamanho, validação do conteúdo e deduplicação por
+  hash perceptual.
+- Oferece galeria, comparação lado a lado e filtros de conteúdo.
 
-- **Busca unificada** em Danbooru, Gelbooru, Safebooru, e621, Tumblr, Bluesky e DeviantArt — resultados mesclados e deduplicados numa grade só.
-- **Tumblr por popularidade**: amostra várias épocas e ordena por número de notas (acha as artes famosas, não só as recentes).
-- **Triagem rápida**: no zoom, teclas `1` Usar · `2` Talvez · `3` Rever depois · `4` Não gostei, com auto-avanço. Nada é apagado — tudo vira uma pilha revisável.
-- **Modo comparação**: 2 a 4 finalistas lado a lado em tela cheia para escolher a melhor.
-- **Galeria** com miniaturas geradas sob demanda, filtros por fonte/categoria/pilha e busca por texto.
-- **Filtro anti-IA** em todas as fontes, filtro por rating (SFW/Sensível/NSFW), score, período e resolução.
-- **Deduplicação** por perceptual hash (evita a mesma imagem vinda de fontes diferentes).
-- **Categorias personalizadas** com autocomplete de tags do Danbooru.
+## Usar como aplicativo no Windows
 
-## 📦 Instalação
+O executável ainda precisa ser gerado. Para testar a versão desktop pelo código:
 
-Requer **Python 3.10+**.
-
-```bash
-# 1. Clonar
-git clone <url-do-seu-repo>
-cd findArts
-
-# 2. Ambiente virtual
-python -m venv venv
-venv\Scripts\activate        # Windows (PowerShell)
-source venv/bin/activate     # Linux / macOS
-
-# 3. Dependências
-python -m pip install -r requirements.txt
-
-# 4. (opcional) Credenciais de API
-cp .env.example .env         # depois edite o .env
-
-# 5. Rodar
-python app.py                # abre http://localhost:7860
+```powershell
+py -3.12 -m venv venv
+venv\Scripts\python -m pip install -r requirements-desktop.txt
+venv\Scripts\python desktop.py
 ```
 
-> Dica: use sempre `python -m pip` (não só `pip`) para garantir que a
-> instalação vá para o ambiente virtual ativo.
+Isso abre uma janela própria. O servidor interno usa uma porta aleatória e
+aceita conexões somente deste computador.
 
-## 🔑 Credenciais (opcional)
+Os dados da versão empacotada ficam em:
 
-Danbooru, Gelbooru, Safebooru e e621 funcionam **sem nada configurado**.
-As demais fontes só aparecem se você preencher as chaves no `.env`
-(copie de `.env.example`):
-
-| Fonte | O que precisa | Onde obter |
-|---|---|---|
-| Danbooru | login + API key (opcional, sobe o limite para 200/pág) | conta gratuita em danbooru.donmai.us |
-| Gelbooru | user_id + API key | My Account → Options → API Access |
-| Tumblr | API key (+ OAuth para popularidade) | tumblr.com/oauth/apps |
-| DeviantArt | client_id + secret | deviantart.com/developers |
-| Bluesky | handle + app password | configurações do Bluesky |
-
-O `.env` **nunca** é versionado (está no `.gitignore`).
-
-## ⚠️ Segurança — leia antes de compartilhar
-
-Este é um app **pessoal, para rodar na sua própria máquina**. Ele **não tem
-login nem senha** e, por padrão, escuta em todas as interfaces de rede
-(`0.0.0.0:7860`) para permitir acesso pelo celular no mesmo Wi-Fi.
-
-Consequências importantes:
-
-- **Qualquer pessoa na mesma rede** (Wi-Fi de casa, república, café) consegue
-  abrir a interface e usar tudo — inclusive **apagar imagens** e **limpar o
-  banco**. Só rode em redes em que você confia.
-- **Nunca exponha a porta 7860 à internet** (não faça port-forward no roteador
-  nem coloque atrás de um domínio público sem autenticação).
-- Se quiser restringir só à sua máquina, troque o host no final do `app.py`
-  de `"0.0.0.0"` para `"127.0.0.1"` — aí o celular deixa de acessar, mas
-  ninguém na rede acessa também.
-
-Proteções já embutidas: o proxy de imagens só aceita `http/https` e **bloqueia
-endereços internos** (anti-SSRF), e nomes de artista/tags vindos das APIs são
-**escapados** antes de irem para a tela (anti-XSS). Ainda assim, o modelo de
-ameaça é "ferramenta de rede local confiável", não "serviço público".
-
-## 🗂️ Estrutura
-
-```
-findArts/
-├── app.py              # Servidor web (FastAPI) + todas as rotas da API
-├── config.py           # Configurações; carrega segredos do .env
-├── requirements.txt
-├── .env.example        # Modelo de credenciais (copie para .env)
-├── templates/
-│   └── index.html      # Toda a interface (HTML + CSS + JS num arquivo só)
-├── sources/            # Um módulo por plataforma (fetch_posts padronizado)
-├── filters/            # Qualidade (resolução/tamanho) e cor dominante
-├── utils/
-│   ├── database.py     # SQLite: posts, downloads, favoritos, blacklist, ratings
-│   ├── downloader.py   # Download assíncrono + pHash
-│   └── gallery.py      # Gerador de galeria HTML estática (legado)
-├── palettes/           # Paletas de cor em JSON
-└── downloads/          # Imagens + banco (gerado; fora do git)
+```text
+%LOCALAPPDATA%\ArtFinder\
+├── .env
+├── user_categories.json
+├── webview\
+└── downloads\
 ```
 
-## ⚙️ Ajustes rápidos (`config.py`)
+Assim, atualizar ou trocar o `.exe` não apaga configurações, banco ou imagens.
 
-| Configuração | Descrição |
+## Gerar o executável
+
+```powershell
+py -3.12 -m venv venv
+venv\Scripts\python -m pip install -r requirements-dev.txt
+venv\Scripts\python -m PyInstaller --noconfirm --clean artfinder.spec
+```
+
+O resultado será `dist\ArtFinder.exe`.
+
+O workflow `.github/workflows/build-windows.yml` também gera o executável no
+GitHub Actions. Ele pode ser iniciado manualmente na aba Actions ou ao enviar
+uma tag como `v0.1.0`.
+
+## Usar no navegador durante o desenvolvimento
+
+```powershell
+py -3.12 -m venv venv
+venv\Scripts\python -m pip install -r requirements.txt
+venv\Scripts\python app.py
+```
+
+Por padrão, `app.py` abre `http://127.0.0.1:7860` somente neste computador.
+Para liberar temporariamente o acesso na rede local:
+
+```powershell
+$env:ARTFINDER_LAN="1"
+venv\Scripts\python app.py
+```
+
+Não exponha esse modo à internet: o ArtFinder é uma ferramenta pessoal e não
+possui sistema de contas.
+
+## Credenciais opcionais
+
+Copie `.env.example` para `.env` e preencha apenas as fontes que pretende usar.
+No executável, coloque esse arquivo em `%LOCALAPPDATA%\ArtFinder\.env`.
+
+| Fonte | Configuração |
 |---|---|
-| `MIN_WIDTH` / `MIN_HEIGHT` | Resolução mínima aceita (padrão 800×600) |
-| `MAX_DOWNLOAD_WORKERS` | Downloads simultâneos (padrão 8) |
-| `USE_COLOR_FILTER` / `TARGET_COLORS` | Filtro opcional por cor dominante |
-| `ORGANIZE_BY` | Organizar downloads por `"category"` ou `"artist"` |
+| Danbooru | `DANBOORU_LOGIN` e `DANBOORU_API_KEY` (opcionais) |
+| Gelbooru | `GELBOORU_USER_ID` e `GELBOORU_API_KEY` |
+| Pixiv | `PIXIV_REFRESH_TOKEN`; gere com `get_pixiv_token.py` |
+| Tumblr | `TUMBLR_API_KEY`; OAuth completo melhora a busca |
+| DeviantArt | `DEVIANTART_CLIENT_ID` e `DEVIANTART_CLIENT_SECRET` |
+| Bluesky | `BSKY_HANDLE` e uma app password em `BSKY_PASSWORD` |
 
-## 📝 Licença
+Danbooru, Safebooru e e621 podem funcionar sem credenciais. Nunca envie o
+arquivo `.env` para o GitHub.
 
-Uso pessoal. Respeite os Termos de Serviço de cada plataforma e os direitos
-dos artistas — a ferramenta preserva o link original e o autor de cada arte
-para facilitar creditar e apoiar quem criou.
+## Categorias e tags por fonte
+
+As categorias ficam em `user_categories.json`. Na tela de edição, o campo de
+tags aceita consultas específicas:
+
+```text
+vex_(league_of_legends);
+pixiv: ヴェックス;
+tumblr: vex league of legends;
+bluesky: "vex" "league of legends"
+```
+
+O texto sem prefixo é a consulta-base dos boorus. Entradas `fonte: consulta`
+são overrides e têm prioridade sobre qualquer sugestão automática.
+
+## Estrutura principal
+
+```text
+desktop.py              janela nativa e servidor privado
+app.py                  API FastAPI e interface local
+config.py               configurações e diretórios de dados
+artfinder.spec          empacotamento do Windows
+templates/index.html    interface
+sources/                conectores das plataformas
+filters/                filtros de arquivo e cor
+utils/database.py       banco SQLite
+utils/downloader.py     download e deduplicação
+utils/tagmap.py         sugestões de tags por fonte
+user_categories.json    categorias iniciais
+```
+
+## Observações
+
+- Respeite os termos de uso das plataformas e os direitos dos artistas.
+- O ArtFinder preserva links e autores quando a fonte fornece esses dados.
+- O filtro anti-IA depende dos metadados de cada fonte e não é infalível.

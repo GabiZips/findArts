@@ -3,7 +3,28 @@
 # ================================================================
 
 import os
+import sys
 from pathlib import Path
+
+# --- Recursos empacotados e dados graváveis ---
+# Em desenvolvimento tudo continua dentro da pasta do projeto. No executável,
+# os recursos ficam no bundle do PyInstaller e dados pessoais/configurações vão
+# para uma pasta gravável do usuário (nunca ao lado do .exe).
+IS_FROZEN = bool(getattr(sys, "frozen", False))
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+
+if IS_FROZEN:
+    _local_app_data = os.getenv("LOCALAPPDATA")
+    _default_data_dir = (
+        Path(_local_app_data) / "ArtFinder"
+        if _local_app_data
+        else Path.home() / ".artfinder"
+    )
+else:
+    _default_data_dir = RESOURCE_DIR
+
+DATA_DIR = Path(os.getenv("ARTFINDER_DATA_DIR", str(_default_data_dir))).resolve()
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- Carrega variáveis de um arquivo .env (se existir) ---
 # Loader leve, sem dependência externa. Não sobrescreve variáveis já
@@ -19,15 +40,16 @@ def _load_dotenv(path: Path) -> None:
         key, value = key.strip(), value.strip().strip('"').strip("'")
         os.environ.setdefault(key, value)
 
-_load_dotenv(Path(__file__).parent / ".env")
+_load_dotenv(DATA_DIR / ".env")
 
 # --- Diretórios ---
 # Sempre relativos à pasta do projeto (não ao cwd), para o app funcionar
 # mesmo quando iniciado de outro diretório.
-BASE_DIR     = Path(__file__).resolve().parent
-DOWNLOAD_DIR = str(BASE_DIR / "downloads")
-PALETTE_DIR  = str(BASE_DIR / "palettes")
-DB_PATH      = str(BASE_DIR / "downloads" / "artfinder.db")
+BASE_DIR     = RESOURCE_DIR
+DOWNLOAD_DIR = str(DATA_DIR / "downloads")
+PALETTE_DIR  = str(RESOURCE_DIR / "palettes")
+DB_PATH      = str(DATA_DIR / "downloads" / "artfinder.db")
+USER_CATEGORIES_PATH = str(DATA_DIR / "user_categories.json")
 
 # ----------------------------------------------------------------
 # FILTROS DE ARQUIVO (verificados antes/durante o download)

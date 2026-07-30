@@ -9,15 +9,19 @@ Uso:
 
 import asyncio
 import json
+import os
+import shutil
 import sys
+import tempfile
+import threading
 import webbrowser
 from pathlib import Path
 from threading import Timer
+from urllib.parse import urlsplit
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 try:
     from sse_starlette.sse import EventSourceResponse
     HAS_SSE = True
@@ -37,12 +41,14 @@ for _stream in (sys.stdout, sys.stderr):
         except Exception:
             pass
 
-from config import DOWNLOAD_DIR
+from config import DOWNLOAD_DIR, RESOURCE_DIR, USER_CATEGORIES_PATH
 from utils.database import get_stats, known_uids, add_to_blacklist, add_blocked_artist, get_blocked_artists
-from utils.downloader import download_batch, run_download_batch
+from utils.downloader import download_batch
 from utils.normalize import normalize_posts
 
-USER_CATS_FILE = Path(__file__).parent / "user_categories.json"
+USER_CATS_FILE = Path(USER_CATEGORIES_PATH)
+DEFAULT_USER_CATS_FILE = Path(RESOURCE_DIR) / "user_categories.json"
+_USER_CATS_LOCK = threading.RLock()
 
 
 def _split_tags(tags_str: str) -> list[str]:
@@ -57,26 +63,75 @@ def _split_tags(tags_str: str) -> list[str]:
 
 def _load_user_cats() -> dict:
     """Carrega categorias do usuario de user_categories.json."""
-    try:
-        with open(USER_CATS_FILE, encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("categories", {})
-    except Exception:
-        # fallback para categorias antigas do config
-        from config import CATEGORIES as CK
-        return {k: {"label": k.replace("_"," ").title(), "tags": k, "group": "Geral", "favorite": False, "emoji": "🎨", "color": "#6366f1"} for k in CK}
+    with _USER_CATS_LOCK:
+        try:
+            if not USER_CATS_FILE.exists() and DEFAULT_USER_CATS_FILE.exists():
+                USER_CATS_FILE.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(DEFAULT_USER_CATS_FILE, USER_CATS_FILE)
+            with open(USER_CATS_FILE, encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get("categories", {})
+        except Exception:
+            # fallback para categorias antigas do config
+            from config import CATEGORIES as CK
+            return {k: {"label": k.replace("_"," ").title(), "tags": k, "group": "Geral", "favorite": False, "emoji": "🎨", "color": "#6366f1"} for k in CK}
 
 
 def _save_user_cats(cats: dict) -> None:
-    with open(USER_CATS_FILE, "w", encoding="utf-8") as f:
-        json.dump({"categories": cats}, f, ensure_ascii=False, indent=2)
+    """Salva categorias de forma atômica para evitar JSON truncado."""
+    with _USER_CATS_LOCK:
+        USER_CATS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(
+            prefix="user_categories.",
+            suffix=".tmp",
+            dir=str(USER_CATS_FILE.parent),
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump({"categories": cats}, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_name, USER_CATS_FILE)
+        except Exception:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            raise
 
 app = FastAPI(title="artFinder")
 
-# Servir pasta downloads como static (para galeria)
+# A pasta inteira de downloads não é montada como StaticFiles: isso publicava
+# artfinder.db, WAL e metadados JSON para qualquer pessoa na rede.
 downloads_path = Path(DOWNLOAD_DIR)
 downloads_path.mkdir(parents=True, exist_ok=True)
-app.mount("/downloads", StaticFiles(directory=str(downloads_path)), name="downloads")
+
+
+@app.middleware("http")
+async def local_security_headers(request: Request, call_next):
+    """Bloqueia mutações cross-site e adiciona headers seguros.
+
+    Requisições sem Origin continuam aceitas para scripts/CLI locais. Browsers
+    enviando formulários/fetch de outro site são rejeitados.
+    """
+    if request.method not in {"GET", "HEAD", "OPTIONS"}:
+        origin = request.headers.get("origin", "")
+        sec_fetch_site = request.headers.get("sec-fetch-site", "")
+        if sec_fetch_site == "cross-site":
+            return JSONResponse({"error": "Requisicao cross-site bloqueada"}, status_code=403)
+        if origin:
+            try:
+                if urlsplit(origin).netloc.lower() != request.headers.get("host", "").lower():
+                    return JSONResponse({"error": "Origem nao autorizada"}, status_code=403)
+            except Exception:
+                return JSONResponse({"error": "Origem invalida"}, status_code=403)
+
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
+    return response
 
 # ── helpers ─────────────────────────────────────────────────────────
 
@@ -112,8 +167,8 @@ def _get_sources() -> dict:
         pass
     try:
         from sources.deviantart import fetch_posts
-        from config import DEVIANTART_CLIENT_ID
-        if DEVIANTART_CLIENT_ID:
+        from config import DEVIANTART_CLIENT_ID, DEVIANTART_CLIENT_SECRET
+        if DEVIANTART_CLIENT_ID and DEVIANTART_CLIENT_SECRET:
             sources["DeviantArt"] = fetch_posts
     except Exception:
         pass
@@ -139,14 +194,37 @@ def _get_sources() -> dict:
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """Serve a interface principal."""
-    html_path = Path(__file__).parent / "templates" / "index.html"
+    html_path = Path(RESOURCE_DIR) / "templates" / "index.html"
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
 @app.get("/api/sources")
 async def list_sources():
-    """Lista fontes disponíveis."""
-    return {"sources": list(_get_sources().keys())}
+    """Lista fontes ativas e explica quais ainda precisam de configuração."""
+    import config as current_config
+
+    active = list(_get_sources().keys())
+    requirements = {
+        "Pixiv": ("PIXIV_REFRESH_TOKEN",),
+        "Tumblr": ("TUMBLR_API_KEY",),
+        "DeviantArt": ("DEVIANTART_CLIENT_ID", "DEVIANTART_CLIENT_SECRET"),
+        "Bluesky": ("BSKY_HANDLE", "BSKY_PASSWORD"),
+    }
+    unavailable = []
+    for source, keys in requirements.items():
+        if source in active:
+            continue
+        missing = [key for key in keys if not getattr(current_config, key, "")]
+        unavailable.append({
+            "name": source,
+            "missing": missing,
+            "reason": (
+                "Configuração necessária: " + ", ".join(missing)
+                if missing
+                else "Conector indisponível nesta instalação"
+            ),
+        })
+    return {"sources": active, "unavailable_sources": unavailable}
 
 
 @app.get("/api/categories")
@@ -557,13 +635,13 @@ async def gallery_items():
             source, source_id, file_path, artist, score, dl_at, tags, w, h, rating, page_url, category, prev_url, orig_url = row
             if not file_path:
                 continue
-            if f"{source}:{source_id}" in blacklist:
+            if source_id in blacklist:
                 continue
             if (artist or "").strip().lower() in blocked:
                 continue
             fp = Path(file_path)
             if not fp.is_absolute():
-                fp = (Path(__file__).parent / fp).resolve()
+                fp = (Path(DOWNLOAD_DIR).parent / fp).resolve()
             if not fp.exists():
                 continue
             try:
@@ -652,7 +730,7 @@ async def duplicates(threshold: int = 8):
             continue
         fp = Path(file_path)
         if not fp.is_absolute():
-            fp = (Path(__file__).parent / fp).resolve()
+            fp = (Path(DOWNLOAD_DIR).parent / fp).resolve()
         if not fp.exists():
             continue
         try:
@@ -1063,14 +1141,28 @@ async def download_stream(body: dict, request: Request):
 
     progress_q: asyncio.Queue = asyncio.Queue()
 
-    async def _progress_cb(done, _total, ok_count, msg):
-        await progress_q.put({"done": done, "total": _total, "ok": ok_count, "msg": msg})
-
     async def _run_downloads():
         from utils.downloader import download_batch
+        total_all = len(posts)
+        done_before = 0
+        ok_before = 0
         try:
             for cat, cat_posts in by_cat.items():
-                await download_batch(cat_posts, cat, on_progress=_progress_cb)
+                async def _category_progress(done, _total, ok_count, msg):
+                    await progress_q.put({
+                        "done": done_before + done,
+                        "total": total_all,
+                        "ok": ok_before + ok_count,
+                        "msg": msg,
+                    })
+
+                downloaded = await download_batch(
+                    cat_posts,
+                    cat,
+                    on_progress=_category_progress,
+                )
+                done_before += len(cat_posts)
+                ok_before += downloaded
         except Exception as e:
             print(f"  [download-stream] Erro no lote: {e}")
         finally:
@@ -1113,21 +1205,24 @@ _proxy_cache: dict[str, tuple[bytes, str]] = {}
 _PROXY_CACHE_MAX = 200
 _PROXY_CACHE_MAX_BYTES = 200 * 1024 * 1024   # 200 MB
 _proxy_cache_bytes = 0
+_proxy_cache_lock = threading.Lock()
 
 def _get_referer(url: str) -> str:
     """Retorna o Referer correto para cada domínio — evita bloqueio de hotlink."""
-    if "gelbooru.com" in url:
+    from utils.network import is_domain
+    host = urlsplit(url).hostname
+    if is_domain(host, "gelbooru.com"):
         return "https://gelbooru.com/"
-    if "danbooru.donmai.us" in url or "donmai.us" in url:
+    if is_domain(host, "donmai.us"):
         return "https://danbooru.donmai.us/"
-    if "safebooru.org" in url:
+    if is_domain(host, "safebooru.org"):
         return "https://safebooru.org/"
-    if "e621.net" in url:
+    if is_domain(host, "e621.net"):
         return "https://e621.net/"
-    if "rule34.xxx" in url:
+    if is_domain(host, "rule34.xxx"):
         return "https://rule34.xxx/"
     # Pixiv (i.pximg.net) bloqueia hotlink sem este Referer específico
-    if "pximg.net" in url or "pixiv.net" in url:
+    if is_domain(host, "pximg.net") or is_domain(host, "pixiv.net"):
         return "https://www.pixiv.net/"
     # fallback genérico
     try:
@@ -1139,72 +1234,96 @@ def _get_referer(url: str) -> str:
 
 
 def _fetch_image_sync(url: str) -> tuple[bytes, str]:
-    """Busca a imagem de forma síncrona (chamada em thread pool)."""
-    # Segurança: só proxia http/https (evita file://, ftp://, etc.)
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        raise ValueError("URL inválida: apenas http/https são permitidos")
-
-    # Segurança (SSRF): bloqueia endereços internos — sem isso, alguém na
-    # mesma rede poderia usar o proxy para sondar o roteador/outros hosts.
-    import ipaddress, socket
-    host = parsed.hostname or ""
-    try:
-        for info in socket.getaddrinfo(host, None):
-            ip = ipaddress.ip_address(info[4][0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
-                raise ValueError("URL aponta para endereço interno — bloqueado")
-    except socket.gaierror:
-        raise ValueError(f"Não foi possível resolver o host: {host}")
-
-    # Cache hit (bytes + content-type corretos)
-    if url in _proxy_cache:
-        return _proxy_cache[url]
-
-    from config import DANBOORU_LOGIN, DANBOORU_API_KEY
-
-    # Danbooru CDN exige Basic Auth para acesso server-side e aceita Discordbot
-    # Gelbooru barra Discordbot, então usamos Mozilla
-    ua = "Discordbot/2.0" if "donmai.us" in url else "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    
-    headers = {
-        "User-Agent":      ua,
-        "Referer":         _get_referer(url),
-        "Accept":          "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Sec-Fetch-Dest":  "image",
-        "Sec-Fetch-Mode":  "no-cors",
-        "Sec-Fetch-Site":  "cross-site",
-    }
-
-    # Danbooru CDN exige autenticação Basic Auth para acesso server-side
-    auth = None
-    if "donmai.us" in url and DANBOORU_LOGIN and DANBOORU_API_KEY:
-        auth = (DANBOORU_LOGIN, DANBOORU_API_KEY)
-
-    r = _requests.get(url, headers=headers, auth=auth, timeout=20, stream=True)
-    r.raise_for_status()
-    content_type = r.headers.get("content-type", "image/jpeg")
-
-    # Lê em chunks de 64KB
-    chunks = []
-    for chunk in r.iter_content(65536):
-        if chunk:
-            chunks.append(chunk)
-    data = b"".join(chunks)
-
-    # Armazena no cache (remove os mais antigos se estourar itens ou memória)
+    """Fetch a bounded image while validating the URL and every redirect."""
     global _proxy_cache_bytes
-    _proxy_cache[url] = (data, content_type)
-    _proxy_cache_bytes += len(data)
-    while len(_proxy_cache) > 1 and (
-        len(_proxy_cache) > _PROXY_CACHE_MAX
-        or _proxy_cache_bytes > _PROXY_CACHE_MAX_BYTES
-    ):
-        oldest = next(iter(_proxy_cache))
-        _proxy_cache_bytes -= len(_proxy_cache.pop(oldest)[0])
 
+    from config import DANBOORU_API_KEY, DANBOORU_LOGIN, MAX_FILE_MB
+    from utils.network import is_domain, validate_redirect, validate_remote_url
+
+    with _proxy_cache_lock:
+        cached = _proxy_cache.get(url)
+    if cached is not None:
+        return cached
+
+    current_url = url
+    max_bytes = MAX_FILE_MB * 1024 * 1024
+    for redirect_count in range(6):
+        parsed = validate_remote_url(current_url)
+        danbooru = is_domain(parsed.hostname, "donmai.us")
+        headers = {
+            "User-Agent": (
+                "Discordbot/2.0" if danbooru else
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+            ),
+            "Referer": _get_referer(current_url),
+            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        }
+        auth = (
+            (DANBOORU_LOGIN, DANBOORU_API_KEY)
+            if danbooru and DANBOORU_LOGIN and DANBOORU_API_KEY
+            else None
+        )
+        with _requests.get(
+            current_url,
+            headers=headers,
+            auth=auth,
+            timeout=20,
+            stream=True,
+            allow_redirects=False,
+        ) as response:
+            if response.status_code in {301, 302, 303, 307, 308}:
+                if redirect_count >= 5:
+                    raise ValueError("Redirecionamentos demais")
+                current_url = validate_redirect(
+                    current_url,
+                    response.headers.get("location", ""),
+                )
+                continue
+            response.raise_for_status()
+            content_type = (
+                response.headers.get("content-type", "").split(";", 1)[0].lower()
+            )
+            if content_type not in {
+                "image/jpeg",
+                "image/png",
+                "image/gif",
+                "image/webp",
+                "image/avif",
+                "image/bmp",
+            }:
+                raise ValueError("O servidor nao retornou uma imagem")
+            try:
+                declared_size = int(response.headers.get("content-length", "0"))
+            except ValueError:
+                declared_size = 0
+            if declared_size > max_bytes:
+                raise ValueError("Imagem maior que o limite configurado")
+
+            chunks = bytearray()
+            for chunk in response.iter_content(64 * 1024):
+                if chunk:
+                    chunks.extend(chunk)
+                    if len(chunks) > max_bytes:
+                        raise ValueError("Imagem maior que o limite configurado")
+            data = bytes(chunks)
+            break
+    else:
+        raise ValueError("Falha ao buscar imagem")
+
+    if len(data) <= _PROXY_CACHE_MAX_BYTES:
+        with _proxy_cache_lock:
+            previous = _proxy_cache.pop(url, None)
+            if previous:
+                _proxy_cache_bytes -= len(previous[0])
+            _proxy_cache[url] = (data, content_type)
+            _proxy_cache_bytes += len(data)
+            while _proxy_cache and (
+                len(_proxy_cache) > _PROXY_CACHE_MAX
+                or _proxy_cache_bytes > _PROXY_CACHE_MAX_BYTES
+            ):
+                oldest = next(iter(_proxy_cache))
+                _proxy_cache_bytes -= len(_proxy_cache.pop(oldest)[0])
     return data, content_type
 
 
@@ -1217,9 +1336,8 @@ async def proxy_image(url: str):
     loop = asyncio.get_running_loop()
     try:
         data, content_type = await loop.run_in_executor(None, _fetch_image_sync, url)
-        from fastapi.responses import Response
         return Response(content=data, media_type=content_type,
-                        headers={"Cache-Control": "public, max-age=3600"})
+                        headers={"Cache-Control": "private, max-age=3600"})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=502)
 
@@ -1234,17 +1352,25 @@ async def thumb(rel_path: str):
     """
     from fastapi.responses import FileResponse
     dl_dir = Path(DOWNLOAD_DIR).resolve()
+    if Path(rel_path).is_absolute():
+        return JSONResponse({"error": "Caminho invalido"}, status_code=400)
     src = (dl_dir / rel_path).resolve()
     try:
-        src.relative_to(dl_dir)
+        relative = src.relative_to(dl_dir)
     except ValueError:
         return JSONResponse({"error": "Caminho inválido"}, status_code=400)
+    if (
+        not relative.parts
+        or relative.parts[0].lower() in {"metadata", ".thumbs"}
+        or src.suffix.lower() not in {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    ):
+        return JSONResponse({"error": "Arquivo nao permitido"}, status_code=403)
     if not src.is_file():
         return JSONResponse({"error": "Arquivo não encontrado"}, status_code=404)
     if src.suffix.lower() == ".gif":
         return FileResponse(src)
 
-    tpath = dl_dir / ".thumbs" / Path(rel_path).parent / (src.stem + ".jpg")
+    tpath = dl_dir / ".thumbs" / relative.parent / (src.stem + ".jpg")
     if not tpath.exists() or tpath.stat().st_mtime < src.stat().st_mtime:
         def _gen():
             from PIL import Image
@@ -1261,6 +1387,35 @@ async def thumb(rel_path: str):
     return FileResponse(tpath, headers={"Cache-Control": "public, max-age=86400"})
 
 
+@app.get("/api/file")
+async def downloaded_file(rel_path: str):
+    """Serve only downloaded image files, never the database or metadata."""
+    download_root = Path(DOWNLOAD_DIR).resolve()
+    if Path(rel_path).is_absolute():
+        return JSONResponse({"error": "Caminho invalido"}, status_code=400)
+    file_path = (download_root / rel_path).resolve()
+    try:
+        relative = file_path.relative_to(download_root)
+    except ValueError:
+        return JSONResponse({"error": "Caminho invalido"}, status_code=400)
+
+    blocked_roots = {"metadata", ".thumbs"}
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    if (
+        not relative.parts
+        or relative.parts[0].lower() in blocked_roots
+        or file_path.suffix.lower() not in allowed_extensions
+    ):
+        return JSONResponse({"error": "Arquivo nao permitido"}, status_code=403)
+    if not file_path.is_file():
+        return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
+
+    return FileResponse(
+        file_path,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
 @app.post("/api/delete-image")
 async def delete_image(body: dict):
     """
@@ -1270,6 +1425,8 @@ async def delete_image(body: dict):
     rel_path = body.get("rel_path", "")
     if not rel_path:
         return JSONResponse({"error": "rel_path ausente"}, status_code=400)
+    if Path(rel_path).is_absolute():
+        return JSONResponse({"error": "Caminho invalido"}, status_code=400)
 
     dl_dir   = Path(DOWNLOAD_DIR).resolve()
     file_path = (dl_dir / rel_path).resolve()
@@ -1298,11 +1455,16 @@ async def delete_image(body: dict):
             return JSONResponse({"error": str(e)}, status_code=500)
 
     # Remove do banco pelo caminho
-    from utils.database import _connect
+    from utils.database import _connect, _invalidate_phash_cache
     conn = _connect()
     try:
-        conn.execute("DELETE FROM downloads WHERE file_path = ?", (str(file_path),))
+        cursor = conn.execute(
+            "DELETE FROM downloads WHERE file_path = ?",
+            (str(file_path),),
+        )
         conn.commit()
+        if cursor.rowcount:
+            _invalidate_phash_cache()
     finally:
         conn.close()
 
@@ -1333,7 +1495,8 @@ if __name__ == "__main__":
     # aparece quando o browser fecha conexoes SSE antes do servidor.
     logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
-    lan = _lan_ip()
+    allow_lan = os.getenv("ARTFINDER_LAN", "").strip() == "1"
+    lan = _lan_ip() if allow_lan else ""
     print("=" * 52)
     print("  ArtFinder  —  Interface Visual")
     print("=" * 52)
@@ -1344,5 +1507,10 @@ if __name__ == "__main__":
     print("  Pressione Ctrl+C para encerrar.")
     print("=" * 52)
     Timer(1.2, open_browser).start()
-    uvicorn.run(app, host="0.0.0.0", port=7860, log_level="warning")
+    uvicorn.run(
+        app,
+        host="0.0.0.0" if allow_lan else "127.0.0.1",
+        port=7860,
+        log_level="warning",
+    )
 
