@@ -1,33 +1,44 @@
 # ArtFinder
 
-Aplicativo local para descobrir, comparar, organizar e baixar fan arts de
-várias fontes em uma só interface.
+[![Build Windows](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml)
+![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-desktop-0078D4?logo=windows&logoColor=white)
 
-## O que ele faz
+Aplicativo local para pesquisar, comparar, organizar e baixar artes e fan arts
+de várias fontes em uma só interface.
 
-- Busca em Danbooru, Gelbooru, Safebooru, e621, Pixiv, Tumblr, Bluesky e
-  DeviantArt.
-- Combina tags diferentes por fonte por meio de `source_tags`.
-- Permite criar e editar categorias sem alterar o código.
-- Mantém favoritos, avaliações, blacklist e histórico em SQLite.
-- Baixa imagens com limite de tamanho, validação do conteúdo e deduplicação por
-  hash perceptual.
-- Oferece galeria, comparação lado a lado e filtros de conteúdo.
+> [!IMPORTANT]
+> O ArtFinder é um projeto independente e não oficial. Ele não possui
+> associação, aprovação ou patrocínio de Pixiv, Tumblr, Bluesky, DeviantArt,
+> Danbooru, Gelbooru, Safebooru, e621 ou dos detentores das obras pesquisadas.
 
-## Usar como aplicativo no Windows
+## Funcionalidades
 
-O executável ainda precisa ser gerado. Para testar a versão desktop pelo código:
+- Busca unificada em Danbooru, Gelbooru, Safebooru, e621, Pixiv, Tumblr,
+  Bluesky e DeviantArt.
+- Tags específicas por fonte por meio de `source_tags`.
+- Categorias personalizadas sem alterações no código.
+- Favoritos, avaliações, blacklist e histórico armazenados localmente em
+  SQLite.
+- Galeria, comparação lado a lado e filtros de conteúdo.
+- Download com limite de tamanho, validação do arquivo e deduplicação por hash
+  perceptual.
+- Preservação do autor e do link original quando a fonte fornece esses dados.
 
-```powershell
-py -3.12 -m venv venv
-venv\Scripts\python -m pip install -r requirements-desktop.txt
-venv\Scripts\python desktop.py
-```
+## Baixar para Windows
 
-Isso abre uma janela própria. O servidor interno usa uma porta aleatória e
-aceita conexões somente deste computador.
+Os builds automáticos ficam na página
+[GitHub Actions](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml):
 
-Os dados da versão empacotada ficam em:
+1. Abra a execução mais recente que esteja com o indicador verde.
+2. Na seção **Artifacts**, baixe `ArtFinder-Windows`.
+3. Extraia o arquivo ZIP.
+4. Execute `ArtFinder.exe`.
+
+O Windows pode exibir um aviso do SmartScreen porque o executável ainda não
+possui assinatura digital comercial.
+
+Os dados do aplicativo ficam separados do executável:
 
 ```text
 %LOCALAPPDATA%\ArtFinder\
@@ -37,7 +48,20 @@ Os dados da versão empacotada ficam em:
 └── downloads\
 ```
 
-Assim, atualizar ou trocar o `.exe` não apaga configurações, banco ou imagens.
+Atualizar ou substituir o `.exe` não apaga configurações, banco ou imagens.
+
+## Executar pelo código
+
+Requer Python 3.12.
+
+```powershell
+py -3.12 -m venv venv
+venv\Scripts\python -m pip install -r requirements-desktop.txt
+venv\Scripts\python desktop.py
+```
+
+Isso abre uma janela própria. O servidor interno da versão desktop usa uma
+porta aleatória e aceita conexões somente do computador.
 
 ## Gerar o executável
 
@@ -49,33 +73,35 @@ venv\Scripts\python -m PyInstaller --noconfirm --clean artfinder.spec
 
 O resultado será `dist\ArtFinder.exe`.
 
-O workflow `.github/workflows/build-windows.yml` também gera o executável no
-GitHub Actions. Ele pode ser iniciado manualmente na aba Actions ou ao enviar
-uma tag como `v0.1.0`.
+O workflow `.github/workflows/build-windows.yml` também executa os testes e
+gera o executável no GitHub Actions. Ele pode ser iniciado manualmente ou ao
+enviar uma tag como `v0.1.0`.
 
-## Usar no navegador durante o desenvolvimento
+## Acesso pelo celular
 
-```powershell
-py -3.12 -m venv venv
-venv\Scripts\python -m pip install -r requirements.txt
-venv\Scripts\python app.py
-```
+O arquivo `.exe` funciona somente no Windows e não pode ser instalado
+diretamente no Android ou iPhone.
 
-Por padrão, `app.py` abre `http://127.0.0.1:7860` somente neste computador.
-Para liberar temporariamente o acesso na rede local:
+Durante o desenvolvimento, o celular pode acessar o ArtFinder pelo navegador
+quando estiver na mesma rede Wi-Fi do computador:
 
 ```powershell
 $env:ARTFINDER_LAN="1"
 venv\Scripts\python app.py
 ```
 
-Não exponha esse modo à internet: o ArtFinder é uma ferramenta pessoal e não
-possui sistema de contas.
+O terminal mostrará o endereço local que deve ser aberto no celular. Se o
+Windows solicitar, permita o Python apenas em redes privadas.
+
+> [!WARNING]
+> Não exponha o ArtFinder diretamente à internet. O modo de rede local ainda
+> não possui contas, senha ou controle de acesso.
 
 ## Credenciais opcionais
 
-Copie `.env.example` para `.env` e preencha apenas as fontes que pretende usar.
-No executável, coloque esse arquivo em `%LOCALAPPDATA%\ArtFinder\.env`.
+Copie `.env.example` para `.env` e preencha somente as fontes que pretende
+usar. No executável, coloque esse arquivo em
+`%LOCALAPPDATA%\ArtFinder\.env`.
 
 | Fonte | Configuração |
 |---|---|
@@ -88,6 +114,10 @@ No executável, coloque esse arquivo em `%LOCALAPPDATA%\ArtFinder\.env`.
 
 Danbooru, Safebooru e e621 podem funcionar sem credenciais. Nunca envie o
 arquivo `.env` para o GitHub.
+
+O suporte ao Pixiv usa um cliente de terceiros para a API do aplicativo e não
+é uma integração oficial do Pixiv. Alterações na plataforma podem interromper
+temporariamente essa fonte.
 
 ## Categorias e tags por fonte
 
@@ -102,7 +132,7 @@ bluesky: "vex" "league of legends"
 ```
 
 O texto sem prefixo é a consulta-base dos boorus. Entradas `fonte: consulta`
-são overrides e têm prioridade sobre qualquer sugestão automática.
+são overrides e têm prioridade sobre sugestões automáticas.
 
 ## Estrutura principal
 
@@ -120,8 +150,21 @@ utils/tagmap.py         sugestões de tags por fonte
 user_categories.json    categorias iniciais
 ```
 
-## Observações
+## Aviso legal e de conteúdo
 
-- Respeite os termos de uso das plataformas e os direitos dos artistas.
-- O ArtFinder preserva links e autores quando a fonte fornece esses dados.
+- Nenhuma fan art é incluída no repositório ou no executável.
+- O conteúdo é consultado em serviços de terceiros por solicitação do usuário.
+- Os nomes e marcas das plataformas pertencem aos respectivos titulares.
+- O usuário é responsável por cumprir os termos de cada plataforma e respeitar
+  os direitos dos artistas e demais titulares.
+- O ArtFinder não remove marcas d'água nem tenta contornar conteúdo pago ou
+  privado.
+- Algumas fontes podem retornar conteúdo sensível ou adulto. Use os filtros de
+  classificação e não disponibilize o aplicativo a menores sem supervisão.
 - O filtro anti-IA depende dos metadados de cada fonte e não é infalível.
+
+## Desenvolvimento
+
+Contribuições, correções de conectores e melhorias no mapeamento de tags são
+bem-vindas. Ao relatar um problema, não publique tokens, senhas, cookies ou o
+conteúdo do seu arquivo `.env`.
