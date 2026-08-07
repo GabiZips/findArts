@@ -1,4 +1,5 @@
 -r requirements.txt
 
-# Native desktop window (uses Microsoft Edge WebView2 on Windows)
-pywebview>=5.4
+# Native desktop window. Windows uses Edge WebView2; Linux bundles Qt/PySide6.
+pywebview>=5.4; sys_platform == "win32" or sys_platform == "darwin"
+pywebview[pyside6]>=5.4; sys_platform == "linux"

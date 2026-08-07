@@ -41,7 +41,7 @@ for _stream in (sys.stdout, sys.stderr):
         except Exception:
             pass
 
-from config import DOWNLOAD_DIR, RESOURCE_DIR, USER_CATEGORIES_PATH
+from config import DATA_DIR, DOWNLOAD_DIR, RESOURCE_DIR, USER_CATEGORIES_PATH
 from utils.database import get_stats, known_uids, add_to_blacklist, add_blocked_artist, get_blocked_artists
 from utils.downloader import download_batch
 from utils.normalize import normalize_posts
@@ -49,6 +49,111 @@ from utils.normalize import normalize_posts
 USER_CATS_FILE = Path(USER_CATEGORIES_PATH)
 DEFAULT_USER_CATS_FILE = Path(RESOURCE_DIR) / "user_categories.json"
 _USER_CATS_LOCK = threading.RLock()
+_CREDENTIALS_LOCK = threading.RLock()
+
+CREDENTIAL_FIELDS = {
+    "Danbooru": ("DANBOORU_LOGIN", "DANBOORU_API_KEY"),
+    "Gelbooru": ("GELBOORU_USER_ID", "GELBOORU_API_KEY"),
+    "Pixiv": ("PIXIV_REFRESH_TOKEN",),
+    "Tumblr": (
+        "TUMBLR_API_KEY",
+        "TUMBLR_CONSUMER_SECRET",
+        "TUMBLR_OAUTH_TOKEN",
+        "TUMBLR_OAUTH_TOKEN_SECRET",
+    ),
+    "DeviantArt": ("DEVIANTART_CLIENT_ID", "DEVIANTART_CLIENT_SECRET"),
+    "Bluesky": ("BSKY_HANDLE", "BSKY_PASSWORD"),
+}
+_CREDENTIAL_KEYS = frozenset(key for keys in CREDENTIAL_FIELDS.values() for key in keys)
+
+
+def _write_credentials(updates: dict[str, str], removals: set[str]) -> None:
+    """Atomically update only credential keys in the private .env file."""
+    env_path = Path(DATA_DIR) / ".env"
+    with _CREDENTIALS_LOCK:
+        lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+        changed = set(updates) | removals
+        kept = []
+        for line in lines:
+            stripped = line.strip()
+            key = stripped.partition("=")[0].strip() if "=" in stripped else ""
+            if key not in changed:
+                kept.append(line)
+        kept.extend(f"{key}={value}" for key, value in updates.items())
+
+        env_path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(prefix=".env.", suffix=".tmp", dir=str(env_path.parent))
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as file:
+                file.write("\n".join(kept).rstrip() + ("\n" if kept else ""))
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(tmp_name, env_path)
+            if os.name != "nt":
+                os.chmod(env_path, 0o600)
+        except Exception:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            raise
+
+
+def _apply_credentials(updates: dict[str, str], removals: set[str]) -> None:
+    """Refresh already-imported source modules without exposing saved values."""
+    import config as current_config
+
+    values = {key: "" for key in removals}
+    values.update(updates)
+    source_modules = (
+        "sources.bsky",
+        "sources.danbooru",
+        "sources.deviantart",
+        "sources.gelbooru",
+        "sources.pixiv",
+        "sources.tumblr",
+    )
+    for key, value in values.items():
+        if value:
+            os.environ[key] = value
+        else:
+            os.environ.pop(key, None)
+        setattr(current_config, key, value)
+        for module_name in source_modules:
+            module = sys.modules.get(module_name)
+            if module is not None and hasattr(module, key):
+                setattr(module, key, value)
+
+    # Authentication sessions must not survive a credential change.
+    bsky = sys.modules.get("sources.bsky")
+    if bsky is not None:
+        bsky._BSKY_TOKEN = None
+        bsky._BSKY_TOKEN_EXPIRES = 0
+    deviantart = sys.modules.get("sources.deviantart")
+    if deviantart is not None:
+        deviantart._token_cache = {"token": None, "expires_at": 0}
+    pixiv = sys.modules.get("sources.pixiv")
+    if pixiv is not None:
+        pixiv._api = None
+        pixiv._auth_at = 0
+
+
+def _credential_status_payload() -> dict:
+    """Return configuration state only; credential values never leave Python."""
+    import config as current_config
+
+    return {
+        "groups": [
+            {
+                "source": source,
+                "fields": [
+                    {"key": key, "configured": bool(getattr(current_config, key, ""))}
+                    for key in keys
+                ],
+            }
+            for source, keys in CREDENTIAL_FIELDS.items()
+        ]
+    }
 
 
 def _split_tags(tags_str: str) -> list[str]:
@@ -198,6 +303,15 @@ async def index():
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
+@app.get("/ui/i18n.js", response_class=FileResponse)
+async def i18n_script():
+    """Serve the shared browser/desktop/mobile translation runtime."""
+    return FileResponse(
+        Path(RESOURCE_DIR) / "templates" / "i18n.js",
+        media_type="application/javascript",
+    )
+
+
 @app.get("/api/sources")
 async def list_sources():
     """Lista fontes ativas e explica quais ainda precisam de configuração."""
@@ -225,6 +339,49 @@ async def list_sources():
             ),
         })
     return {"sources": active, "unavailable_sources": unavailable}
+
+
+@app.get("/api/settings/credentials")
+async def credential_settings():
+    """List editable credential names and whether each one is configured."""
+    return _credential_status_payload()
+
+
+@app.post("/api/settings/credentials")
+async def save_credential_settings(body: dict):
+    """Save source credentials locally without ever returning their values."""
+    raw_values = body.get("values") or {}
+    raw_removals = body.get("clear") or []
+    if not isinstance(raw_values, dict) or not isinstance(raw_removals, list):
+        return JSONResponse({"error": "Formato de credenciais invalido"}, status_code=400)
+    if any(not isinstance(key, str) for key in raw_values) or any(
+        not isinstance(key, str) for key in raw_removals
+    ):
+        return JSONResponse({"error": "Campo de credencial invalido"}, status_code=400)
+
+    unknown = (set(raw_values) | set(raw_removals)) - _CREDENTIAL_KEYS
+    if unknown:
+        return JSONResponse({"error": "Campo de credencial desconhecido"}, status_code=400)
+
+    updates: dict[str, str] = {}
+    for key, raw_value in raw_values.items():
+        if not isinstance(raw_value, str):
+            return JSONResponse({"error": f"Valor invalido para {key}"}, status_code=400)
+        value = raw_value.strip()
+        if not value:
+            continue
+        if len(value) > 4096 or "\n" in value or "\r" in value or "\0" in value:
+            return JSONResponse({"error": f"Valor invalido para {key}"}, status_code=400)
+        updates[key] = value
+
+    removals = {str(key) for key in raw_removals}
+    updates = {key: value for key, value in updates.items() if key not in removals}
+    try:
+        _write_credentials(updates, removals)
+        _apply_credentials(updates, removals)
+    except OSError as exc:
+        return JSONResponse({"error": f"Nao foi possivel salvar: {exc}"}, status_code=500)
+    return {"ok": True, **_credential_status_payload()}
 
 
 @app.get("/api/categories")

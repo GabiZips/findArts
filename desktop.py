@@ -15,6 +15,8 @@ import threading
 import time
 from pathlib import Path
 
+from utils.platform import open_folder, user_data_dir, window_icon
+
 
 def _migrate_env_if_needed(data_dir: Path, executable_dir: Path) -> Path | None:
     """Copy a nearby legacy .env into the desktop data directory once."""
@@ -38,12 +40,7 @@ def _bootstrap_desktop_data() -> None:
     """Prepare writable desktop configuration before config.py is imported."""
     if not getattr(sys, "frozen", False):
         return
-    local_app_data = os.getenv("LOCALAPPDATA")
-    data_dir = (
-        Path(local_app_data) / "ArtFinder"
-        if local_app_data
-        else Path.home() / ".artfinder"
-    )
+    data_dir = user_data_dir()
     _migrate_env_if_needed(data_dir, Path(sys.executable).resolve().parent)
 
 
@@ -66,16 +63,10 @@ class DesktopApi:
     """Small set of safe native actions callable by the web interface."""
 
     def open_downloads_folder(self) -> bool:
-        folder = Path(DOWNLOAD_DIR)
-        folder.mkdir(parents=True, exist_ok=True)
-        os.startfile(folder)  # type: ignore[attr-defined]
-        return True
+        return open_folder(DOWNLOAD_DIR)
 
     def open_data_folder(self) -> bool:
-        folder = Path(DATA_DIR)
-        folder.mkdir(parents=True, exist_ok=True)
-        os.startfile(folder)  # type: ignore[attr-defined]
-        return True
+        return open_folder(DATA_DIR)
 
 
 def _create_server() -> tuple[uvicorn.Server, socket.socket, str]:
@@ -149,7 +140,7 @@ def main() -> int:
             debug=os.getenv("ARTFINDER_DEBUG", "").strip() == "1",
             private_mode=False,
             storage_path=str(Path(DATA_DIR) / "webview"),
-            icon=str(Path(RESOURCE_DIR) / "assets" / "artfinder.ico"),
+            icon=str(window_icon(RESOURCE_DIR)),
         )
     except Exception as exc:
         exit_code = 1

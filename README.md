@@ -1,8 +1,12 @@
 # ArtFinder
 
 [![Build Windows](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml)
+[![Build Linux](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml)
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-desktop-0078D4?logo=windows&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-AppImage-FCC624?logo=linux&logoColor=black)
+
+[Português](README.md) · [English](README.en.md)
 
 Aplicativo local para pesquisar, comparar, organizar e baixar artes e fan arts
 de várias fontes em uma só interface.
@@ -24,6 +28,7 @@ de várias fontes em uma só interface.
 - Download com limite de tamanho, validação do arquivo e deduplicação por hash
   perceptual.
 - Preservação do autor e do link original quando a fonte fornece esses dados.
+- Interface em português e inglês, com idioma salvo no dispositivo.
 
 ## Baixar para Windows
 
@@ -77,10 +82,43 @@ O workflow `.github/workflows/build-windows.yml` também executa os testes e
 gera o executável no GitHub Actions. Ele pode ser iniciado manualmente ou ao
 enviar uma tag como `v0.1.0`.
 
-## Acesso pelo celular
+## Linux
+
+O workflow [Build Linux](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml)
+gera o artefato `ArtFinder-Linux-x86_64`, contendo um AppImage para computadores
+Linux de 64 bits.
+
+Depois de extrair o ZIP:
+
+```bash
+chmod +x ArtFinder-Linux-x86_64.AppImage
+./ArtFinder-Linux-x86_64.AppImage
+```
+
+Os dados pessoais ficam em `~/.local/share/artfinder/`, ou no diretório
+definido por `$XDG_DATA_HOME/artfinder/`. O executável Windows não funciona no
+Linux; cada sistema recebe seu próprio build.
+
+## Android e acesso pelo celular
 
 O arquivo `.exe` funciona somente no Windows e não pode ser instalado
 diretamente no Android ou iPhone.
+
+Existe uma fundação experimental para gerar um APK Android nativo usando o
+WebView do sistema e o mesmo backend Python local. O workflow
+[Build Android](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml)
+é manual e gera `ArtFinder-Android-experimental`.
+
+> [!CAUTION]
+> O APK ainda precisa ser validado em aparelho físico. Nesta primeira etapa,
+> downloads e configurações ficam no armazenamento privado do aplicativo; a
+> exportação para a Galeria/Downloads pública do Android ainda será implementada.
+
+As credenciais das fontes podem ser preenchidas dentro do próprio aplicativo
+em **Stats > Fontes e credenciais**, sem incluir senhas no APK.
+
+O iPhone não está incluído neste build. iOS exige um projeto e assinatura
+próprios, além de um computador macOS com Xcode para gerar o `.ipa`.
 
 Durante o desenvolvimento, o celular pode acessar o ArtFinder pelo navegador
 quando estiver na mesma rede Wi-Fi do computador:
@@ -102,6 +140,10 @@ Windows solicitar, permita o Python apenas em redes privadas.
 Copie `.env.example` para `.env` e preencha somente as fontes que pretende
 usar. No executável, coloque esse arquivo em
 `%LOCALAPPDATA%\ArtFinder\.env`.
+
+Também é possível configurar esses campos pela interface em
+**Stats > Fontes e credenciais**. O aplicativo informa apenas se um valor está
+configurado e nunca exibe uma senha ou token salvo de volta na tela.
 
 | Fonte | Configuração |
 |---|---|
@@ -140,8 +182,11 @@ são overrides e têm prioridade sobre sugestões automáticas.
 desktop.py              janela nativa e servidor privado
 app.py                  API FastAPI e interface local
 config.py               configurações e diretórios de dados
-artfinder.spec          empacotamento do Windows
+artfinder.spec          empacotamento desktop Windows/Linux
+mobile.py / main.py     servidor local usado pelo APK Android
+buildozer.spec          empacotamento Android experimental
 templates/index.html    interface
+templates/i18n.js       tradução português/inglês
 sources/                conectores das plataformas
 filters/                filtros de arquivo e cor
 utils/database.py       banco SQLite
@@ -149,6 +194,9 @@ utils/downloader.py     download e deduplicação
 utils/tagmap.py         sugestões de tags por fonte
 user_categories.json    categorias iniciais
 ```
+
+As decisões e limitações da arquitetura multiplataforma estão registradas em
+[`docs/adr/0001-multiplatform-packaging.md`](docs/adr/0001-multiplatform-packaging.md).
 
 ## Aviso legal e de conteúdo
 

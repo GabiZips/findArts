@@ -1,15 +1,28 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import desktop
 from desktop import _migrate_env_if_needed
+from utils.platform import user_data_dir, window_icon
 
 
 class DesktopBootstrapTests(unittest.TestCase):
     def test_windows_window_icon_is_an_ico_resource(self):
-        source = Path(desktop.__file__).read_text(encoding="utf-8")
-        self.assertIn('"assets" / "artfinder.ico"', source)
+        with patch("utils.platform.sys.platform", "win32"):
+            self.assertEqual(window_icon("root").suffix, ".ico")
+
+    def test_linux_window_icon_is_a_png_resource(self):
+        with patch("utils.platform.sys.platform", "linux"):
+            self.assertEqual(window_icon("root").suffix, ".png")
+
+    def test_linux_uses_xdg_data_home(self):
+        with (
+            patch("utils.platform.sys.platform", "linux"),
+            patch.dict("utils.platform.os.environ", {"XDG_DATA_HOME": "/tmp/xdg"}, clear=True),
+        ):
+            self.assertEqual(user_data_dir(), Path("/tmp/xdg/artfinder"))
 
     def test_migrates_project_env_on_first_desktop_launch(self):
         with tempfile.TemporaryDirectory() as temp:

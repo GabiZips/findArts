@@ -6,6 +6,8 @@ import os
 import sys
 from pathlib import Path
 
+from utils.platform import user_data_dir
+
 # --- Recursos empacotados e dados graváveis ---
 # Em desenvolvimento tudo continua dentro da pasta do projeto. No executável,
 # os recursos ficam no bundle do PyInstaller e dados pessoais/configurações vão
@@ -14,12 +16,7 @@ IS_FROZEN = bool(getattr(sys, "frozen", False))
 RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 
 if IS_FROZEN:
-    _local_app_data = os.getenv("LOCALAPPDATA")
-    _default_data_dir = (
-        Path(_local_app_data) / "ArtFinder"
-        if _local_app_data
-        else Path.home() / ".artfinder"
-    )
+    _default_data_dir = user_data_dir()
 else:
     _default_data_dir = RESOURCE_DIR
 

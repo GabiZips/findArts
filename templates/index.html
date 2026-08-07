@@ -44,6 +44,7 @@
   .stat-badge b{color:var(--text);font-weight:600}
   .btn-hdr{padding:5px 11px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text);transition:all .15s;white-space:nowrap}
   .btn-hdr:hover{border-color:var(--accent);background:var(--surface3);transform:translateY(-1px)}
+  .language-select{padding:4px 7px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font:inherit;font-size:11px;cursor:pointer}
   .btn-hdr.danger{border-color:#ef444455;color:#fca5a5}
   .btn-hdr.danger:hover{border-color:var(--red);background:rgba(239,68,68,.1)}
   @media (max-width:760px){
@@ -326,7 +327,7 @@
   /* Cat Manager Modal */
   .cm-modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:500;align-items:center;justify-content:center}
   .cm-modal-back.open{display:flex}
-  .cm-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:640px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
+  .cm-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(640px,calc(100vw - 24px));max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
   .cm-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
   .cm-header h2{font-size:15px;font-weight:700}
   .cm-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;transition:color .1s}
@@ -356,6 +357,13 @@
   .cm-form-hint{font-size:10px;color:var(--muted)}
   .cm-save-btn{padding:8px;border:none;border-radius:7px;background:linear-gradient(135deg,var(--accent),#a855f7);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
   .cm-save-btn:hover{transform:translateY(-1px)}
+  .cred-group{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+  .cred-group-title{font-size:12px;font-weight:650;display:flex;justify-content:space-between;gap:8px}
+  .cred-field{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(180px,1.4fr) auto;gap:8px;align-items:center}
+  .cred-field code{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+  .cred-field input[type="password"]{min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:7px 9px;font-family:inherit;outline:none}
+  .cred-clear{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);white-space:nowrap}
+  @media(max-width:620px){.cred-field{grid-template-columns:1fr}.cred-clear{margin-bottom:4px}}
   /* Fav art badge */
   .fav-art-badge{position:absolute;top:4px;right:4px;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,0.8);z-index:5;pointer-events:none;}
 
@@ -439,6 +447,10 @@
     <button class="tab" role="tab" aria-selected="false" onclick="switchTab('stats',this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="vertical-align:-1px;margin-right:5px" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Stats</button>
   </div>
   <div class="hdr-right">
+    <select id="languageSelect" class="language-select" onchange="setLanguage(this.value)" aria-label="Idioma / Language" data-i18n-skip>
+      <option value="pt-BR">Português</option>
+      <option value="en">English</option>
+    </select>
     <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--muted);margin-right:8px;" title="Ativa/Desativa o efeito de blur global em imagens NSFW"><input type="checkbox" id="globalBlurToggle" checked onchange="document.body.classList.toggle('no-nsfw-blur', !this.checked)" style="accent-color:var(--accent);cursor:pointer;margin:0"> Blur +18</label>
     <div class="stat-badge">Banco: <b id="totalDb">...</b> imgs · <b id="diskMb">...</b> MB</div>
   </div>
@@ -733,6 +745,13 @@
         </div>
         <div style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
           <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;margin-bottom:2px">Fontes e credenciais</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.45">Ative Pixiv, Tumblr, Bluesky, DeviantArt e outras fontes sem editar o arquivo .env.</div>
+          </div>
+          <button class="btn-hdr" onclick="openCredentialSettings()">Configurar fontes</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+          <div style="flex:1">
             <div style="font-size:12px;font-weight:600;margin-bottom:2px">Pastas do aplicativo</div>
             <div style="font-size:11px;color:var(--muted);line-height:1.45">Abra as imagens baixadas ou a pasta onde ficam o .env, as categorias e o banco.</div>
           </div>
@@ -794,6 +813,26 @@
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn-sm" onclick="closeConfirm()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">Cancelar</button>
       <button class="btn-sm" id="btnConfirmAction" style="background:var(--red);color:#fff">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SOURCE CREDENTIALS MODAL -->
+<div class="cm-modal-back" id="credentialModal">
+  <div class="cm-modal" style="width:min(720px,calc(100vw - 24px))">
+    <div class="cm-header">
+      <h2>Fontes e credenciais</h2>
+      <button class="cm-close" onclick="closeCredentialSettings()">✕</button>
+    </div>
+    <div class="cm-body">
+      <div class="cm-form-hint" style="font-size:11px;line-height:1.55">
+        Os valores ficam somente neste dispositivo. Por segurança, credenciais salvas nunca são exibidas de volta; deixe um campo vazio para manter o valor atual.
+      </div>
+      <div id="credentialGroups" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;align-items:center">
+        <button class="btn-hdr" onclick="closeCredentialSettings()">Cancelar</button>
+        <button class="cm-save-btn" id="saveCredentialsButton" onclick="saveCredentialSettings()">Salvar credenciais</button>
+      </div>
     </div>
   </div>
 </div>
@@ -878,6 +917,7 @@ rouge_the_bat -shadow_the_hedgehog"></textarea>
 
 <div id="toast"></div>
 
+<script src="/ui/i18n.js"></script>
 <script>
 // ══ KEYWORD MAPS ═══════════════════════════════════════════════════
 
@@ -925,6 +965,18 @@ let galDebounceTimer = null;
 
 // ══ INIT ════════════════════════════════════════════════════════════
 
+async function loadSources(){
+  try{
+    const sourceData=await(await fetch("/api/sources")).json();
+    const enabled=(sourceData.sources||[]).map(s=>`<label class="check-item"><input type="checkbox" name="src" value="${esc(s)}" checked><span>${esc(s)}</span></label>`);
+    const disabled=(sourceData.unavailable_sources||[]).map(s=>`<label class="check-item" title="${esc(s.reason||"Configuração necessária")}" style="opacity:.52"><input type="checkbox" disabled><span>${esc(s.name)} · ${t("configurar")}</span></label>`);
+    document.getElementById("srcGroup").innerHTML=[...enabled,...disabled].join("");
+    applyTranslations(document.getElementById("srcGroup"));
+  }catch(e){
+    document.getElementById("srcGroup").innerHTML=`<span style="color:var(--muted);font-size:11px">${t("Erro")}</span>`;
+  }
+}
+
 async function init(){
   // Restaurar configurações salvas
   const bl=localStorage.getItem("blacklist");
@@ -942,12 +994,7 @@ async function init(){
   }
 
   // Fontes
-  try{
-    const sourceData=await(await fetch("/api/sources")).json();
-    const enabled=(sourceData.sources||[]).map(s=>`<label class="check-item"><input type="checkbox" name="src" value="${s}" checked><span>${s}</span></label>`);
-    const disabled=(sourceData.unavailable_sources||[]).map(s=>`<label class="check-item" title="${esc(s.reason||"Configuração necessária")}" style="opacity:.52"><input type="checkbox" disabled><span>${esc(s.name)} · configurar</span></label>`);
-    document.getElementById("srcGroup").innerHTML=[...enabled,...disabled].join("");
-  }catch(e){document.getElementById("srcGroup").innerHTML=`<span style="color:var(--muted);font-size:11px">Erro</span>`}
+  await loadSources();
 
   // Categorias dinâmicas
   await loadCategories();
@@ -1117,6 +1164,64 @@ function updatePagesHint(){
   else if(pages >= 10) msg += " — pode demorar";
   hint.textContent = msg;
   hint.style.color = pages >= 30 ? "var(--accent2)" : pages >= 10 ? "#f59e0b" : "var(--muted)";
+}
+
+async function openCredentialSettings(){
+  const modal=document.getElementById("credentialModal");
+  const container=document.getElementById("credentialGroups");
+  modal.classList.add("open");
+  container.innerHTML=`<div style="color:var(--muted);font-size:12px">${t("Carregando...")}</div>`;
+  try{
+    const response=await fetch("/api/settings/credentials");
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.error||"Erro");
+    container.innerHTML=(data.groups||[]).map(group=>{
+      const configured=(group.fields||[]).filter(field=>field.configured).length;
+      const fields=(group.fields||[]).map(field=>`
+        <div class="cred-field">
+          <code>${esc(field.key)}</code>
+          <input type="password" data-credential-key="${esc(field.key)}" autocomplete="new-password"
+            placeholder="${field.configured?t("Configurado — deixe vazio para manter"):t("Digite o valor")}">
+          <label class="cred-clear" style="${field.configured?"":"visibility:hidden"}">
+            <input type="checkbox" data-credential-clear="${esc(field.key)}"> ${t("Remover")}
+          </label>
+        </div>`).join("");
+      return `<section class="cred-group">
+        <div class="cred-group-title"><span>${esc(group.source)}</span><span style="color:var(--muted);font-size:10px">${configured}/${group.fields.length} ${t("configuradas")}</span></div>
+        ${fields}
+      </section>`;
+    }).join("");
+    applyTranslations(container);
+  }catch(error){
+    container.innerHTML=`<div style="color:var(--red);font-size:12px">${t("Erro")}: ${esc(error.message)}</div>`;
+  }
+}
+
+function closeCredentialSettings(){document.getElementById("credentialModal").classList.remove("open")}
+
+async function saveCredentialSettings(){
+  const button=document.getElementById("saveCredentialsButton");
+  const values={};
+  const clear=[];
+  document.querySelectorAll("[data-credential-key]").forEach(input=>{
+    if(input.value.trim()) values[input.dataset.credentialKey]=input.value.trim();
+  });
+  document.querySelectorAll("[data-credential-clear]:checked").forEach(input=>clear.push(input.dataset.credentialClear));
+  button.disabled=true;
+  try{
+    const response=await fetch("/api/settings/credentials",{
+      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({values,clear})
+    });
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.error||"Erro ao salvar credenciais");
+    await loadSources();
+    closeCredentialSettings();
+    toast(t("Credenciais salvas neste dispositivo."),"success");
+  }catch(error){
+    toast(`${t("Erro")}: ${error.message}`,"error");
+  }finally{
+    button.disabled=false;
+  }
 }
 
 function openCatManager(){document.getElementById("catManagerModal").classList.add("open");renderCmList();}

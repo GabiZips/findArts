@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ArtFinder
+Comment=Search, review and download artwork from multiple sources
+Exec=ArtFinder
+Icon=artfinder
+Categories=Graphics;Utility;
+Terminal=false
