@@ -11,9 +11,9 @@ source.exclude_dirs = .git,.github,.buildozer,venv,build,dist,tests,packaging
 
 # Native packages must match the recipes shipped by the selected
 # python-for-android release. Its aiohttp 3.8.3 recipe requires Python 3.11;
-# Python 3.14 cannot compile its generated C extensions. Do not use
-# uvicorn[standard] here (uvloop is not needed).
-requirements = python3==3.11.9,fastapi==0.118.3,uvicorn==0.38.0,pydantic==2.12.3,pydantic-core==2.41.4,starlette==0.48.0,annotated-types==0.7.0,typing-extensions==4.16.0,typing-inspection==0.4.2,anyio==4.14.2,idna==3.18,annotated-doc==0.0.4,sse-starlette==2.1.0,click==8.2.1,h11==0.16.0,requests==2.32.5,requests-oauthlib==2.0.0,aiohttp==3.8.3,aiofiles==25.1.0,pillow==11.3.0,colorthief==0.2.1,imagehash==4.3.2,colormath==3.0.0,beautifulsoup4==4.14.3,pixivpy3==3.7.5
+# Python 3.14 cannot compile its generated C extensions. hostpython3 must
+# exactly match python3. Do not use uvicorn[standard] here (uvloop is not needed).
+requirements = python3==3.11.9,hostpython3==3.11.9,fastapi==0.118.3,uvicorn==0.38.0,pydantic==2.12.3,pydantic-core==2.41.4,starlette==0.48.0,annotated-types==0.7.0,typing-extensions==4.16.0,typing-inspection==0.4.2,anyio==4.14.2,idna==3.18,annotated-doc==0.0.4,sse-starlette==2.1.0,click==8.2.1,h11==0.16.0,requests==2.32.5,requests-oauthlib==2.0.0,aiohttp==3.8.3,aiofiles==25.1.0,pillow==11.3.0,colorthief==0.2.1,imagehash==4.3.2,colormath==3.0.0,beautifulsoup4==4.14.3,pixivpy3==3.7.5
 
 icon.filename = assets/artfinder-icon.png
 orientation = all

@@ -25,6 +25,7 @@ class MobilePackagingTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("python3==3.11.9", spec)
+        self.assertIn("hostpython3==3.11.9", spec)
         self.assertIn("aiohttp==3.8.3", spec)
 
     def test_android_workflow_verifies_freetype_fallback(self):
