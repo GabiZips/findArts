@@ -17,3 +17,12 @@ class MobileBootstrapTests(unittest.TestCase):
                 data_dir = prepare_mobile_environment(temp)
                 self.assertEqual(data_dir, Path(temp).resolve() / "artfinder")
                 self.assertEqual(os.environ["ARTFINDER_MOBILE"], "1")
+
+
+class MobilePackagingTests(unittest.TestCase):
+    def test_android_python_matches_pinned_aiohttp_recipe(self):
+        spec = (Path(__file__).parents[1] / "buildozer.spec").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("python3==3.11.9", spec)
+        self.assertIn("aiohttp==3.8.3", spec)
