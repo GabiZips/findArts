@@ -26,3 +26,13 @@ class MobilePackagingTests(unittest.TestCase):
         )
         self.assertIn("python3==3.11.9", spec)
         self.assertIn("aiohttp==3.8.3", spec)
+
+    def test_android_workflow_verifies_freetype_fallback(self):
+        workflow = (
+            Path(__file__).parents[1] / ".github" / "workflows" / "build-android.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("sourceforge.net/projects/freetype", workflow)
+        self.assertIn(
+            "174d9e53402e1bf9ec7277e22ec199ba3e55a6be2c0740cb18c0ee9850fc8c34",
+            workflow,
+        )

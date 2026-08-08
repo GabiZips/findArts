@@ -28,13 +28,29 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Restore Android build cache
-        uses: actions/cache@v4
+        id: android-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             .buildozer
             ~/.buildozer
-          key: android-buildozer-${{ hashFiles('buildozer.spec', 'requirements.txt') }}
-          restore-keys: android-buildozer-
+          key: android-buildozer-${{ hashFiles('buildozer.spec', 'requirements.txt') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            android-buildozer-${{ hashFiles('buildozer.spec', 'requirements.txt') }}-
+            android-buildozer-
+
+      - name: Prime FreeType source cache
+        shell: bash
+        run: |
+          freetype_dir=".buildozer/android/platform/build-arm64-v8a/packages/freetype"
+          freetype_archive="$freetype_dir/freetype-2.14.1.tar.gz"
+          mkdir -p "$freetype_dir"
+          curl --fail --location --retry 5 --retry-all-errors --connect-timeout 30 \
+            "https://sourceforge.net/projects/freetype/files/freetype2/2.14.1/freetype-2.14.1.tar.gz/download" \
+            --output "$freetype_archive"
+          echo "174d9e53402e1bf9ec7277e22ec199ba3e55a6be2c0740cb18c0ee9850fc8c34  $freetype_archive" \
+            | sha256sum --check --strict
+          touch "$freetype_dir/.mark-freetype-2.14.1.tar.gz"
 
       - name: Build debug APK
         run: |
@@ -52,6 +68,15 @@ jobs:
               export PATH="/home/user/.cargo/bin:$PATH" &&
               exec /usr/local/bin/entrypoint.sh android debug
             '
+
+      - name: Save Android build cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .buildozer
+            ~/.buildozer
+          key: android-buildozer-${{ hashFiles('buildozer.spec', 'requirements.txt') }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
