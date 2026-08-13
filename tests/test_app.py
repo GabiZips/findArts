@@ -69,6 +69,33 @@ class AppRouteTests(unittest.TestCase):
                     {"categories": {}},
                 )
 
+    def test_obsolete_bundled_categories_are_migrated_but_user_edits_are_not(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            defaults = root / "defaults.json"
+            defaults.write_text('{"categories": {}}\n', encoding="utf-8")
+            user_file = root / "user_categories.json"
+            leaked = b'{"categories":{"legacy":{}}}'
+            user_file.write_bytes(leaked)
+            leaked_hash = __import__("hashlib").sha256(leaked).hexdigest()
+            with (
+                patch.object(app, "DEFAULT_USER_CATS_FILE", defaults),
+                patch.object(app, "USER_CATS_FILE", user_file),
+                patch.object(app, "_LEGACY_BUNDLED_CATEGORY_HASHES", {leaked_hash}),
+                patch.object(app.sys, "frozen", True, create=True),
+            ):
+                self.assertEqual(app._load_user_cats(), {})
+                self.assertTrue((root / "user_categories.legacy-backup.json").exists())
+
+            edited = b'{"categories":{"mine":{"tags":"mine"}}}'
+            user_file.write_bytes(edited)
+            with (
+                patch.object(app, "USER_CATS_FILE", user_file),
+                patch.object(app, "_LEGACY_BUNDLED_CATEGORY_HASHES", {leaked_hash}),
+                patch.object(app.sys, "frozen", True, create=True),
+            ):
+                self.assertIn("mine", app._load_user_cats())
+
     def test_gelbooru_is_not_enabled_without_credentials(self):
         with (
             patch.object(config, "GELBOORU_USER_ID", ""),

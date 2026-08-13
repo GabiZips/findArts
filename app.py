@@ -8,6 +8,7 @@ Uso:
 """
 
 import asyncio
+import hashlib
 import json
 import os
 import shutil
@@ -50,6 +51,13 @@ USER_CATS_FILE = Path(USER_CATEGORIES_PATH)
 DEFAULT_USER_CATS_FILE = Path(RESOURCE_DIR) / "defaults" / "categories.json"
 _USER_CATS_LOCK = threading.RLock()
 _CREDENTIALS_LOCK = threading.RLock()
+
+# The first public Windows artifact accidentally bundled this exact personal
+# category file. Only this byte-for-byte file is migrated; user-created or
+# edited categories are never touched.
+_LEGACY_BUNDLED_CATEGORY_HASHES = {
+    "09dbf971205e5a66094e97ebb478019c8ae9b30c2411610a72c9b3049d47e3c5",
+}
 
 CREDENTIAL_FIELDS = {
     "Danbooru": ("DANBOORU_LOGIN", "DANBOORU_API_KEY"),
@@ -166,10 +174,31 @@ def _split_tags(tags_str: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+def _migrate_legacy_bundled_categories() -> bool:
+    """Quarantine the category list leaked by the obsolete Windows build."""
+    if not getattr(sys, "frozen", False) or not USER_CATS_FILE.is_file():
+        return False
+    try:
+        digest = hashlib.sha256(USER_CATS_FILE.read_bytes()).hexdigest()
+        if digest not in _LEGACY_BUNDLED_CATEGORY_HASHES:
+            return False
+        backup = USER_CATS_FILE.with_name("user_categories.legacy-backup.json")
+        if backup.exists():
+            USER_CATS_FILE.unlink()
+        else:
+            USER_CATS_FILE.replace(backup)
+        print("  [Migracao] Categorias do build antigo foram removidas da lista ativa.")
+        return True
+    except OSError as exc:
+        print(f"  [Migracao] Nao foi possivel limpar categorias antigas: {exc}")
+        return False
+
+
 def _load_user_cats() -> dict:
     """Carrega categorias do usuario de user_categories.json."""
     with _USER_CATS_LOCK:
         try:
+            _migrate_legacy_bundled_categories()
             if not USER_CATS_FILE.exists() and DEFAULT_USER_CATS_FILE.exists():
                 USER_CATS_FILE.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(DEFAULT_USER_CATS_FILE, USER_CATS_FILE)
