@@ -32,6 +32,8 @@ choose the latest successful run and download `ArtFinder-Windows` from
 
 Personal data is stored separately under `%LOCALAPPDATA%\ArtFinder\`, so
 replacing the executable does not delete settings, the database or images.
+A fresh installation starts with no characters or tags. User-created
+categories remain local to that device and are never bundled into the executable.
 
 ## Linux
 
@@ -95,8 +97,8 @@ password or token back to the interface.
 
 ## Source-specific tags
 
-Categories are stored in `user_categories.json`. The tag editor accepts
-source-specific queries:
+Categories start empty and are stored in a private `user_categories.json` on
+each device. The tag editor accepts source-specific queries:
 
 ```text
 vex_(league_of_legends);

@@ -9,6 +9,14 @@ from utils.platform import user_data_dir, window_icon
 
 
 class DesktopBootstrapTests(unittest.TestCase):
+    def test_packaging_uses_empty_defaults_not_personal_categories(self):
+        project = Path(__file__).resolve().parents[1]
+        spec = (project / "artfinder.spec").read_text(encoding="utf-8")
+        defaults = (project / "defaults" / "categories.json").read_text(encoding="utf-8")
+        self.assertIn('("defaults/categories.json", "defaults")', spec)
+        self.assertNotIn('("user_categories.json", ".")', spec)
+        self.assertEqual(__import__("json").loads(defaults), {"categories": {}})
+
     def test_windows_window_icon_is_an_ico_resource(self):
         with patch("utils.platform.sys.platform", "win32"):
             self.assertEqual(window_icon("root").suffix, ".ico")

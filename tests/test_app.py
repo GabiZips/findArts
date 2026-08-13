@@ -1,4 +1,5 @@
 import asyncio
+import json
 import socket
 import tempfile
 import unittest
@@ -44,6 +45,53 @@ class AppRouteTests(unittest.TestCase):
 
         script = asyncio.run(app.i18n_script())
         self.assertEqual(Path(script.path).name, "i18n.js")
+
+    def test_interface_has_non_streaming_search_fallback(self):
+        response = asyncio.run(app.index())
+        html = response.body.decode("utf-8")
+        self.assertIn('contentType.includes("text/event-stream")', html)
+        self.assertIn('fetch("/api/search"', html)
+        self.assertIn("Adicionar personagem ou tag", html)
+
+    def test_fresh_install_starts_without_categories(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            defaults = root / "defaults.json"
+            defaults.write_text('{"categories": {}}\n', encoding="utf-8")
+            user_file = root / "data" / "user_categories.json"
+            with (
+                patch.object(app, "DEFAULT_USER_CATS_FILE", defaults),
+                patch.object(app, "USER_CATS_FILE", user_file),
+            ):
+                self.assertEqual(app._load_user_cats(), {})
+                self.assertEqual(
+                    json.loads(user_file.read_text(encoding="utf-8")),
+                    {"categories": {}},
+                )
+
+    def test_gelbooru_is_not_enabled_without_credentials(self):
+        with (
+            patch.object(config, "GELBOORU_USER_ID", ""),
+            patch.object(config, "GELBOORU_API_KEY", ""),
+        ):
+            self.assertNotIn("Gelbooru", app._get_sources())
+
+    def test_sync_search_reports_source_failures(self):
+        def broken_source(*args, **kwargs):
+            raise RuntimeError("network unavailable")
+
+        errors = []
+        posts = app._run_search_sync(
+            [],
+            ["Broken"],
+            1,
+            [{"label": "test", "tags": "test_tag"}],
+            {"Broken": broken_source},
+            errors,
+        )
+        self.assertEqual(posts, [])
+        self.assertEqual(errors[0]["source"], "Broken")
+        self.assertIn("network unavailable", errors[0]["error"])
 
     def test_credential_status_never_returns_secret_values(self):
         with patch.object(config, "PIXIV_REFRESH_TOKEN", "super-secret-token"):

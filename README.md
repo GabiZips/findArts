@@ -54,6 +54,8 @@ Os dados do aplicativo ficam separados do executável:
 ```
 
 Atualizar ou substituir o `.exe` não apaga configurações, banco ou imagens.
+Uma instalação nova começa sem personagens ou tags. As categorias criadas pelo
+usuário ficam somente nessa pasta local e não são incluídas no executável.
 
 ## Executar pelo código
 
@@ -163,8 +165,8 @@ temporariamente essa fonte.
 
 ## Categorias e tags por fonte
 
-As categorias ficam em `user_categories.json`. Na tela de edição, o campo de
-tags aceita consultas específicas:
+As categorias começam vazias e ficam no `user_categories.json` privado de cada
+dispositivo. Na tela de edição, o campo de tags aceita consultas específicas:
 
 ```text
 vex_(league_of_legends);
@@ -192,7 +194,8 @@ filters/                filtros de arquivo e cor
 utils/database.py       banco SQLite
 utils/downloader.py     download e deduplicação
 utils/tagmap.py         sugestões de tags por fonte
-user_categories.json    categorias iniciais
+defaults/categories.json configuração inicial vazia
+user_categories.json    categorias locais do usuário (ignorado pelo Git)
 ```
 
 As decisões e limitações da arquitetura multiplataforma estão registradas em

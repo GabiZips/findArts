@@ -47,7 +47,7 @@ from utils.downloader import download_batch
 from utils.normalize import normalize_posts
 
 USER_CATS_FILE = Path(USER_CATEGORIES_PATH)
-DEFAULT_USER_CATS_FILE = Path(RESOURCE_DIR) / "user_categories.json"
+DEFAULT_USER_CATS_FILE = Path(RESOURCE_DIR) / "defaults" / "categories.json"
 _USER_CATS_LOCK = threading.RLock()
 _CREDENTIALS_LOCK = threading.RLock()
 
@@ -257,7 +257,9 @@ def _get_sources() -> dict:
         pass
     try:
         from sources.gelbooru import fetch_posts
-        sources["Gelbooru"] = fetch_posts
+        from config import GELBOORU_USER_ID, GELBOORU_API_KEY
+        if GELBOORU_USER_ID and GELBOORU_API_KEY:
+            sources["Gelbooru"] = fetch_posts
     except Exception:
         pass
     try:
@@ -319,6 +321,7 @@ async def list_sources():
 
     active = list(_get_sources().keys())
     requirements = {
+        "Gelbooru": ("GELBOORU_USER_ID", "GELBOORU_API_KEY"),
         "Pixiv": ("PIXIV_REFRESH_TOKEN",),
         "Tumblr": ("TUMBLR_API_KEY",),
         "DeviantArt": ("DEVIANTART_CLIENT_ID", "DEVIANTART_CLIENT_SECRET"),
@@ -982,7 +985,7 @@ async def clear_database():
             "message": f"Banco limpo: {removed} registro(s) removido(s)."}
 
 
-def _run_search_sync(categories, source_names, pages, custom_cats, all_sources):
+def _run_search_sync(categories, source_names, pages, custom_cats, all_sources, errors=None):
     """Executa busca sincrona – chamada em thread do executor."""
     all_posts: list[dict] = []
     seen_ids: set[str] = set()
@@ -1016,6 +1019,8 @@ def _run_search_sync(categories, source_names, pages, custom_cats, all_sources):
                 print(f"  [Busca] {sn} -> '{cat}': retornou {len(res)} artes")
             except Exception as e:
                 print(f"  [search] {sn}/{cat}: {e}")
+                if errors is not None:
+                    errors.append({"source": sn, "category": cat, "error": str(e)})
 
     for ccat in custom_cats:
         label = ccat.get("label","custom"); ctags = ccat.get("tags","")
@@ -1031,6 +1036,8 @@ def _run_search_sync(categories, source_names, pages, custom_cats, all_sources):
                 print(f"  [Busca] {sn} -> '{label}': retornou {len(res)} artes")
             except Exception as e:
                 print(f"  [search-custom] {sn}/{label}: {e}")
+                if errors is not None:
+                    errors.append({"source": sn, "category": label, "error": str(e)})
 
     all_posts.sort(key=lambda x: x.get("score") or 0, reverse=True)
     return all_posts
@@ -1056,8 +1063,12 @@ async def search(body: dict):
     if not source_names: source_names = list(all_sources.keys())
     else: source_names = [s for s in source_names if s in all_sources]
     loop = asyncio.get_running_loop()
-    posts = await loop.run_in_executor(None, lambda: _run_search_sync([], source_names, pages, resolved, all_sources))
-    return {"posts": posts, "total": len(posts)}
+    errors: list[dict] = []
+    posts = await loop.run_in_executor(
+        None,
+        lambda: _run_search_sync([], source_names, pages, resolved, all_sources, errors),
+    )
+    return {"posts": posts, "total": len(posts), "errors": errors}
 
 
 
@@ -1131,6 +1142,7 @@ async def search_stream(body: dict, request: Request):
     async def generator():
         loop = asyncio.get_running_loop()
         total_unique_count = 0
+        errors: list[dict] = []
         
         # Deduplicação na requisição inteira para não aparecer repetido na mesma tela
         request_seen: set[str] = set()
@@ -1156,6 +1168,7 @@ async def search_stream(body: dict, request: Request):
                 posts = normalize_posts(posts, src_name)
                 print(f"  [Busca] {src_name} -> '{cat}': retornou {len(posts)} artes")
             except Exception as e:
+                errors.append({"source": src_name, "category": cat, "error": str(e)})
                 yield {"event":"progress","data":json.dumps({"source":src_name,"cat":cat,"done":i+1,"total":len(combos),"error":str(e)})}
                 continue
 
@@ -1230,7 +1243,10 @@ async def search_stream(body: dict, request: Request):
             })}
             await asyncio.sleep(0)
 
-        yield {"event": "done", "data": json.dumps({"total_unique": total_unique_count})}
+        yield {"event": "done", "data": json.dumps({
+            "total_unique": total_unique_count,
+            "errors": errors,
+        })}
 
 
     return EventSourceResponse(generator())

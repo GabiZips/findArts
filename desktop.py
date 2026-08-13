@@ -7,6 +7,7 @@ port and displayed inside a native pywebview window.
 from __future__ import annotations
 
 import ctypes
+import datetime
 import os
 import shutil
 import socket
@@ -16,6 +17,25 @@ import time
 from pathlib import Path
 
 from utils.platform import open_folder, user_data_dir, window_icon
+
+
+_DESKTOP_LOG_STREAM = None
+
+
+def _enable_desktop_log(data_dir: Path) -> Path:
+    """Persist console diagnostics for windowed builds where stdout is hidden."""
+    global _DESKTOP_LOG_STREAM
+    data_dir.mkdir(parents=True, exist_ok=True)
+    log_path = data_dir / "artfinder.log"
+    if log_path.exists() and log_path.stat().st_size > 2 * 1024 * 1024:
+        old_path = data_dir / "artfinder.log.old"
+        old_path.unlink(missing_ok=True)
+        log_path.replace(old_path)
+    _DESKTOP_LOG_STREAM = log_path.open("a", encoding="utf-8", buffering=1)
+    sys.stdout = _DESKTOP_LOG_STREAM
+    sys.stderr = _DESKTOP_LOG_STREAM
+    print(f"\n[{datetime.datetime.now().isoformat(timespec='seconds')}] ArtFinder iniciado")
+    return log_path
 
 
 def _migrate_env_if_needed(data_dir: Path, executable_dir: Path) -> Path | None:
@@ -41,6 +61,7 @@ def _bootstrap_desktop_data() -> None:
     if not getattr(sys, "frozen", False):
         return
     data_dir = user_data_dir()
+    _enable_desktop_log(data_dir)
     _migrate_env_if_needed(data_dir, Path(sys.executable).resolve().parent)
 
 

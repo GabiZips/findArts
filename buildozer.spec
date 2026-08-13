@@ -6,7 +6,7 @@ version = 0.1.0
 
 source.dir = .
 source.include_exts = py,html,js,json,png,ico
-source.include_patterns = templates/*,sources/*,filters/*,utils/*,palettes/*,assets/*,user_categories.json
+source.include_patterns = templates/*,sources/*,filters/*,utils/*,palettes/*,assets/*,defaults/*
 source.exclude_dirs = .git,.github,.buildozer,venv,build,dist,tests,packaging
 
 # Native packages must match the recipes shipped by the selected

@@ -104,7 +104,7 @@ TARGET_ASPECT_RATIO = "all"
 # ----------------------------------------------------------------
 # CATEGORIAS E TAGS
 # ----------------------------------------------------------------
-CATEGORIES = ["shadow_solo", "rouge_solo", "shadow_rouge", "shadow_sonic"]
+CATEGORIES = []
 
 # ----------------------------------------------------------------
 # CREDENCIAIS DE API

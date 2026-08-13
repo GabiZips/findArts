@@ -1080,7 +1080,8 @@ function renderCatSidebar(){
   // ── Conteúdo ── (grupos recolhidos por padrão; lembra o que você abriu)
   const area=document.getElementById("catGroupsArea");
   if(area){
-    area.innerHTML=Object.entries(groups).map(([g,keys])=>`
+    const groupEntries=Object.entries(groups);
+    area.innerHTML=groupEntries.length?groupEntries.map(([g,keys])=>`
       <details class="cat-group-details" data-group="${g}" ${_groupOpen(g)?'open':''}>
         <summary class="cat-group-header">
           <span>${g} <span style="opacity:.5;font-weight:400">${keys.length}</span></span>
@@ -1088,7 +1089,7 @@ function renderCatSidebar(){
         </summary>
         <div class="check-group" data-group="${g}">${keys.map(k=>catCheckHtml(k,userCats[k])).join("")}</div>
       </details>
-    `).join("");
+    `).join(""):`<div style="font-size:11px;color:var(--muted);padding:8px 6px;line-height:1.45">Nenhuma categoria ainda.<br><button class="btn-hdr" style="margin-top:7px" onclick="openCatManager()">Adicionar personagem ou tag</button></div>`;
     area.querySelectorAll('details.cat-group-details > summary').forEach(s=>{
       s.addEventListener('click',()=>{ const d=s.parentElement; setTimeout(()=>_setGroupOpen(d.dataset.group, d.open),0); });
     });
@@ -1355,6 +1356,27 @@ async function toggleFavCat(key,el){
 }
 
 // ══ SEARCH (SSE) ════════════════════════════════════════════��═══════
+function finishSearchDisplay(errors=[]){
+  const uniqueErrors=[...new Map((errors||[]).map(item=>[
+    `${item.source||"Fonte"}|${item.category||""}|${item.error||"Erro desconhecido"}`,item
+  ])).values()];
+  document.getElementById("totalCount").textContent=allPosts.length;
+  if(allPosts.length){
+    filteredPosts=getFilteredPosts();
+    applyFilterAndSort();
+    toast(`${allPosts.length} resultado(s) encontrado(s).`,"info");
+    return;
+  }
+  const details=uniqueErrors.slice(0,4).map(item=>
+    `<div style="margin-top:5px"><b>${esc(item.source||"Fonte")}</b>: ${esc(item.error||"Falha na consulta")}</div>`
+  ).join("");
+  const message=uniqueErrors.length
+    ? `A pesquisa falhou nas fontes consultadas.${details}`
+    : `Nenhuma arte encontrada. Confira a tag do personagem, reduza os filtros ou tente outra fonte.`;
+  showEmpty(`<div class="state-icon">&#128270;</div><div class="state-text">${message}</div>`);
+  toast(uniqueErrors.length?"A pesquisa encontrou erros nas fontes.":"Nenhum resultado encontrado.",uniqueErrors.length?"error":"info");
+}
+
 async function doSearch(){
   const cats=[...document.querySelectorAll("input[name=cat]:checked")].map(e=>e.value);
   const srcs=[...document.querySelectorAll("input[name=src]:checked")].map(e=>e.value);
@@ -1389,11 +1411,30 @@ async function doSearch(){
   }catch(e){downloadedIds=new Set();favoriteUids=new Set()}
 
   const body={categories:cats,sources:srcs,pages,custom_categories:[], min_score: minScore};
+  let searchErrors=[];
   try{
     const resp=await fetch("/api/search-stream",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:searchAbortController.signal});
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const contentType=(resp.headers.get("content-type")||"").toLowerCase();
+    if(!contentType.includes("text/event-stream")){
+      const result=await resp.json();
+      allPosts=Array.isArray(result.posts)?result.posts:[];
+      setSearchProg(100,"Concluido");
+      finishSearchDisplay(result.errors||[]);
+      return;
+    }
+    if(!resp.body||typeof resp.body.getReader!=="function"){
+      const fallback=await fetch("/api/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:searchAbortController.signal});
+      if(!fallback.ok) throw new Error(`HTTP ${fallback.status}`);
+      const result=await fallback.json();
+      allPosts=Array.isArray(result.posts)?result.posts:[];
+      setSearchProg(100,"Concluido");
+      finishSearchDisplay(result.errors||[]);
+      return;
+    }
     const reader=resp.body.getReader();
     const decoder=new TextDecoder();
-    let buf="", event="", data="";
+    let buf="", event="", data="", finished=false;
     while(true){
       const {done,value}=await reader.read();
       if(done)break;
@@ -1408,6 +1449,7 @@ async function doSearch(){
           try{
             const d=JSON.parse(data);
             if(event==="progress"){
+              if(d.error) searchErrors.push({source:d.source,category:d.cat,error:d.error});
               const pct=d.total?Math.round((d.done/d.total)*100):0;
               setSearchProg(pct,`${d.source} / ${d.cat}${d.error?" ❌":""}`);
             }else if(event==="posts"){
@@ -1417,15 +1459,17 @@ async function doSearch(){
               filteredPosts=getFilteredPosts();
               document.getElementById("totalCount").textContent=filteredPosts.length; if(currentPage === 1) applyFilterAndSort();
             }else if(event==="done"){
+              finished=true;
               setSearchProg(100,"Concluído ✓");
-              applyFilterAndSort();
-              toast(`${allPosts.length} resultado(s) encontrado(s).`,"info");
+              searchErrors=searchErrors.concat(d.errors||[]);
+              finishSearchDisplay(searchErrors);
             }
           }catch(e){ toast("Erro JSON no EventSource: " + e.message, "error"); }
           event="";data="";
         }
       }
     }
+    if(!finished) finishSearchDisplay(searchErrors);
   }catch(e){
     if(e.name === "AbortError"){
       toast("Busca cancelada.","info");

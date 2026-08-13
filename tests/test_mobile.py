@@ -20,6 +20,11 @@ class MobileBootstrapTests(unittest.TestCase):
 
 
 class MobilePackagingTests(unittest.TestCase):
+    def test_android_packages_empty_category_defaults(self):
+        spec = (Path(__file__).parents[1] / "buildozer.spec").read_text(encoding="utf-8")
+        self.assertIn("defaults/*", spec)
+        self.assertNotIn("user_categories.json", spec)
+
     def test_android_python_matches_pinned_aiohttp_recipe(self):
         spec = (Path(__file__).parents[1] / "buildozer.spec").read_text(
             encoding="utf-8"

@@ -20,7 +20,7 @@ a = Analysis(
         ("palettes", "palettes"),
         ("assets/artfinder-icon.png", "assets"),
         ("assets/artfinder.ico", "assets"),
-        ("user_categories.json", "."),
+        ("defaults/categories.json", "defaults"),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],

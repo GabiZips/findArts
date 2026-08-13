@@ -46,6 +46,7 @@ dump.json
 *.bak
 
 # Dados/relatórios pessoais gerados localmente
+user_categories.json
 relatorio_tags.md
 _sync_test.txt
 /test_*.py
