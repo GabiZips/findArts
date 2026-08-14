@@ -101,11 +101,24 @@ class MobilePackagingTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("android.allow_backup = False", spec)
-        self.assertIn("android.minapi = 35", spec)
-        self.assertIn("android.ndk_api = 35", spec)
+        self.assertIn("p4a.port = 5000", spec)
+
+    def test_android_supports_api_29_through_36_without_broad_storage(self):
+        spec = (Path(__file__).parents[1] / "buildozer.spec").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("android.api = 36", spec)
+        self.assertIn("android.minapi = 29", spec)
+        self.assertIn("android.ndk_api = 29", spec)
         self.assertNotIn("READ_EXTERNAL_STORAGE", spec)
         self.assertNotIn("WRITE_EXTERNAL_STORAGE", spec)
-        self.assertIn("p4a.port = 5000", spec)
+        self.assertNotIn("MANAGE_EXTERNAL_STORAGE", spec)
+
+        workflow = (
+            Path(__file__).parents[1] / ".github" / "workflows" / "build-android.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn('android:minSdkVersion="29"', workflow)
+        self.assertIn('android:targetSdkVersion="36"', workflow)
 
     def test_android_workflow_verifies_freetype_fallback(self):
         workflow = (

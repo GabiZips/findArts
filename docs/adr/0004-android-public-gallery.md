@@ -7,14 +7,16 @@
 ## Context
 
 ArtFinder needs downloaded images to remain available in its internal Gallery
-and also appear in the Android photo gallery. The application only supports
-Android 15 and newer, so legacy external-storage permissions and paths are not
-required.
+and also appear in the Android photo gallery. `MediaStore.RELATIVE_PATH` and
+the pending-item lifecycle are available from Android 10 (API 29), allowing the
+application to support Android 10 through 16 without legacy external-storage
+permissions or raw public filesystem paths.
 
 ## Decision
 
-- Require Android API 35+ for both the manifest and native libraries while
-  continuing to target API 35. This covers Android 15 and 16.
+- Use API 29 for the manifest and native-library floor, and target API 36. This
+  covers Android 10 through Android 16 while opting into current platform
+  behavior.
 - Keep the app-private downloaded file as the canonical copy used by ArtFinder.
 - Publish a second copy to `Pictures/ArtFinder` with `MediaStore`,
   `RELATIVE_PATH` and the pending-item lifecycle.

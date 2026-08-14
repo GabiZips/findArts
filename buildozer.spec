@@ -2,7 +2,7 @@
 title = ArtFinder
 package.name = artfinder
 package.domain = io.github.gabizips
-version = 0.2.3
+version = 0.2.4
 
 source.dir = .
 source.include_exts = py,html,js,json,png,ico
@@ -21,12 +21,12 @@ fullscreen = 0
 
 # The app talks directly to artwork providers and runs its API on loopback.
 android.permissions = INTERNET
-android.api = 35
-# Public releases intentionally support Android 15 (API 35) and newer only.
-android.minapi = 35
+android.api = 36
+# MediaStore RELATIVE_PATH/IS_PENDING are available since Android 10 (API 29).
+android.minapi = 29
 # Keep the native build floor aligned with minSdk. python-for-android rejects a
 # mismatched distribution unless an unsafe compatibility override is supplied.
-android.ndk_api = 35
+android.ndk_api = 29
 android.ndk = 28c
 android.archs = arm64-v8a
 android.private_storage = True

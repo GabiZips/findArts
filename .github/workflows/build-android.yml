@@ -129,7 +129,8 @@ jobs:
           manifest="$(find .buildozer -path '*/src/main/AndroidManifest.xml' -print -quit)"
           test -n "$manifest"
           grep -q 'android:allowBackup="false"' "$manifest"
-          grep -q 'android:minSdkVersion="35"' "$manifest"
+          grep -q 'android:minSdkVersion="29"' "$manifest"
+          grep -q 'android:targetSdkVersion="36"' "$manifest"
           ! grep -Eq 'READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|MANAGE_EXTERNAL_STORAGE' "$manifest"
 
       - name: Save Android build cache

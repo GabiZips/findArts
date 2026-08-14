@@ -1,6 +1,6 @@
 """Android MediaStore bridge for publishing downloaded artwork.
 
-Desktop and Linux never import PyJNIus.  On Android 15+ the app owns the
+Desktop and Linux never import PyJNIus. On Android 10+ the app owns the
 MediaStore rows it creates, so publishing and deleting those rows does not
 require broad storage permissions.
 """

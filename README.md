@@ -115,7 +115,7 @@ WebView do sistema e o mesmo backend Python local. O workflow
 é manual e gera `ArtFinder-Android-experimental`.
 
 > [!CAUTION]
-> O APK é compatível com Android 15 e 16 e ainda é experimental.
+> O APK é compatível com Android 10 até 16 e ainda é experimental.
 > Cada versão precisa ser validada em aparelho físico antes de ser tratada como
 > estável.
 
@@ -212,7 +212,7 @@ sources/                conectores das plataformas
 filters/                filtros de arquivo e cor
 utils/database.py       banco SQLite
 utils/downloader.py     download e deduplicação
-utils/android_media.py  integração MediaStore no Android 15+
+utils/android_media.py  integração MediaStore no Android 10+
 utils/tagmap.py         sugestões de tags por fonte
 defaults/categories.json configuração inicial vazia
 user_categories.json    categorias locais do usuário (ignorado pelo Git)
