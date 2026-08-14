@@ -23,6 +23,7 @@ def _apk(
             f"app.{extension}": b"",
             f"main.{extension}": b"",
             f"mobile.{extension}": b"",
+            f"utils/android_media.{extension}": b"",
             "defaults/categories.json": json.dumps({"categories": {}}).encode(),
         }
         if personal_categories:

@@ -71,7 +71,7 @@
     "✨ Em Alta": "✨ Trending",
     "Por fonte": "By source",
     "Por categoria": "By category",
-    "Guardar URL sem baixar (aparece na Galeria)": "Save URL without downloading (shown in Gallery)",
+    "Guardar URL sem baixar (aparece na Galeria do ArtFinder)": "Save URL without downloading (shown in ArtFinder Gallery)",
     "📌 Guardar": "📌 Save",
     "⬇ Baixar": "⬇ Download",
     "Configure os filtros e clique em": "Configure the filters and click",
@@ -88,7 +88,8 @@
     "Selecionar tudo": "Select all",
     "Limpar": "Clear",
     "🚫 Ocultar": "🚫 Hide",
-    "🗑 Apagar do disco": "🗑 Delete from disk",
+    "📱 Salvar no celular": "📱 Save to phone",
+    "🗑 Apagar do dispositivo": "🗑 Delete from device",
     "Tipo:": "Type:",
     "Ver:": "View:",
     "⬇ Baixados (Disco)": "⬇ Downloaded (Disk)",
@@ -172,7 +173,8 @@
     "Limpar formulário": "Clear form",
     "✓ Selecionar / Desmarcar": "✓ Select / Deselect",
     "📌 Guardar (só URL)": "📌 Save (URL only)",
-    "⬇️ Baixar pro PC": "⬇️ Download",
+    "⬇️ Baixar": "⬇️ Download",
+    "⬇ Salvar no celular": "⬇ Save to phone",
     "⭐ Favoritar Artista": "⭐ Favorite Artist",
     "🎨 Buscar este artista": "🎨 Search this artist",
     "↗️ Ver original": "↗️ View original",
@@ -219,13 +221,21 @@
     ,"Erro ao bloquear": "Could not block"
     ,"Erro JSON no EventSource": "EventSource JSON error"
     ,"Apagar Arquivo": "Delete File"
+    ,"Apagar do dispositivo": "Delete from device"
+    ,"Salvar na Galeria do celular": "Save to phone Gallery"
+    ,"Salva na Galeria do celular": "Saved to phone Gallery"
+    ,"Baixar no ArtFinder e salvar em Pictures/ArtFinder": "Download in ArtFinder and save to Pictures/ArtFinder"
+    ,"Imagem salva em Pictures/ArtFinder.": "Image saved to Pictures/ArtFinder."
+    ,"As imagens selecionadas já estão na Galeria do celular.": "The selected images are already in the phone Gallery."
     ,"Apagar do disco": "Delete from disk"
     ,"Ocultar Arte": "Hide Artwork"
     ,"Ocultar selecionadas": "Hide selected"
     ,"Bloquear Artista": "Block Artist"
     ,"Remover Guardado": "Remove Saved Item"
     ,"Apagar esta imagem do HD definitivamente?": "Permanently delete this image from disk?"
+    ,"Apagar esta imagem do dispositivo definitivamente?": "Permanently delete this image from the device?"
     ,"Você quer excluir definitivamente este arquivo do seu HD e da galeria?": "Permanently delete this file from disk and from the gallery?"
+    ,"Você quer excluir definitivamente este arquivo do dispositivo e da Galeria do celular?": "Permanently delete this file from the device and the phone Gallery?"
     ,"Ocultar esta arte permanentemente? Ela nunca mais aparecerá nas buscas.": "Hide this artwork permanently? It will never appear in searches again."
     ,"Você quer remover essa imagem dos guardados?": "Remove this image from saved items?"
     ,"⚠️ Apagar TODOS os registros do banco? (HD não afetado)": "⚠️ Delete ALL database records? (disk files are unaffected)"
@@ -240,6 +250,9 @@
   const PATTERNS = [
     [/^≈ (\d+) posts por fonte$/, "≈ $1 posts per source"],
     [/^(\d+) imagem\(ns\) baixada\(s\)!$/, "$1 image(s) downloaded!"],
+    [/^(\d+) imagem\(ns\) salva\(s\) em Pictures\/ArtFinder!$/, "$1 image(s) saved to Pictures/ArtFinder!"],
+    [/^(\d+) imagem\(ns\) salva\(s\) em Pictures\/ArtFinder\.$/, "$1 image(s) saved to Pictures/ArtFinder."],
+    [/^(\d+) salva\(s\) no ArtFinder; (\d+) aguardando exportação para a Galeria\.$/, "$1 saved in ArtFinder; $2 waiting to be exported to the Gallery."],
     [/^(\d+) arte\(s\) guardada\(s\) na Galeria!$/, "$1 artwork item(s) saved to the Gallery!"],
     [/^Guardando (\d+) arte\(s\)\.\.\.$/, "Saving $1 artwork item(s)..."],
     [/^Mostrando página (\d+) de (\d+) \((\d+) imagens no total\)$/, "Showing page $1 of $2 ($3 images total)"],
@@ -251,6 +264,7 @@
     ,[/^(\d+) arte\(s\) ocultada\(s\)\.$/, "$1 artwork item(s) hidden."]
     ,[/^Ocultar (\d+) arte\(s\) permanentemente\? Não aparecerão mais nas buscas nem na galeria\.$/, "Hide $1 artwork item(s) permanently? They will no longer appear in searches or the gallery."]
     ,[/^Apagar (\d+) arquivo\(s\) do HD definitivamente\?(.*)$/, "Permanently delete $1 file(s) from disk?$2"]
+    ,[/^Apagar (\d+) arquivo\(s\) do dispositivo definitivamente\?(.*)$/, "Permanently delete $1 file(s) from the device?$2"]
     ,[/^ \((\d+) guardada\(s\) só-URL serão ignoradas\)$/, " ($1 URL-only saved item(s) will be ignored)"]
     ,[/^Você quer realmente bloquear o artista "(.+)"\? Todas as artes desse artista sumirão da tela agora e não aparecerão em buscas futuras\.$/, "Do you really want to block artist \"$1\"? All of this artist's artwork will disappear now and will not appear in future searches."]
     ,[/^A maior resolução está marcada em verde \(recomendada pra manter\)\.$/, "The highest resolution is marked in green (recommended to keep)."]

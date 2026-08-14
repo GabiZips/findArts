@@ -22,10 +22,12 @@ REQUIRED_APP_MODULES = {
     "app": {"app.py", "app.pyc"},
     "main": {"main.py", "main.pyc"},
     "mobile": {"mobile.py", "mobile.pyc"},
+    "android_media": {"utils/android_media.py", "utils/android_media.pyc"},
 }
 REQUIRED_RUNTIME_PACKAGES = {
     "certifi",
     "charset_normalizer",
+    "jnius",
     "oauthlib",
     "requests",
     "requests_oauthlib",

@@ -115,9 +115,17 @@ WebView do sistema e o mesmo backend Python local. O workflow
 é manual e gera `ArtFinder-Android-experimental`.
 
 > [!CAUTION]
-> O APK ainda precisa ser validado em aparelho físico. Nesta primeira etapa,
-> downloads e configurações ficam no armazenamento privado do aplicativo; a
-> exportação para a Galeria/Downloads pública do Android ainda será implementada.
+> O APK é compatível com Android 15 e 16 e ainda é experimental.
+> Cada versão precisa ser validada em aparelho físico antes de ser tratada como
+> estável.
+
+Ao tocar em **Salvar no celular**, o ArtFinder mantém uma cópia privada para a
+Galeria interna e publica outra em `Pictures/ArtFinder`, visível no Google Fotos
+e em outros aplicativos de galeria. Não é solicitada permissão ampla de
+armazenamento. Imagens antigas que só existem dentro do ArtFinder exibem o botão
+`📱` para exportação. Ao apagar uma imagem pelo aplicativo, as duas cópias são
+removidas; se a remoção pública falhar, a privada é preservada para permitir uma
+nova tentativa.
 
 Se uma dependência Python falhar durante a inicialização, o APK mostra uma
 tela de diagnóstico em vez de simplesmente fechar. A própria tela exibe os
@@ -204,6 +212,7 @@ sources/                conectores das plataformas
 filters/                filtros de arquivo e cor
 utils/database.py       banco SQLite
 utils/downloader.py     download e deduplicação
+utils/android_media.py  integração MediaStore no Android 15+
 utils/tagmap.py         sugestões de tags por fonte
 defaults/categories.json configuração inicial vazia
 user_categories.json    categorias locais do usuário (ignorado pelo Git)

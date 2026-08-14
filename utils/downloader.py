@@ -24,7 +24,18 @@ from config import (
 )
 from filters.color_filter import passes_color_filter
 from filters.quality import passes_file_size
-from utils.database import is_downloaded, is_duplicate_hash, register_download
+from utils.android_media import (
+    AndroidMediaError,
+    android_media_available,
+    delete_image as delete_public_image,
+    publish_image,
+)
+from utils.database import (
+    is_downloaded,
+    is_duplicate_hash,
+    register_download,
+    set_download_public_uri,
+)
 from utils.network import is_domain, validate_redirect, validate_remote_url
 
 
@@ -260,7 +271,30 @@ async def download_single(
         height=post.get("height", 0),
         phash=phash or "",
     )
-    await report(True, filename.name)
+
+    public_status = ""
+    if android_media_available():
+        try:
+            public_uri = await asyncio.to_thread(publish_image, filename)
+            updated = await asyncio.to_thread(
+                set_download_public_uri,
+                str(filename),
+                public_uri,
+            )
+            if not updated:
+                try:
+                    await asyncio.to_thread(delete_public_image, public_uri)
+                except AndroidMediaError:
+                    pass
+                raise AndroidMediaError("Download removido do banco durante a exportação")
+            public_status = " · Galeria do celular"
+        except Exception as exc:
+            # The private copy remains valid and visible inside ArtFinder. A
+            # per-item export button lets the user retry without downloading.
+            public_status = " · Galeria pendente"
+            print(f"  [!] {source}:{post_id} salvo no app, mas não na Galeria: {exc}")
+
+    await report(True, filename.name + public_status)
     return True
 
 

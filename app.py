@@ -873,7 +873,7 @@ async def gallery_items():
     try:
         rows = conn.execute("""
             SELECT d.source, d.source_id, d.file_path, d.artist, d.score,
-                   d.downloaded_at, d.tags, d.width, d.height,
+                   d.downloaded_at, d.tags, d.width, d.height, d.public_uri,
                    p.rating, p.page_url, p.category, p.preview_url, p.url as orig_url
             FROM downloads d
             LEFT JOIN posts p ON p.uid = d.source_id
@@ -885,7 +885,23 @@ async def gallery_items():
         items = []
         dl_dir = Path(DOWNLOAD_DIR).resolve()
         for row in rows:
-            source, source_id, file_path, artist, score, dl_at, tags, w, h, rating, page_url, category, prev_url, orig_url = row
+            (
+                source,
+                source_id,
+                file_path,
+                artist,
+                score,
+                dl_at,
+                tags,
+                w,
+                h,
+                public_uri,
+                rating,
+                page_url,
+                category,
+                prev_url,
+                orig_url,
+            ) = row
             if not file_path:
                 continue
             if source_id in blacklist:
@@ -911,6 +927,7 @@ async def gallery_items():
                 "tags":          tags or "",
                 "width":         w or 0,
                 "height":        h or 0,
+                "public_uri":    public_uri or "",
                 "rating":        rating or "sfw",
                 "page_url":      page_url or "",
                 "category":      category or "",
@@ -1412,14 +1429,19 @@ async def download_stream(body: dict, request: Request):
         total_all = len(posts)
         done_before = 0
         ok_before = 0
+        gallery_pending = 0
         try:
             for cat, cat_posts in by_cat.items():
                 async def _category_progress(done, _total, ok_count, msg):
+                    nonlocal gallery_pending
+                    if msg.endswith(" · Galeria pendente"):
+                        gallery_pending += 1
                     await progress_q.put({
                         "done": done_before + done,
                         "total": total_all,
                         "ok": ok_before + ok_count,
                         "msg": msg,
+                        "gallery_pending": gallery_pending,
                     })
 
                 downloaded = await download_batch(
@@ -1441,6 +1463,7 @@ async def download_stream(body: dict, request: Request):
         task = loop.create_task(_run_downloads())
         ok_total = 0
         done_total = 0
+        gallery_pending_total = 0
         while True:
             if await request.is_disconnected():
                 task.cancel(); break
@@ -1452,13 +1475,18 @@ async def download_stream(body: dict, request: Request):
                 break
             ok_total   = item["ok"]
             done_total = item["done"]
+            gallery_pending_total = item.get("gallery_pending", 0)
             yield {"event": "progress", "data": json.dumps(item)}
         try:
             await asyncio.shield(task)
         except (asyncio.CancelledError, Exception):
             pass  # task cancelada pelo disconnect ou erro já logado
         failed = done_total - ok_total
-        yield {"event": "done", "data": json.dumps({"downloaded": ok_total, "failed": failed})}
+        yield {"event": "done", "data": json.dumps({
+            "downloaded": ok_total,
+            "failed": failed,
+            "gallery_pending": gallery_pending_total,
+        })}
 
     return EventSourceResponse(generator())
 
@@ -1609,6 +1637,31 @@ async def proxy_image(url: str):
 
 
 
+_DOWNLOADED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+_PRIVATE_DOWNLOAD_ROOTS = {"metadata", ".thumbs"}
+
+
+def _resolve_download_image(rel_path: str, *, must_exist: bool = True) -> Path:
+    """Resolve a user-provided private image path without allowing traversal."""
+    if not isinstance(rel_path, str) or not rel_path or Path(rel_path).is_absolute():
+        raise ValueError("Caminho invalido")
+    download_root = Path(DOWNLOAD_DIR).resolve()
+    file_path = (download_root / rel_path).resolve()
+    try:
+        relative = file_path.relative_to(download_root)
+    except ValueError as exc:
+        raise ValueError("Caminho invalido") from exc
+    if (
+        not relative.parts
+        or relative.parts[0].lower() in _PRIVATE_DOWNLOAD_ROOTS
+        or file_path.suffix.lower() not in _DOWNLOADED_IMAGE_EXTENSIONS
+    ):
+        raise PermissionError("Arquivo nao permitido")
+    if must_exist and not file_path.is_file():
+        raise FileNotFoundError("Arquivo nao encontrado")
+    return file_path
+
+
 @app.get("/api/thumb")
 async def thumb(rel_path: str):
     """
@@ -1656,30 +1709,73 @@ async def thumb(rel_path: str):
 @app.get("/api/file")
 async def downloaded_file(rel_path: str):
     """Serve only downloaded image files, never the database or metadata."""
-    download_root = Path(DOWNLOAD_DIR).resolve()
-    if Path(rel_path).is_absolute():
-        return JSONResponse({"error": "Caminho invalido"}, status_code=400)
-    file_path = (download_root / rel_path).resolve()
     try:
-        relative = file_path.relative_to(download_root)
+        file_path = _resolve_download_image(rel_path)
     except ValueError:
         return JSONResponse({"error": "Caminho invalido"}, status_code=400)
-
-    blocked_roots = {"metadata", ".thumbs"}
-    allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-    if (
-        not relative.parts
-        or relative.parts[0].lower() in blocked_roots
-        or file_path.suffix.lower() not in allowed_extensions
-    ):
+    except PermissionError:
         return JSONResponse({"error": "Arquivo nao permitido"}, status_code=403)
-    if not file_path.is_file():
+    except FileNotFoundError:
         return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
 
     return FileResponse(
         file_path,
         headers={"Cache-Control": "private, max-age=3600"},
     )
+
+
+@app.post("/api/export-image")
+async def export_image_to_android_gallery(body: dict):
+    """Publish an existing private download to Android's public photo gallery."""
+    from utils.android_media import (
+        AndroidMediaError,
+        android_media_available,
+        publish_image,
+    )
+
+    if not android_media_available():
+        return JSONResponse(
+            {"error": "Disponível somente no aplicativo Android"},
+            status_code=409,
+        )
+    rel_path = body.get("rel_path", "")
+    try:
+        file_path = _resolve_download_image(rel_path)
+    except ValueError:
+        return JSONResponse({"error": "Caminho invalido"}, status_code=400)
+    except PermissionError:
+        return JSONResponse({"error": "Arquivo nao permitido"}, status_code=403)
+    except FileNotFoundError:
+        return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
+
+    from utils.database import get_download_by_file_path, set_download_public_uri
+
+    record = await asyncio.to_thread(get_download_by_file_path, str(file_path))
+    if not record:
+        return JSONResponse({"error": "Download não registrado"}, status_code=404)
+    if record.get("public_uri"):
+        return {"ok": True, "already_exported": True, "public_uri": record["public_uri"]}
+
+    try:
+        public_uri = await asyncio.to_thread(publish_image, file_path)
+    except AndroidMediaError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=502)
+    updated = await asyncio.to_thread(
+        set_download_public_uri,
+        str(file_path),
+        public_uri,
+    )
+    if not updated:
+        # Avoid an untracked public copy if the database row disappeared while
+        # the MediaStore stream was being written.
+        try:
+            from utils.android_media import delete_image as delete_public_image
+
+            await asyncio.to_thread(delete_public_image, public_uri)
+        except AndroidMediaError:
+            pass
+        return JSONResponse({"error": "Download não registrado"}, status_code=409)
+    return {"ok": True, "public_uri": public_uri}
 
 
 @app.post("/api/delete-image")
@@ -1691,18 +1787,42 @@ async def delete_image(body: dict):
     rel_path = body.get("rel_path", "")
     if not rel_path:
         return JSONResponse({"error": "rel_path ausente"}, status_code=400)
-    if Path(rel_path).is_absolute():
-        return JSONResponse({"error": "Caminho invalido"}, status_code=400)
-
-    dl_dir   = Path(DOWNLOAD_DIR).resolve()
-    file_path = (dl_dir / rel_path).resolve()
-
-    # Segurança: impede path traversal (comparação por componentes de caminho,
-    # não por prefixo de string — "downloads_evil" passaria no startswith)
     try:
-        file_path.relative_to(dl_dir)
+        file_path = _resolve_download_image(rel_path, must_exist=False)
     except ValueError:
-        return JSONResponse({"error": "Caminho inválido"}, status_code=400)
+        return JSONResponse({"error": "Caminho invalido"}, status_code=400)
+    except PermissionError:
+        return JSONResponse({"error": "Arquivo nao permitido"}, status_code=403)
+
+    dl_dir = Path(DOWNLOAD_DIR).resolve()
+    from utils.database import (
+        _connect,
+        _invalidate_phash_cache,
+        get_download_by_file_path,
+        set_download_public_uri,
+    )
+
+    record = await asyncio.to_thread(get_download_by_file_path, str(file_path))
+    public_uri = (record or {}).get("public_uri", "")
+    public_deleted = None
+    if public_uri:
+        from utils.android_media import (
+            AndroidMediaError,
+            android_media_available,
+            delete_image as delete_public_image,
+        )
+
+        if android_media_available():
+            try:
+                public_deleted = await asyncio.to_thread(
+                    delete_public_image,
+                    public_uri,
+                )
+            except AndroidMediaError as exc:
+                # Preserve the private copy and database URI so deletion can be
+                # retried instead of silently orphaning a public image.
+                return JSONResponse({"error": str(exc)}, status_code=502)
+            await asyncio.to_thread(set_download_public_uri, str(file_path), "")
 
     deleted_file = False
     if file_path.exists():
@@ -1721,7 +1841,6 @@ async def delete_image(body: dict):
             return JSONResponse({"error": str(e)}, status_code=500)
 
     # Remove do banco pelo caminho
-    from utils.database import _connect, _invalidate_phash_cache
     conn = _connect()
     try:
         cursor = conn.execute(
@@ -1734,7 +1853,11 @@ async def delete_image(body: dict):
     finally:
         conn.close()
 
-    return {"deleted": deleted_file, "path": rel_path}
+    return {
+        "deleted": deleted_file,
+        "path": rel_path,
+        "public_deleted": public_deleted,
+    }
 
 
 # ── entry point ─────────────────────────────────────────────────────────

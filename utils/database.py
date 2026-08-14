@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS downloads (
     width           INTEGER DEFAULT 0,
     height          INTEGER DEFAULT 0,
     phash           TEXT,
+    public_uri      TEXT    DEFAULT '',
     downloaded_at   INTEGER
 );
 
@@ -102,6 +103,18 @@ _schema_ready = False
 _schema_lock = threading.Lock()
 
 
+def _ensure_column(
+    conn: sqlite3.Connection,
+    table: str,
+    column: str,
+    declaration: str,
+) -> None:
+    """Add a column to databases created by older ArtFinder versions."""
+    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
+
+
 def _connect() -> sqlite3.Connection:
     """Abre conexão com o banco e garante que todas as tabelas existem."""
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
@@ -115,6 +128,7 @@ def _connect() -> sqlite3.Connection:
             if not _schema_ready:
                 conn.execute("PRAGMA journal_mode=WAL")
                 conn.executescript(_CREATE_SQL)
+                _ensure_column(conn, "downloads", "public_uri", "TEXT DEFAULT ''")
                 conn.commit()
                 _schema_ready = True
     return conn
@@ -426,6 +440,7 @@ def register_download(
     width: int = 0,
     height: int = 0,
     phash: str = "",
+    public_uri: str = "",
 ):
     """Registra um download bem-sucedido no banco."""
     key = f"{source}:{post_id}"
@@ -433,9 +448,22 @@ def register_download(
     try:
         conn.execute(
             """INSERT OR IGNORE INTO downloads
-               (source_id, source, artist, score, file_path, tags, width, height, phash, downloaded_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (key, source, artist, score, file_path, tags, width, height, phash, int(time.time())),
+               (source_id, source, artist, score, file_path, tags, width, height,
+                phash, public_uri, downloaded_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                key,
+                source,
+                artist,
+                score,
+                file_path,
+                tags,
+                width,
+                height,
+                phash,
+                public_uri,
+                int(time.time()),
+            ),
         )
         conn.commit()
     finally:
@@ -449,6 +477,33 @@ def register_download(
                     _phash_cache.append(int(phash, 16))
                 except (TypeError, ValueError):
                     pass
+
+
+def get_download_by_file_path(file_path: str) -> dict | None:
+    """Return the tracked download matching an absolute private file path."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT source_id, file_path, public_uri FROM downloads WHERE file_path = ?",
+            (file_path,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def set_download_public_uri(file_path: str, public_uri: str) -> bool:
+    """Persist (or clear) the Android MediaStore URI for a download."""
+    conn = _connect()
+    try:
+        cursor = conn.execute(
+            "UPDATE downloads SET public_uri = ? WHERE file_path = ?",
+            (public_uri, file_path),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()
 
 
 def get_stats() -> dict:

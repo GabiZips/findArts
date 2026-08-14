@@ -92,6 +92,7 @@ class MobilePackagingTests(unittest.TestCase):
         self.assertIn("urllib3==2.7.0", spec)
         self.assertIn("certifi==2026.7.22", spec)
         self.assertIn("oauthlib==3.3.1", spec)
+        self.assertIn("pyjnius", spec)
         self.assertIn("android.ndk = 28c", spec)
         self.assertIn("p4a.commit = 58d21141f17c889bf8585f5665921d72028f8831", spec)
 
@@ -100,6 +101,10 @@ class MobilePackagingTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("android.allow_backup = False", spec)
+        self.assertIn("android.minapi = 35", spec)
+        self.assertIn("android.ndk_api = 35", spec)
+        self.assertNotIn("READ_EXTERNAL_STORAGE", spec)
+        self.assertNotIn("WRITE_EXTERNAL_STORAGE", spec)
         self.assertIn("p4a.port = 5000", spec)
 
     def test_android_workflow_verifies_freetype_fallback(self):

@@ -51,17 +51,21 @@ chmod +x ArtFinder-Linux-x86_64.AppImage
 Linux data is stored under `$XDG_DATA_HOME/artfinder` or
 `~/.local/share/artfinder`.
 
-## Android (experimental)
+## Android 15 and 16 (experimental)
 
 The manual [Android build workflow](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml)
 uses python-for-android's native WebView bootstrap and creates an experimental
 APK. It embeds the local Python backend; it does not require an ArtFinder cloud
 server.
 
-The APK has not yet been validated on a physical device. Downloads currently
-remain in the application's private storage, and exporting them to Android's
-public Gallery/Downloads storage is still planned. iOS is not part of this
-build and requires a separate Xcode-based package and signing process.
+The APK requires Android 15 or newer and each version still needs physical-device
+validation. **Save to phone** keeps a private copy for ArtFinder's internal
+Gallery and publishes another copy under `Pictures/ArtFinder` through Android's
+MediaStore, without requesting broad storage access. Older private downloads
+show a `📱` retry/export button. Deleting an image in ArtFinder removes both
+copies; if public deletion fails, the private copy is kept so the operation can
+be retried. iOS is not part of this build and requires a separate Xcode-based
+package and signing process.
 
 If Python startup fails, the APK keeps a local diagnostic page open instead of
 silently closing. The page displays the technical details and can open

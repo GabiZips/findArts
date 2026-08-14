@@ -622,7 +622,7 @@
             <option value="source">Por fonte</option>
             <option value="category">Por categoria</option>
           </select>
-          <button class="btn-export" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.3)" id="btnSave" onclick="doSave()" disabled title="Guardar URL sem baixar (aparece na Galeria)">📌 Guardar</button>
+          <button class="btn-export" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.3)" id="btnSave" onclick="doSave()" disabled title="Guardar URL sem baixar (aparece na Galeria do ArtFinder)">📌 Guardar</button>
           <button class="btn-dl" id="btnDownload" onclick="doDownload()" disabled>⬇ Baixar</button>
         </div>
       </div>
@@ -673,8 +673,9 @@
       <button class="btn-sm" onclick="galSelectAllVisible()">Selecionar tudo</button>
       <button class="btn-sm" onclick="galClearSelection()">Limpar</button>
       <span style="flex:1"></span>
+      <button class="btn-sm" id="galExportBtn" style="display:none;background:rgba(34,197,94,.25)" onclick="bulkExportSelected()">📱 Salvar no celular</button>
       <button class="btn-sm" style="background:rgba(239,68,68,.25)" onclick="bulkHideSelected()">🚫 Ocultar</button>
-      <button class="btn-sm" style="background:rgba(239,68,68,.55)" onclick="bulkDeleteSelected()">🗑 Apagar do disco</button>
+      <button class="btn-sm" style="background:rgba(239,68,68,.55)" onclick="bulkDeleteSelected()">🗑 Apagar do dispositivo</button>
     </div>
     <!-- Rating + View pills -->
     <div style="display:flex;gap:6px;align-items:center;padding:5px 14px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap">
@@ -907,7 +908,7 @@ bluesky: &quot;vex&quot; &quot;league of legends&quot;"></textarea>
 <div id="ctxMenu">
   <div class="ctx-item" id="ctxSelect">✓ Selecionar / Desmarcar</div>
   <div class="ctx-item" id="ctxSaveArt" style="color:#c084fc">📌 Guardar (só URL)</div>
-  <div class="ctx-item" id="ctxFavArt">⬇️ Baixar pro PC</div>
+  <div class="ctx-item" id="ctxFavArt">⬇️ Baixar</div>
   <div class="ctx-item" id="ctxFavArtist" style="display:none">⭐ Favoritar Artista</div>
   <div class="ctx-item" id="ctxArtist">🎨 Buscar este artista</div>
   <div class="ctx-sep"></div>
@@ -931,6 +932,7 @@ let allPosts=[],filteredPosts=[],pageSize=60;
 let searchAbortController=null;
 let selectedIds=new Set(),hideGalleryItems=true,downloadedIds=new Set(),favoriteUids=new Set();
 let galleryData=[],galFilter="all",minScore=0,activePeriodDays=0;
+let isMobileApp=false;
 let ratingsMap={};   // uid -> 'usar'|'talvez'|'depois'|'nao'
 const AVAL_LABEL={usar:"Usar",talvez:"Talvez",depois:"Rever depois",nao:"Não gostei"};
 let galRendered=[], galLbIdx=-1;   // lista renderizada da galeria + posição no lightbox
@@ -997,6 +999,19 @@ async function init(){
     });
   }
 
+  // Ambiente: no APK, baixar também publica em Pictures/ArtFinder.
+  try{
+    const health=await(await fetch("/api/health")).json();
+    isMobileApp=!!health.mobile;
+    if(isMobileApp){
+      const dl=document.getElementById("btnDownload");
+      if(dl){dl.textContent="⬇ Salvar no celular";dl.title="Baixar no ArtFinder e salvar em Pictures/ArtFinder";}
+      const bulk=document.getElementById("galExportBtn");
+      if(bulk) bulk.style.display="";
+      document.getElementById("ctxFavArt").textContent=downloadActionLabel();
+    }
+  }catch(_e){}
+
   // Fontes
   await loadSources();
 
@@ -1024,6 +1039,10 @@ async function init(){
   document.addEventListener("keydown",e=>{
     if(e.key==="Escape" && document.body.classList.contains("sidebar-open")) toggleSidebar();
   });
+}
+
+function downloadActionLabel(){
+  return isMobileApp ? "📱 Salvar no celular" : "⬇️ Baixar";
 }
 
 // Fecha o drawer do painel se estiver aberto (usado no mobile).
@@ -2063,7 +2082,8 @@ async function doDownload(postArray = null){
             const d=JSON.parse(data);
             if(event==="progress"){
               const pct=d.total?Math.round((d.done/d.total)*100):0;
-              setProgress(pct,`✅ ${d.ok} ok │ ❌ ${d.done-d.ok} falhas │ ${d.done}/${d.total}`);
+              const pending=d.gallery_pending?` │ 📱 ${d.gallery_pending} pendente(s)`:"";
+              setProgress(pct,`✅ ${d.ok} ok │ ❌ ${d.done-d.ok} falhas │ ${d.done}/${d.total}${pending}`);
             }else if(event==="done"){
               setProgress(100,`✅ ${d.downloaded} baixadas, ❌ ${d.failed} falhas`);
               document.getElementById("btnCloseMod").classList.add("show");
@@ -2072,7 +2092,13 @@ async function doDownload(postArray = null){
           downloadedIds=new Set(refreshed.ids||[]);
         }catch(_e){}
               loadHeaderStats();
-              toast(`${d.downloaded} imagem(ns) baixada(s)!`,d.downloaded>0?"success":"info");
+              if(isMobileApp && d.gallery_pending){
+                toast(`${d.downloaded} salva(s) no ArtFinder; ${d.gallery_pending} aguardando exportação para a Galeria.`,"info");
+              }else if(isMobileApp && d.downloaded>0){
+                toast(`${d.downloaded} imagem(ns) salva(s) em Pictures/ArtFinder!`,"success");
+              }else{
+                toast(`${d.downloaded} imagem(ns) baixada(s)!`,d.downloaded>0?"success":"info");
+              }
             }
           }catch(ex){}
           event="";data="";
@@ -2262,7 +2288,7 @@ function renderGallery(){
       const typeBadge=it._type==="favorite"&&!isDownloaded?'<span class="badge" style="background:rgba(236,72,153,.25);color:#f9a8d4">📌 Guardado</span>':'';
 
       const deleteBtn = isDownloaded
-        ? `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();deleteGalImage('${relEsc}',this.closest('.gal-card'))" title="Apagar do disco">🗑</button>`
+        ? `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();deleteGalImage('${relEsc}',this.closest('.gal-card'))" title="Apagar do dispositivo">🗑</button>`
         : it._type==="rated"
         ? `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();unrateGal('${it.source}','${it.post_id||it.uid?.split(':')[1]}',this.closest('.gal-card'))" title="Remover avaliação">✕</button>`
         : `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();removeFavGrid('${it.source}','${it.post_id||it.uid?.split(':')[1]}',this.closest('.gal-card'))" title="Remover dos guardados">💔</button>`;
@@ -2275,6 +2301,9 @@ function renderGallery(){
         <div class="gal-actions">
           ${it.page_url?`<a class="card-btn" href="${pgUrl}" target="_blank" onclick="event.stopPropagation()">↗</a>`:""}
           <a class="card-btn" href="https://saucenao.com/search.php?url=${encodeURIComponent(img)}" target="_blank" onclick="event.stopPropagation()">🍜</a>
+          ${isDownloaded&&isMobileApp?(it.public_uri
+            ? '<span class="card-btn" style="background:rgba(34,197,94,.75);cursor:default" title="Salva na Galeria do celular">📱</span>'
+            : `<button class="card-btn" style="background:rgba(34,197,94,.45)" onclick="event.stopPropagation();exportGalImage('${relEsc}',this)" title="Salvar na Galeria do celular">📱</button>`):''}
           ${deleteBtn}
         </div>
         <div class="gal-card-meta">
@@ -2465,7 +2494,7 @@ async function searchArtist(artist){
 // ══ GALLERY DELETE ════════════════════════════════════════════════
 function deleteGalImage(relPath,cardEl){
   const imgUrl = `/api/file?rel_path=${encodeURIComponent(relPath)}`;
-  confirmAction("Apagar Arquivo", "Você quer excluir definitivamente este arquivo do seu HD e da galeria?", imgUrl, () => {
+  confirmAction("Apagar Arquivo", "Você quer excluir definitivamente este arquivo do dispositivo e da Galeria do celular?", imgUrl, () => {
     fetch("/api/delete-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:relPath})})
     .then(r=>r.json()).then(d=>{
       if(d.error){toast("Erro: "+d.error,"error");return}
@@ -2478,6 +2507,24 @@ function deleteGalImage(relPath,cardEl){
       toast("Imagem apagada.","success");
     }).catch(e=>toast("Erro: "+e.message,"error"));
   });
+}
+
+async function exportGalImage(relPath,btn){
+  if(!isMobileApp) return;
+  const old=btn?.textContent;
+  if(btn){btn.disabled=true;btn.textContent="…";}
+  try{
+    const r=await fetch("/api/export-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:relPath})});
+    const d=await r.json();
+    if(!r.ok||d.error) throw new Error(d.error||`HTTP ${r.status}`);
+    const item=galleryData.find(it=>it.rel_path===relPath);
+    if(item) item.public_uri=d.public_uri||item.public_uri||"exported";
+    renderGallery();
+    toast("Imagem salva em Pictures/ArtFinder.","success");
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent=old||"📱";}
+    toast("Erro ao salvar na Galeria: "+e.message,"error");
+  }
 }
 
 // ══ SELEÇÃO EM LOTE NA GALERIA ════════════════════════════════════
@@ -2561,7 +2608,7 @@ async function bulkDeleteSelected(){
   const downloaded=cards.filter(c=>c.dataset.type==="downloaded" && c.dataset.rel);
   const ignored=cards.length-downloaded.length;
   if(!downloaded.length){ toast("As selecionadas são 'só-URL' — use Ocultar.","info"); return; }
-  confirmAction("Apagar do disco", `Apagar ${downloaded.length} arquivo(s) do HD definitivamente?`+(ignored?` (${ignored} guardada(s) só-URL serão ignoradas)`:""), null, async ()=>{
+  confirmAction("Apagar do dispositivo", `Apagar ${downloaded.length} arquivo(s) do dispositivo definitivamente?`+(ignored?` (${ignored} guardada(s) só-URL serão ignoradas)`:""), null, async ()=>{
     let ok=0;
     for(const c of downloaded){
       try{
@@ -2575,6 +2622,30 @@ async function bulkDeleteSelected(){
     loadHeaderStats();
     toast(`${ok} arquivo(s) apagado(s).`,"success");
   });
+}
+
+async function bulkExportSelected(){
+  if(!isMobileApp) return;
+  const cards=_selectedGalCards().filter(c=>c.dataset.type==="downloaded"&&c.dataset.rel);
+  const pending=cards.filter(c=>{
+    const item=galleryData.find(it=>it.rel_path===c.dataset.rel);
+    return item&&!item.public_uri;
+  });
+  if(!pending.length){toast("As imagens selecionadas já estão na Galeria do celular.","info");return;}
+  let ok=0;
+  for(const card of pending){
+    try{
+      const r=await fetch("/api/export-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:card.dataset.rel})});
+      const d=await r.json();
+      if(r.ok&&!d.error){
+        const item=galleryData.find(it=>it.rel_path===card.dataset.rel);
+        if(item)item.public_uri=d.public_uri||item.public_uri||"exported";
+        ok++;
+      }
+    }catch(_e){}
+  }
+  renderGallery();
+  toast(`${ok} imagem(ns) salva(s) em Pictures/ArtFinder.`,ok?"success":"error");
 }
 
 // ══ DUPLICATAS ════════════════════════════════════════════════════
@@ -2613,7 +2684,7 @@ async function showDuplicates(){
 }
 
 function dupDelete(relPath,btn){
-  confirmAction("Apagar Arquivo","Apagar esta imagem do HD definitivamente?",`/api/file?rel_path=${encodeURIComponent(relPath)}`,()=>{
+  confirmAction("Apagar Arquivo","Apagar esta imagem do dispositivo definitivamente?",`/api/file?rel_path=${encodeURIComponent(relPath)}`,()=>{
     fetch("/api/delete-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:relPath})})
     .then(r=>r.json()).then(d=>{
       if(d.error){ toast("Erro: "+d.error,"error"); return; }
@@ -2638,7 +2709,7 @@ function showCtxMenu(e,uid,cardEl){
   document.getElementById("ctxFavArtist").style.display=ctxPost?.artist?"flex":"none";
   document.getElementById("ctxBlockArtist").style.display=ctxPost?.artist?"flex":"none";
   document.getElementById("ctxOpen").style.display=ctxPost?.page_url?"flex":"none";
-  document.getElementById("ctxFavArt").textContent="⬇️ Baixar pro PC";
+  document.getElementById("ctxFavArt").textContent=downloadActionLabel();
   document.getElementById("ctxSaveArt").textContent="📌 Guardar (só URL)";
   document.getElementById("ctxSelect").style.display="flex";
   menu.classList.add("open");
@@ -2672,7 +2743,7 @@ function showCtxMenuGal(e, uid) {
   document.getElementById("ctxFavArtist").style.display = ctxPost?.artist ? "flex" : "none";
   document.getElementById("ctxBlockArtist").style.display = ctxPost?.artist ? "flex" : "none";
   document.getElementById("ctxOpen").style.display = ctxPost?.page_url ? "flex" : "none";
-  document.getElementById("ctxFavArt").textContent = "⬇️ Baixar pro PC";
+  document.getElementById("ctxFavArt").textContent = downloadActionLabel();
   document.getElementById("ctxSaveArt").textContent = ctxPost?.favorite ? "💔 Remover dos Guardados" : "📌 Guardar (só URL)";
   
   document.getElementById("ctxSelect").style.display = "none";

@@ -1,11 +1,12 @@
 import asyncio
 import json
+import os
 import socket
 import tempfile
 import unittest
 from http.cookies import SimpleCookie
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import app
 import config
@@ -83,6 +84,13 @@ class AppRouteTests(unittest.TestCase):
         self.assertIn("env(safe-area-inset-top,0px)", html)
         self.assertIn("top:var(--safe-top)", html)
         self.assertIn("bottom:var(--safe-bottom)", html)
+
+    def test_interface_exposes_android_gallery_export_actions(self):
+        response = asyncio.run(app.index())
+        html = response.body.decode("utf-8")
+        self.assertIn('fetch("/api/export-image"', html)
+        self.assertIn("📱 Salvar no celular", html)
+        self.assertIn("Pictures/ArtFinder", html)
 
     def test_category_form_uses_source_mapping_examples(self):
         response = asyncio.run(app.index())
@@ -244,6 +252,100 @@ class AppRouteTests(unittest.TestCase):
     def test_database_is_not_served_as_thumbnail(self):
         response = asyncio.run(app.thumb("artfinder.db"))
         self.assertEqual(response.status_code, 403)
+
+    def test_database_is_not_accepted_by_delete_endpoint(self):
+        response = asyncio.run(app.delete_image({"rel_path": "artfinder.db"}))
+        self.assertEqual(response.status_code, 403)
+
+    def test_android_can_export_an_existing_private_download(self):
+        from utils import android_media, database
+
+        with tempfile.TemporaryDirectory() as temp:
+            download_root = Path(temp) / "downloads"
+            image = download_root / "vex" / "Danbooru_42.jpg"
+            image.parent.mkdir(parents=True)
+            image.write_bytes(b"image")
+            with (
+                patch.object(app, "DOWNLOAD_DIR", download_root),
+                patch.dict(os.environ, {"ARTFINDER_MOBILE": "1"}, clear=False),
+                patch.object(
+                    database,
+                    "get_download_by_file_path",
+                    return_value={"public_uri": ""},
+                ),
+                patch.object(database, "set_download_public_uri", return_value=True),
+                patch.object(
+                    android_media,
+                    "publish_image",
+                    return_value="content://media/42",
+                ),
+            ):
+                response = asyncio.run(
+                    app.export_image_to_android_gallery(
+                        {"rel_path": "vex/Danbooru_42.jpg"}
+                    )
+                )
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["public_uri"], "content://media/42")
+
+    def test_android_delete_failure_preserves_private_copy(self):
+        from utils import android_media, database
+
+        with tempfile.TemporaryDirectory() as temp:
+            download_root = Path(temp) / "downloads"
+            image = download_root / "vex" / "Danbooru_42.jpg"
+            image.parent.mkdir(parents=True)
+            image.write_bytes(b"image")
+            with (
+                patch.object(app, "DOWNLOAD_DIR", download_root),
+                patch.dict(os.environ, {"ARTFINDER_MOBILE": "1"}, clear=False),
+                patch.object(
+                    database,
+                    "get_download_by_file_path",
+                    return_value={"public_uri": "content://media/42"},
+                ),
+                patch.object(
+                    android_media,
+                    "delete_image",
+                    side_effect=android_media.AndroidMediaError("provider failed"),
+                ),
+            ):
+                response = asyncio.run(
+                    app.delete_image({"rel_path": "vex/Danbooru_42.jpg"})
+                )
+                self.assertTrue(image.exists())
+        self.assertEqual(response.status_code, 502)
+
+    def test_android_delete_removes_public_and_private_copies(self):
+        from utils import android_media, database
+
+        connection = MagicMock()
+        connection.execute.return_value.rowcount = 1
+        with tempfile.TemporaryDirectory() as temp:
+            download_root = Path(temp) / "downloads"
+            image = download_root / "vex" / "Danbooru_42.jpg"
+            image.parent.mkdir(parents=True)
+            image.write_bytes(b"image")
+            with (
+                patch.object(app, "DOWNLOAD_DIR", download_root),
+                patch.dict(os.environ, {"ARTFINDER_MOBILE": "1"}, clear=False),
+                patch.object(
+                    database,
+                    "get_download_by_file_path",
+                    return_value={"public_uri": "content://media/42"},
+                ),
+                patch.object(database, "set_download_public_uri", return_value=True),
+                patch.object(database, "_connect", return_value=connection),
+                patch.object(database, "_invalidate_phash_cache"),
+                patch.object(android_media, "delete_image", return_value=True) as public_delete,
+            ):
+                response = asyncio.run(
+                    app.delete_image({"rel_path": "vex/Danbooru_42.jpg"})
+                )
+                self.assertFalse(image.exists())
+        self.assertTrue(response["deleted"])
+        self.assertTrue(response["public_deleted"])
+        public_delete.assert_called_once_with("content://media/42")
 
     def test_source_prefix_parser(self):
         base, sources = app._parse_source_prefixes(
