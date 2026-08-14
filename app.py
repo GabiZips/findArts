@@ -18,11 +18,11 @@ import threading
 import webbrowser
 from pathlib import Path
 from threading import Timer
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 try:
     from sse_starlette.sse import EventSourceResponse
     HAS_SSE = True
@@ -45,6 +45,14 @@ for _stream in (sys.stdout, sys.stderr):
 from config import DATA_DIR, DOWNLOAD_DIR, RESOURCE_DIR, USER_CATEGORIES_PATH
 from utils.database import get_stats, known_uids, add_to_blacklist, add_blocked_artist, get_blocked_artists
 from utils.downloader import download_batch
+from utils.lan_security import (
+    LAN_COOKIE_NAME,
+    LAN_QUERY_NAME,
+    ensure_lan_token,
+    is_loopback_client,
+    lan_mode_enabled,
+    token_matches,
+)
 from utils.normalize import normalize_posts
 
 USER_CATS_FILE = Path(USER_CATEGORIES_PATH)
@@ -248,6 +256,47 @@ async def local_security_headers(request: Request, call_next):
     Requisições sem Origin continuam aceitas para scripts/CLI locais. Browsers
     enviando formulários/fetch de outro site são rejeitados.
     """
+    client_host = request.client.host if request.client else ""
+    remote_lan_client = lan_mode_enabled() and not is_loopback_client(client_host)
+    if remote_lan_client:
+        query_token = request.query_params.get(LAN_QUERY_NAME)
+        supplied_token = (
+            request.headers.get("x-artfinder-token")
+            or request.cookies.get(LAN_COOKIE_NAME)
+            or query_token
+        )
+        if not token_matches(supplied_token):
+            message = "Acesso LAN nao autorizado. Use o endereco completo mostrado no computador."
+            if request.url.path.startswith("/api/"):
+                return JSONResponse({"error": message}, status_code=401)
+            return HTMLResponse(
+                f"<h1>ArtFinder</h1><p>{message}</p>",
+                status_code=401,
+                headers={"Cache-Control": "no-store"},
+            )
+
+        # Exchange the one-time URL parameter for an HttpOnly session cookie,
+        # then remove the secret from browser history and future Referer values.
+        if query_token:
+            remaining = [
+                (key, value)
+                for key, value in request.query_params.multi_items()
+                if key != LAN_QUERY_NAME
+            ]
+            target = request.url.path
+            if remaining:
+                target += "?" + urlencode(remaining)
+            response = RedirectResponse(target, status_code=303)
+            response.set_cookie(
+                LAN_COOKIE_NAME,
+                query_token,
+                httponly=True,
+                samesite="strict",
+                secure=False,  # LAN mode is HTTP; never expose it to the internet.
+            )
+            response.headers["Cache-Control"] = "no-store"
+            return response
+
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         origin = request.headers.get("origin", "")
         sec_fetch_site = request.headers.get("sec-fetch-site", "")
@@ -265,6 +314,10 @@ async def local_security_headers(request: Request, call_next):
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), payment=()",
+    )
     return response
 
 # ── helpers ─────────────────────────────────────────────────────────
@@ -332,6 +385,17 @@ async def index():
     """Serve a interface principal."""
     html_path = Path(RESOURCE_DIR) / "templates" / "index.html"
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/health")
+async def health():
+    """Small startup/smoke-test endpoint without personal information."""
+    return {
+        "ok": True,
+        "app": "ArtFinder",
+        "mobile": os.getenv("ARTFINDER_MOBILE", "").strip() == "1",
+        "lan": lan_mode_enabled(),
+    }
 
 
 @app.get("/ui/i18n.js", response_class=FileResponse)
@@ -1697,21 +1761,24 @@ if __name__ == "__main__":
     # aparece quando o browser fecha conexoes SSE antes do servidor.
     logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
-    allow_lan = os.getenv("ARTFINDER_LAN", "").strip() == "1"
+    allow_lan = lan_mode_enabled()
     lan = _lan_ip() if allow_lan else ""
     print("=" * 52)
     print("  ArtFinder  —  Interface Visual")
     print("=" * 52)
     print("  Neste PC:    http://localhost:7860")
     if lan:
-        print(f"  No celular:  http://{lan}:7860")
-        print("  (mesmo Wi-Fi; se nao abrir, libere a porta 7860 no firewall)")
+        token = ensure_lan_token()
+        print(f"  No celular:  http://{lan}:7860/?{LAN_QUERY_NAME}={token}")
+        print("  Link protegido por token; use apenas em uma rede privada confiavel.")
     print("  Pressione Ctrl+C para encerrar.")
     print("=" * 52)
     Timer(1.2, open_browser).start()
     uvicorn.run(
         app,
-        host="0.0.0.0" if allow_lan else "127.0.0.1",
+        # LAN binding is opt-in and non-loopback requests require the session
+        # token enforced by local_security_headers above.
+        host="0.0.0.0" if allow_lan else "127.0.0.1",  # nosec B104
         port=7860,
         log_level="warning",
     )

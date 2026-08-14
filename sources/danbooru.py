@@ -11,6 +11,7 @@ from config import (
     MIN_WIDTH, MIN_HEIGHT, DANBOORU_DELAY, MIN_SCORE, REQUEST_TIMEOUT,
     DANBOORU_LOGIN, DANBOORU_API_KEY,
 )
+from sources.errors import source_unavailable
 
 HEADERS = {
     "User-Agent": "ShadowRougeArtFinder/2.0 (personal use; +https://github.com)",
@@ -78,8 +79,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
             resp.raise_for_status()
             data = resp.json()
         except Exception as e:
-            print(f"  [Danbooru] Erro na página {page}: {e}")
-            break
+            error = source_unavailable("Danbooru", e)
+            print(f"  [Danbooru] Erro na página {page}: {error}")
+            raise error from e
 
         if not data:
             print(f"  [Danbooru] Pagina {page}: sem mais resultados.")

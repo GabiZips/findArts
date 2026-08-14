@@ -14,6 +14,7 @@ import string
 import hashlib
 import base64
 import requests
+from sources.errors import SourceUnavailableError, source_unavailable
 import urllib.parse
 from config import (
     TUMBLR_API_KEY, TUMBLR_DELAY, MIN_WIDTH, MIN_HEIGHT, MIN_SCORE, REQUEST_TIMEOUT,
@@ -258,8 +259,7 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
     (note_count), então os posts mais famosos de qualquer época aparecem.
     """
     if not TUMBLR_API_KEY:
-        print("  [Tumblr] TUMBLR_API_KEY não configurada. Pulando.")
-        return []
+        raise SourceUnavailableError("Tumblr: chave de API nao configurada.")
 
     # direct = uma tag final do Tumblr (não passa pela derivação booru)
     search_tags = [direct] if direct else _tags_from_category_key(category_key, tags)
@@ -284,8 +284,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
                 resp.raise_for_status()
                 posts = resp.json().get("response", [])
             except Exception as e:
-                print(f"  [Tumblr] Erro ao buscar tag '{tag}': {e}")
-                break
+                error = source_unavailable("Tumblr", e)
+                print(f"  [Tumblr] Erro ao buscar tag '{tag}': {error}")
+                raise error from e
 
             _win = "recente" if offset_days == 0 else f"-{offset_days}d"
             if not posts:

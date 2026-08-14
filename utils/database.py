@@ -243,7 +243,9 @@ def known_uids(uids: list[str]) -> set[str]:
     try:
         placeholders = ",".join("?" * len(uids))
         rows = conn.execute(
-            f"SELECT uid FROM posts WHERE uid IN ({placeholders})", uids
+            # Only generated '?' placeholders are interpolated; values stay bound.
+            f"SELECT uid FROM posts WHERE uid IN ({placeholders})",  # nosec B608
+            uids,
         ).fetchall()
         return {r[0] for r in rows}
     finally:
@@ -257,7 +259,11 @@ def delete_posts(uids: list[str]) -> int:
     conn = _connect()
     try:
         placeholders = ",".join("?" * len(uids))
-        cur = conn.execute(f"DELETE FROM posts WHERE uid IN ({placeholders})", uids)
+        # Only generated '?' placeholders are interpolated; values stay bound.
+        cur = conn.execute(
+            f"DELETE FROM posts WHERE uid IN ({placeholders})",  # nosec B608
+            uids,
+        )
         conn.commit()
         return cur.rowcount
     finally:
@@ -311,7 +317,9 @@ def is_blacklisted_batch(uids: list[str]) -> set[str]:
     try:
         placeholders = ",".join("?" * len(uids))
         rows = conn.execute(
-            f"SELECT uid FROM blacklist WHERE uid IN ({placeholders})", uids
+            # Only generated '?' placeholders are interpolated; values stay bound.
+            f"SELECT uid FROM blacklist WHERE uid IN ({placeholders})",  # nosec B608
+            uids,
         ).fetchall()
         return {r[0] for r in rows}
     finally:

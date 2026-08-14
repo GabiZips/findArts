@@ -1,0 +1,52 @@
+name: Publish ArtFinder release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    uses: ./.github/workflows/build-windows.yml
+
+  linux:
+    uses: ./.github/workflows/build-linux.yml
+
+  publish:
+    needs: [windows, linux]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download verified builds
+        uses: actions/download-artifact@v5
+        with:
+          path: release-assets
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          mkdir -p upload
+          cp release-assets/ArtFinder-Windows/ArtFinder.exe upload/ArtFinder-Windows.exe
+          cp release-assets/ArtFinder-Linux-x86_64/ArtFinder-Linux-x86_64.AppImage upload/ArtFinder-Linux-x86_64.AppImage
+          (cd upload && sha256sum ArtFinder-Windows.exe ArtFinder-Linux-x86_64.AppImage > SHA256SUMS.txt)
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" upload/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" upload/* \
+              --verify-tag \
+              --generate-notes \
+              --title "ArtFinder $GITHUB_REF_NAME"
+          fi

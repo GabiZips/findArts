@@ -2,13 +2,18 @@ name: Build experimental ArtFinder for Android
 
 on:
   workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 90
 
     steps:
@@ -20,9 +25,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: requirements-core.lock
 
       - name: Install test dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install --require-hashes -r requirements-core.lock
 
       - name: Run tests
         run: python -m unittest discover -s tests -v
@@ -60,7 +66,7 @@ jobs:
             --volume "$HOME/.buildozer:/home/user/.buildozer" \
             --workdir /home/user/hostcwd \
             --entrypoint /bin/bash \
-            ghcr.io/kivy/buildozer:latest -lc '
+            ghcr.io/kivy/buildozer@sha256:60df51d2bcb537c3eb7894eeb9b9b12d93a3d615fb8f08e760195e887298f200 -lc '
               apt-get update -qq &&
               DEBIAN_FRONTEND=noninteractive apt-get install -qq --yes --no-install-recommends curl &&
               curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh &&
@@ -68,6 +74,17 @@ jobs:
               export PATH="/home/user/.cargo/bin:$PATH" &&
               exec /usr/local/bin/entrypoint.sh android debug
             '
+
+      - name: Inspect Android package
+        shell: bash
+        run: |
+          apk="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$apk"
+          python scripts/inspect_android_apk.py "$apk"
+
+          manifest="$(find .buildozer -path '*/src/main/AndroidManifest.xml' -print -quit)"
+          test -n "$manifest"
+          grep -q 'android:allowBackup="false"' "$manifest"
 
       - name: Save Android build cache
         if: always()
@@ -84,3 +101,4 @@ jobs:
           name: ArtFinder-Android-experimental
           path: bin/*.apk
           if-no-files-found: error
+          retention-days: 14

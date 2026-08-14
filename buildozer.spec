@@ -2,7 +2,7 @@
 title = ArtFinder
 package.name = artfinder
 package.domain = io.github.gabizips
-version = 0.1.0
+version = 0.2.0
 
 source.dir = .
 source.include_exts = py,html,js,json,png,ico
@@ -24,14 +24,18 @@ android.permissions = INTERNET
 android.api = 35
 android.minapi = 24
 android.ndk_api = 24
+android.ndk = 28c
 android.archs = arm64-v8a
 android.private_storage = True
+android.allow_backup = False
 android.accept_sdk_license = True
+android.logcat_filters = *:S python:D PythonActivity:D ArtFinder:D
 
 # Native Android WebView + the local server started by main.py/mobile.py.
 p4a.bootstrap = webview
 p4a.branch = v2026.05.09
-p4a.extra_args = --port=5000
+p4a.commit = 58d21141f17c889bf8585f5665921d72028f8831
+p4a.port = 5000
 
 [buildozer]
 log_level = 2

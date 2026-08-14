@@ -26,9 +26,11 @@ artwork and fan art from multiple sources in one interface.
 
 ## Windows
 
-Open the [Windows build workflow](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml),
-choose the latest successful run and download `ArtFinder-Windows` from
-**Artifacts**. Extract the ZIP and run `ArtFinder.exe`.
+Stable binaries are published under
+[GitHub Releases](https://github.com/GabiZips/findArts/releases). Download
+`ArtFinder-Windows.exe`; `SHA256SUMS.txt` can be used to verify it. Temporary
+development builds remain available from the
+[Windows build workflow](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml).
 
 Personal data is stored separately under `%LOCALAPPDATA%\ArtFinder\`, so
 replacing the executable does not delete settings, the database or images.
@@ -37,8 +39,9 @@ categories remain local to that device and are never bundled into the executable
 
 ## Linux
 
-Open the [Linux build workflow](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml)
-and download `ArtFinder-Linux-x86_64` from a successful run. Extract it and run:
+Stable Releases include `ArtFinder-Linux-x86_64.AppImage`. The
+[Linux build workflow](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml)
+also provides temporary development builds. Run it with:
 
 ```bash
 chmod +x ArtFinder-Linux-x86_64.AppImage
@@ -60,9 +63,27 @@ remain in the application's private storage, and exporting them to Android's
 public Gallery/Downloads storage is still planned. iOS is not part of this
 build and requires a separate Xcode-based package and signing process.
 
+If Python startup fails, the APK now keeps a local diagnostic page open and
+writes the traceback to `mobile-startup.log` in private app storage instead of
+silently closing.
+
 Source credentials can be entered inside the application under
 **Stats > Sources and credentials**, so secrets do not need to be embedded in
 the APK.
+
+## Browser access from another device
+
+For development on a trusted private Wi-Fi network:
+
+```powershell
+$env:ARTFINDER_LAN="1"
+venv\Scripts\python app.py
+```
+
+Open the complete tokenized URL printed by the process. The token is exchanged
+for an HttpOnly session cookie and removed from the address bar. LAN mode still
+uses HTTP: never expose it to the internet or use it on a public or hostile
+network.
 
 ## Run from source
 
@@ -123,3 +144,7 @@ over automatic suggestions.
 
 Contributions are welcome. Do not include tokens, passwords, cookies or `.env`
 contents in issues or pull requests.
+
+The source code is available under the [MIT license](LICENSE). The license does
+not grant rights to third-party artwork, trademarks or platform content. Follow
+[SECURITY.md](SECURITY.md) when reporting a vulnerability.

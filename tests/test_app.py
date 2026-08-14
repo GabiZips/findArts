@@ -3,11 +3,13 @@ import json
 import socket
 import tempfile
 import unittest
+from http.cookies import SimpleCookie
 from pathlib import Path
 from unittest.mock import patch
 
 import app
 import config
+from fastapi import Request
 from utils.downloader import _safe_component
 from utils.network import RemoteURLRejected, is_domain, validate_remote_url
 
@@ -37,6 +39,27 @@ class NetworkSafetyTests(unittest.TestCase):
 
 
 class AppRouteTests(unittest.TestCase):
+    @staticmethod
+    def _request(
+        path: str = "/api/health",
+        query: bytes = b"",
+        client: str = "192.168.1.50",
+        headers: list[tuple[bytes, bytes]] | None = None,
+    ) -> Request:
+        return Request({
+            "type": "http",
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "http",
+            "path": path,
+            "raw_path": path.encode("ascii"),
+            "query_string": query,
+            "headers": headers or [(b"host", b"192.168.1.10:7860")],
+            "client": (client, 54321),
+            "server": ("192.168.1.10", 7860),
+            "root_path": "",
+        })
+
     def test_interface_loads_shared_language_runtime(self):
         response = asyncio.run(app.index())
         html = response.body.decode("utf-8")
@@ -52,6 +75,58 @@ class AppRouteTests(unittest.TestCase):
         self.assertIn('contentType.includes("text/event-stream")', html)
         self.assertIn('fetch("/api/search"', html)
         self.assertIn("Adicionar personagem ou tag", html)
+
+    def test_lan_mode_rejects_remote_requests_without_token(self):
+        async def next_handler(_request):
+            return app.Response("ok")
+
+        with patch.dict(
+            app.os.environ,
+            {"ARTFINDER_LAN": "1", "ARTFINDER_LAN_TOKEN": "test-secret"},
+            clear=False,
+        ):
+            response = asyncio.run(
+                app.local_security_headers(self._request(), next_handler)
+            )
+        self.assertEqual(response.status_code, 401)
+
+    def test_lan_token_is_exchanged_for_httponly_cookie(self):
+        async def next_handler(_request):
+            return app.Response("ok")
+
+        with patch.dict(
+            app.os.environ,
+            {"ARTFINDER_LAN": "1", "ARTFINDER_LAN_TOKEN": "test-secret"},
+            clear=False,
+        ):
+            response = asyncio.run(
+                app.local_security_headers(
+                    self._request(path="/", query=b"access_token=test-secret"),
+                    next_handler,
+                )
+            )
+        self.assertEqual(response.status_code, 303)
+        cookie = SimpleCookie()
+        cookie.load(response.headers["set-cookie"])
+        self.assertTrue(cookie["artfinder_lan_session"]["httponly"])
+        self.assertEqual(response.headers["location"], "/")
+
+    def test_lan_mode_keeps_loopback_available_without_token(self):
+        async def next_handler(_request):
+            return app.Response("ok")
+
+        with patch.dict(
+            app.os.environ,
+            {"ARTFINDER_LAN": "1", "ARTFINDER_LAN_TOKEN": "test-secret"},
+            clear=False,
+        ):
+            response = asyncio.run(
+                app.local_security_headers(
+                    self._request(client="127.0.0.1"),
+                    next_handler,
+                )
+            )
+        self.assertEqual(response.status_code, 200)
 
     def test_fresh_install_starts_without_categories(self):
         with tempfile.TemporaryDirectory() as temp:

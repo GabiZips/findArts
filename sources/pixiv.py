@@ -22,6 +22,7 @@ from datetime import datetime
 from config import (
     MIN_WIDTH, MIN_HEIGHT, MIN_SCORE, PIXIV_REFRESH_TOKEN,
 )
+from sources.errors import SourceUnavailableError, source_unavailable
 
 # Rating do Pixiv: x_restrict 0 = seguro, 1 = R-18, 2 = R-18G
 def _normalize_rating(x_restrict: int) -> str:
@@ -90,7 +91,7 @@ def _get_api():
     """Autentica (ou reusa) o cliente pixivpy. Reautentica a cada ~50 min."""
     global _api, _auth_at
     if not PIXIV_REFRESH_TOKEN:
-        return None
+        raise SourceUnavailableError("Pixiv: refresh token nao configurado.")
     if _api is not None and (time.time() - _auth_at) < 3000:
         return _api
     try:
@@ -101,9 +102,10 @@ def _get_api():
         _auth_at = time.time()
         return _api
     except Exception as e:
-        print(f"  [Pixiv] Falha ao autenticar (token inválido/expirado?): {e}")
+        error = source_unavailable("Pixiv", e)
+        print(f"  [Pixiv] Falha ao autenticar: {error}")
         _api = None
-        return None
+        raise error from e
 
 
 def _build_query(category_key: str, booru_override: str | None = None) -> tuple[list[str], str]:
@@ -156,12 +158,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
     Ordena por popularidade (bookmarks) — via API se Premium, senão localmente.
     """
     if not PIXIV_REFRESH_TOKEN:
-        print("  [Pixiv] PIXIV_REFRESH_TOKEN não configurado. Pulando.")
-        return []
+        raise SourceUnavailableError("Pixiv: refresh token nao configurado.")
 
     api = _get_api()
-    if api is None:
-        return []
 
     if direct:
         # Query final do Pixiv (source_tags da categoria) → match exato
@@ -194,8 +193,9 @@ def _search_one(api, query: str, search_target: str, category_key: str,
                 offset=offset or None,
             )
         except Exception as e:
-            print(f"  [Pixiv] Erro na busca '{query}' (offset {offset}): {e}")
-            break
+            error = source_unavailable("Pixiv", e)
+            print(f"  [Pixiv] Erro na busca '{query}' (offset {offset}): {error}")
+            raise error from e
 
         illusts = (r or {}).get("illusts") or []
         if not illusts:

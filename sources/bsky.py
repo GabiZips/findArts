@@ -10,6 +10,7 @@ from config import (
     MIN_WIDTH, MIN_HEIGHT, MIN_SCORE, REQUEST_TIMEOUT,
     BSKY_HANDLE, BSKY_PASSWORD, BSKY_DELAY,
 )
+from sources.errors import source_unavailable
 
 # Bluesky API uses bsky.social for generic XRPC requests
 AUTH_URL = "https://bsky.social/xrpc/com.atproto.server.createSession"
@@ -80,8 +81,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
     try:
         token = _get_token()
     except Exception as e:
-        print(f"Erro ao autenticar no Bluesky: {e}")
-        return []
+        error = source_unavailable("Bluesky", e)
+        print(f"Erro ao autenticar no Bluesky: {error}")
+        raise error from e
 
     headers = {"Authorization": f"Bearer {token}"}
     results = []
@@ -99,8 +101,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
             resp.raise_for_status()
             data = resp.json()
         except Exception as e:
-            print(f"Erro ao buscar no Bluesky ({category_key}): {e}")
-            break
+            error = source_unavailable("Bluesky", e)
+            print(f"Erro ao buscar no Bluesky ({category_key}): {error}")
+            raise error from e
 
         posts = data.get("posts", [])
         if not posts:

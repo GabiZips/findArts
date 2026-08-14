@@ -13,6 +13,7 @@ Como obter credenciais (gratuito):
 import time
 import requests
 from config import MIN_WIDTH, MIN_HEIGHT, GELBOORU_DELAY, MIN_SCORE, REQUEST_TIMEOUT
+from sources.errors import SourceUnavailableError, source_unavailable
 try:
     from config import GELBOORU_USER_ID, GELBOORU_API_KEY
 except ImportError:
@@ -59,8 +60,7 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
         Lista de dicts padronizados
     """
     if not GELBOORU_API_KEY:
-        print("  [Gelbooru] GELBOORU_API_KEY nao configurada.")
-        return []
+        raise SourceUnavailableError("Gelbooru: credenciais nao configuradas.")
 
     tags = direct or tags or CATEGORIES.get(category_key, category_key)  # fallback: usa a key como tags diretamente
     results: list[dict] = []
@@ -83,8 +83,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
             resp.raise_for_status()
             data = resp.json()
         except Exception as e:
-            print(f"  [Gelbooru] Erro na pagina {pid}: {e}")
-            break
+            error = source_unavailable("Gelbooru", e)
+            print(f"  [Gelbooru] Erro na pagina {pid}: {error}")
+            raise error from e
 
         # A resposta pode ser lista ou dict com chave "post"
         if isinstance(data, list):

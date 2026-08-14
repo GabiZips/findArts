@@ -16,6 +16,7 @@ Rating:
 import time
 import requests
 from config import MIN_WIDTH, MIN_HEIGHT, DANBOORU_DELAY, MIN_SCORE, REQUEST_TIMEOUT
+from sources.errors import source_unavailable
 
 BASE_URL = "https://e621.net/posts.json"
 
@@ -73,8 +74,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
             resp.raise_for_status()
             data = resp.json()
         except Exception as e:
-            print(f"  [e621] Erro na pagina {page}: {e}")
-            break
+            error = source_unavailable("e621", e)
+            print(f"  [e621] Erro na pagina {page}: {error}")
+            raise error from e
 
         posts = data.get("posts", [])
         if not posts:

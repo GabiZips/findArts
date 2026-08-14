@@ -18,6 +18,7 @@ from config import (
     DEVIANTART_CLIENT_ID, DEVIANTART_CLIENT_SECRET,
     DEVIANTART_DELAY, MIN_SCORE, MIN_WIDTH, MIN_HEIGHT, REQUEST_TIMEOUT
 )
+from sources.errors import SourceUnavailableError, source_unavailable
 
 AI_TAGS = {
     "ai_generated", "ai-generated", "ai_art", "stable_diffusion",
@@ -61,15 +62,19 @@ def _get_token() -> str | None:
         data = resp.json()
 
         if "error" in data:
-            print(f"  [DeviantArt] Erro OAuth: {data.get('error_description', data['error'])}")
-            return None
+            raise SourceUnavailableError(
+                "DeviantArt: autenticacao recusada; confira as credenciais."
+            )
 
         _token_cache["token"] = data.get("access_token")
         _token_cache["expires_at"] = t.time() + data.get("expires_in", 3600)
         return _token_cache["token"]
     except Exception as e:
-        print(f"  [DeviantArt] Falha ao obter token: {e}")
-        return None
+        if isinstance(e, SourceUnavailableError):
+            raise
+        error = source_unavailable("DeviantArt", e)
+        print(f"  [DeviantArt] Falha ao obter token: {error}")
+        raise error from e
 
 
 def _fetch_by_tag(tag: str, token: str, offset: int = 0, limit: int = 24) -> list[dict]:
@@ -97,8 +102,9 @@ def _fetch_by_tag(tag: str, token: str, offset: int = 0, limit: int = 24) -> lis
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
-        print(f"  [DeviantArt] Erro ao buscar tag '{tag}': {e}")
-        return []
+        error = source_unavailable("DeviantArt", e)
+        print(f"  [DeviantArt] Erro ao buscar tag '{tag}': {error}")
+        raise error from e
 
     for dev in data.get("results", []):
         if dev.get("is_deleted") or dev.get("is_mature"):
@@ -173,8 +179,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
     """
     token = _get_token()
     if not token:
-        print("  [DeviantArt] Token indisponivel — verifique as credenciais. Pulando.")
-        return []
+        raise SourceUnavailableError(
+            "DeviantArt: token indisponivel; confira as credenciais."
+        )
 
     if direct:
         # Tag final do DeviantArt (source_tags da categoria)

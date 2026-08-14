@@ -1,10 +1,11 @@
+import io
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from mobile import MOBILE_PORT, prepare_mobile_environment
+from mobile import MOBILE_LOG_NAME, MOBILE_PORT, main, prepare_mobile_environment
 
 
 class MobileBootstrapTests(unittest.TestCase):
@@ -17,6 +18,43 @@ class MobileBootstrapTests(unittest.TestCase):
                 data_dir = prepare_mobile_environment(temp)
                 self.assertEqual(data_dir, Path(temp).resolve() / "artfinder")
                 self.assertEqual(os.environ["ARTFINDER_MOBILE"], "1")
+
+    def test_android_private_directory_takes_priority_over_home(self):
+        with tempfile.TemporaryDirectory() as private, tempfile.TemporaryDirectory() as home:
+            with patch.dict(
+                os.environ,
+                {"ANDROID_PRIVATE": private, "HOME": home},
+                clear=True,
+            ):
+                data_dir = prepare_mobile_environment()
+                self.assertEqual(data_dir, Path(private).resolve() / "artfinder")
+
+    def test_startup_failure_is_logged_and_shown_instead_of_closing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            captured = []
+
+            def broken_loader():
+                raise RuntimeError("missing android dependency")
+
+            def capture_error(exc, log_path):
+                captured.append((exc, log_path))
+
+            with patch.dict(os.environ, {"ANDROID_PRIVATE": temp}, clear=True), patch(
+                "mobile.sys.stderr", io.StringIO()
+            ):
+                main(
+                    app_loader=broken_loader,
+                    server_runner=lambda *_args, **_kwargs: None,
+                    error_server=capture_error,
+                )
+
+            self.assertEqual(len(captured), 1)
+            self.assertIsInstance(captured[0][0], RuntimeError)
+            log_path = Path(temp).resolve() / "artfinder" / MOBILE_LOG_NAME
+            actual_log = captured[0][1]
+            self.assertEqual(actual_log, log_path)
+            self.assertTrue(actual_log.exists())
+            self.assertIn("missing android dependency", actual_log.read_text(encoding="utf-8"))
 
 
 class MobilePackagingTests(unittest.TestCase):
@@ -32,6 +70,15 @@ class MobilePackagingTests(unittest.TestCase):
         self.assertIn("python3==3.11.9", spec)
         self.assertIn("hostpython3==3.11.9", spec)
         self.assertIn("aiohttp==3.8.3", spec)
+        self.assertIn("android.ndk = 28c", spec)
+        self.assertIn("p4a.commit = 58d21141f17c889bf8585f5665921d72028f8831", spec)
+
+    def test_android_disables_backup_and_uses_explicit_webview_port(self):
+        spec = (Path(__file__).parents[1] / "buildozer.spec").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("android.allow_backup = False", spec)
+        self.assertIn("p4a.port = 5000", spec)
 
     def test_android_workflow_verifies_freetype_fallback(self):
         workflow = (

@@ -32,13 +32,16 @@ de várias fontes em uma só interface.
 
 ## Baixar para Windows
 
-Os builds automáticos ficam na página
-[GitHub Actions](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml):
+Versões estáveis ficam em
+[GitHub Releases](https://github.com/GabiZips/findArts/releases), acompanhadas
+do arquivo `SHA256SUMS.txt`:
 
-1. Abra a execução mais recente que esteja com o indicador verde.
-2. Na seção **Artifacts**, baixe `ArtFinder-Windows`.
-3. Extraia o arquivo ZIP.
-4. Execute `ArtFinder.exe`.
+1. Abra a versão mais recente.
+2. Baixe `ArtFinder-Windows.exe`.
+3. Execute o arquivo.
+
+Builds de desenvolvimento continuam disponíveis temporariamente em
+[GitHub Actions](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml).
 
 O Windows pode exibir um aviso do SmartScreen porque o executável ainda não
 possui assinatura digital comercial.
@@ -81,14 +84,14 @@ venv\Scripts\python -m PyInstaller --noconfirm --clean artfinder.spec
 O resultado será `dist\ArtFinder.exe`.
 
 O workflow `.github/workflows/build-windows.yml` também executa os testes e
-gera o executável no GitHub Actions. Ele pode ser iniciado manualmente ou ao
-enviar uma tag como `v0.1.0`.
+gera o executável no GitHub Actions. Tags como `v0.2.0` acionam o workflow de
+Release, que publica Windows, Linux e seus checksums juntos.
 
 ## Linux
 
-O workflow [Build Linux](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml)
-gera o artefato `ArtFinder-Linux-x86_64`, contendo um AppImage para computadores
-Linux de 64 bits.
+Releases incluem `ArtFinder-Linux-x86_64.AppImage` para computadores Linux de
+64 bits. O workflow [Build Linux](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml)
+continua gerando builds temporários para desenvolvimento.
 
 Depois de extrair o ZIP:
 
@@ -116,6 +119,10 @@ WebView do sistema e o mesmo backend Python local. O workflow
 > downloads e configurações ficam no armazenamento privado do aplicativo; a
 > exportação para a Galeria/Downloads pública do Android ainda será implementada.
 
+Se uma dependência Python falhar durante a inicialização, o APK mostra uma
+tela de diagnóstico em vez de simplesmente fechar e salva o traceback em
+`mobile-startup.log` no armazenamento privado do aplicativo.
+
 As credenciais das fontes podem ser preenchidas dentro do próprio aplicativo
 em **Stats > Fontes e credenciais**, sem incluir senhas no APK.
 
@@ -130,12 +137,14 @@ $env:ARTFINDER_LAN="1"
 venv\Scripts\python app.py
 ```
 
-O terminal mostrará o endereço local que deve ser aberto no celular. Se o
-Windows solicitar, permita o Python apenas em redes privadas.
+O terminal mostrará um endereço com um token temporário. Abra o link completo
+no celular; o token é removido da barra de endereços e guardado em um cookie de
+sessão. Se o Windows solicitar, permita o Python apenas em redes privadas.
 
 > [!WARNING]
-> Não exponha o ArtFinder diretamente à internet. O modo de rede local ainda
-> não possui contas, senha ou controle de acesso.
+> Não exponha o ArtFinder diretamente à internet. O modo de rede local usa
+> HTTP e deve ser usado somente numa rede privada confiável, mesmo com o token
+> de sessão.
 
 ## Credenciais opcionais
 
@@ -187,6 +196,7 @@ config.py               configurações e diretórios de dados
 artfinder.spec          empacotamento desktop Windows/Linux
 mobile.py / main.py     servidor local usado pelo APK Android
 buildozer.spec          empacotamento Android experimental
+scripts/                inspeção de artefatos e controles de empacotamento
 templates/index.html    interface
 templates/i18n.js       tradução português/inglês
 sources/                conectores das plataformas
@@ -200,6 +210,15 @@ user_categories.json    categorias locais do usuário (ignorado pelo Git)
 
 As decisões e limitações da arquitetura multiplataforma estão registradas em
 [`docs/adr/0001-multiplatform-packaging.md`](docs/adr/0001-multiplatform-packaging.md).
+O acesso em rede e os canais de Release estão registrados em
+[`docs/adr/0002-local-access-and-release-channels.md`](docs/adr/0002-local-access-and-release-channels.md).
+
+## Licença e segurança
+
+O código-fonte usa a [licença MIT](LICENSE). Ela se aplica ao software, não às
+artes, marcas ou conteúdo retornado pelas plataformas. Vulnerabilidades devem
+ser relatadas seguindo [SECURITY.md](SECURITY.md), sem publicar credenciais ou
+dados pessoais.
 
 ## Aviso legal e de conteúdo
 

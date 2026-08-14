@@ -6,6 +6,7 @@ API identica ao Danbooru — gratuita, sem autenticacao, 100% SFW.
 import time
 import requests
 from config import MIN_WIDTH, MIN_HEIGHT, GELBOORU_DELAY, MIN_SCORE, REQUEST_TIMEOUT
+from sources.errors import source_unavailable
 
 BASE_URL = "https://safebooru.org/index.php"
 HEADERS  = {
@@ -62,8 +63,9 @@ def fetch_posts(category_key: str, max_pages: int = 5, tags: str | None = None,
             kept = 0
 
         except Exception as e:
-            print(f"  [Safebooru] Erro na pagina {pid}: {e}")
-            break
+            error = source_unavailable("Safebooru", e)
+            print(f"  [Safebooru] Erro na pagina {pid}: {error}")
+            raise error from e
 
         for post in posts:
             w = post.get("width", 0)
