@@ -11,6 +11,7 @@ from pathlib import Path, PurePosixPath
 
 
 PRIVATE_TAR = "assets/private.tar"
+PYTHON_BUNDLE = "lib/arm64-v8a/libpybundle.so"
 FORBIDDEN_NAMES = {
     ".env",
     "user_categories.json",
@@ -22,6 +23,14 @@ REQUIRED_APP_MODULES = {
     "main": {"main.py", "main.pyc"},
     "mobile": {"mobile.py", "mobile.pyc"},
 }
+REQUIRED_RUNTIME_PACKAGES = {
+    "certifi",
+    "charset_normalizer",
+    "oauthlib",
+    "requests",
+    "requests_oauthlib",
+    "urllib3",
+}
 
 
 def inspect_apk(apk_path: Path) -> list[str]:
@@ -30,6 +39,8 @@ def inspect_apk(apk_path: Path) -> list[str]:
         apk_names = set(apk.namelist())
         if PRIVATE_TAR not in apk_names:
             return [f"missing {PRIVATE_TAR}"]
+        if PYTHON_BUNDLE not in apk_names:
+            return [f"missing {PYTHON_BUNDLE}"]
 
         arches = {
             PurePosixPath(name).parts[1]
@@ -40,6 +51,7 @@ def inspect_apk(apk_path: Path) -> list[str]:
             errors.append(f"unexpected native architectures: {sorted(arches)}")
 
         private_bytes = apk.read(PRIVATE_TAR)
+        python_bundle_bytes = apk.read(PYTHON_BUNDLE)
 
     with tarfile.open(fileobj=io.BytesIO(private_bytes)) as private:
         members = {member.name.lstrip("./"): member for member in private.getmembers()}
@@ -71,6 +83,26 @@ def inspect_apk(apk_path: Path) -> list[str]:
             else:
                 if payload != {"categories": {}}:
                     errors.append("default categories are not empty")
+
+    try:
+        with tarfile.open(
+            fileobj=io.BytesIO(python_bundle_bytes), mode="r:gz"
+        ) as python_bundle:
+            prefix = "_python_bundle/site-packages/"
+            bundled_packages = {
+                PurePosixPath(name.removeprefix(prefix)).parts[0]
+                for member in python_bundle.getmembers()
+                if (name := member.name.lstrip("./")).startswith(prefix)
+                and PurePosixPath(name.removeprefix(prefix)).parts
+            }
+    except (OSError, tarfile.TarError):
+        errors.append("Python runtime bundle is not a readable gzip tar archive")
+    else:
+        missing_runtime = sorted(REQUIRED_RUNTIME_PACKAGES - bundled_packages)
+        if missing_runtime:
+            errors.append(
+                "Python runtime misses packages: " + ", ".join(missing_runtime)
+            )
 
     return errors
 

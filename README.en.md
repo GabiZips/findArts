@@ -63,9 +63,10 @@ remain in the application's private storage, and exporting them to Android's
 public Gallery/Downloads storage is still planned. iOS is not part of this
 build and requires a separate Xcode-based package and signing process.
 
-If Python startup fails, the APK now keeps a local diagnostic page open and
-writes the traceback to `mobile-startup.log` in private app storage instead of
-silently closing.
+If Python startup fails, the APK keeps a local diagnostic page open instead of
+silently closing. The page displays the technical details and can open
+`mobile-startup.log`, which is stored privately and is not visible in a normal
+Android file manager.
 
 Source credentials can be entered inside the application under
 **Stats > Sources and credentials**, so secrets do not need to be embedded in
@@ -130,6 +131,10 @@ bluesky: "vex" "league of legends"
 
 Unprefixed text is the booru query. `source: query` overrides take precedence
 over automatic suggestions.
+
+The proposed path from the experimental WebView APK to a native Android UI is
+documented in
+[`docs/adr/0003-mobile-implementation-strategy.md`](docs/adr/0003-mobile-implementation-strategy.md).
 
 ## Legal and content notice
 

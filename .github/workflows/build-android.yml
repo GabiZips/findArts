@@ -58,6 +58,13 @@ jobs:
             | sha256sum --check --strict
           touch "$freetype_dir/.mark-freetype-2.14.1.tar.gz"
 
+      - name: Recreate python-for-android build environment
+        shell: bash
+        run: |
+          # This venv is disposable. Restoring it across p4a/pip updates can mix
+          # incompatible pip internals and break dependency resolution.
+          rm -rf .buildozer/android/platform/build-arm64-v8a/build/venv
+
       - name: Build debug APK
         run: |
           mkdir -p .buildozer "$HOME/.buildozer"

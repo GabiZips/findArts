@@ -58,10 +58,15 @@ def _write_startup_log(data_dir: Path, status: str, detail: str = "") -> Path:
     return log_path
 
 
-def _startup_error_html(exc: BaseException, log_path: Path) -> str:
+def _startup_error_html(
+    exc: BaseException,
+    log_path: Path,
+    detail: str = "",
+) -> str:
     error_name = html.escape(type(exc).__name__)
     error_text = html.escape(str(exc) or "Erro desconhecido")
     safe_log_name = html.escape(log_path.name)
+    safe_detail = html.escape(detail or f"{type(exc).__name__}: {exc}")
     return f"""<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -71,20 +76,40 @@ body{{font-family:system-ui,sans-serif;background:#111118;color:#f5f5f7;margin:0
 main{{max-width:680px;margin:auto;background:#1d1d28;border:1px solid #343448;border-radius:16px;padding:24px}}
 h1{{font-size:1.4rem;color:#ff7b8b}}code{{word-break:break-word;color:#d6b4ff}}
 p{{line-height:1.55;color:#d4d4dd}}
+a{{color:#b99cff}}details{{margin-top:18px}}pre{{white-space:pre-wrap;word-break:break-word;background:#111118;padding:14px;border-radius:10px;max-height:45vh;overflow:auto}}
 </style></head><body><main>
 <h1>O ArtFinder nao conseguiu iniciar</h1>
 <p>O aplicativo permaneceu aberto para mostrar o diagnostico em vez de fechar.</p>
 <p><strong>{error_name}:</strong> <code>{error_text}</code></p>
-<p>O relatorio completo foi salvo como <code>{safe_log_name}</code> no armazenamento privado do app.</p>
+<p>O relatorio foi salvo no armazenamento interno privado do app. Ele nao aparece no gerenciador de arquivos comum.</p>
+<p><a href="/{safe_log_name}">Abrir o relatorio completo</a></p>
+<details><summary>Ver detalhes tecnicos nesta tela</summary><pre>{safe_detail}</pre></details>
 </main></body></html>"""
 
 
 def _serve_startup_error(exc: BaseException, log_path: Path) -> None:
     """Serve a dependency-free diagnostic page to the Android WebView."""
-    page = _startup_error_html(exc, log_path).encode("utf-8")
+    try:
+        detail = log_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        detail = ""
+    page = _startup_error_html(exc, log_path, detail).encode("utf-8")
 
     class StartupErrorHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
+            if self.path.split("?", 1)[0] == f"/{MOBILE_LOG_NAME}":
+                try:
+                    body = log_path.read_bytes()
+                except OSError:
+                    body = b"Startup log is unavailable."
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(body)
+                return
+
             self.send_response(500)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(page)))

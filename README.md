@@ -120,8 +120,9 @@ WebView do sistema e o mesmo backend Python local. O workflow
 > exportação para a Galeria/Downloads pública do Android ainda será implementada.
 
 Se uma dependência Python falhar durante a inicialização, o APK mostra uma
-tela de diagnóstico em vez de simplesmente fechar e salva o traceback em
-`mobile-startup.log` no armazenamento privado do aplicativo.
+tela de diagnóstico em vez de simplesmente fechar. A própria tela exibe os
+detalhes e permite abrir o `mobile-startup.log`, que fica no armazenamento
+privado e não aparece no gerenciador de arquivos comum.
 
 As credenciais das fontes podem ser preenchidas dentro do próprio aplicativo
 em **Stats > Fontes e credenciais**, sem incluir senhas no APK.
@@ -212,6 +213,9 @@ As decisões e limitações da arquitetura multiplataforma estão registradas em
 [`docs/adr/0001-multiplatform-packaging.md`](docs/adr/0001-multiplatform-packaging.md).
 O acesso em rede e os canais de Release estão registrados em
 [`docs/adr/0002-local-access-and-release-channels.md`](docs/adr/0002-local-access-and-release-channels.md).
+A estratégia proposta para evoluir o APK experimental para uma interface
+Android nativa está em
+[`docs/adr/0003-mobile-implementation-strategy.md`](docs/adr/0003-mobile-implementation-strategy.md).
 
 ## Licença e segurança
 

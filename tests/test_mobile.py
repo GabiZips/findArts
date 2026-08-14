@@ -5,7 +5,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from mobile import MOBILE_LOG_NAME, MOBILE_PORT, main, prepare_mobile_environment
+from mobile import (
+    MOBILE_LOG_NAME,
+    MOBILE_PORT,
+    _startup_error_html,
+    main,
+    prepare_mobile_environment,
+)
 
 
 class MobileBootstrapTests(unittest.TestCase):
@@ -56,6 +62,17 @@ class MobileBootstrapTests(unittest.TestCase):
             self.assertTrue(actual_log.exists())
             self.assertIn("missing android dependency", actual_log.read_text(encoding="utf-8"))
 
+    def test_startup_error_page_exposes_private_log_safely(self):
+        log_path = Path("/private/android/artfinder") / MOBILE_LOG_NAME
+        page = _startup_error_html(
+            ModuleNotFoundError("No module named urllib3"),
+            log_path,
+            "Traceback: No module named urllib3",
+        )
+        self.assertIn(f'href="/{MOBILE_LOG_NAME}"', page)
+        self.assertIn("No module named urllib3", page)
+        self.assertNotIn("/private/android/artfinder", page)
+
 
 class MobilePackagingTests(unittest.TestCase):
     def test_android_packages_empty_category_defaults(self):
@@ -70,6 +87,9 @@ class MobilePackagingTests(unittest.TestCase):
         self.assertIn("python3==3.11.9", spec)
         self.assertIn("hostpython3==3.11.9", spec)
         self.assertIn("aiohttp==3.8.3", spec)
+        self.assertIn("urllib3==2.7.0", spec)
+        self.assertIn("certifi==2026.7.22", spec)
+        self.assertIn("oauthlib==3.3.1", spec)
         self.assertIn("android.ndk = 28c", spec)
         self.assertIn("p4a.commit = 58d21141f17c889bf8585f5665921d72028f8831", spec)
 
@@ -87,5 +107,14 @@ class MobilePackagingTests(unittest.TestCase):
         self.assertIn("sourceforge.net/projects/freetype", workflow)
         self.assertIn(
             "174d9e53402e1bf9ec7277e22ec199ba3e55a6be2c0740cb18c0ee9850fc8c34",
+            workflow,
+        )
+
+    def test_android_workflow_recreates_disposable_p4a_venv(self):
+        workflow = (
+            Path(__file__).parents[1] / ".github" / "workflows" / "build-android.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "rm -rf .buildozer/android/platform/build-arm64-v8a/build/venv",
             workflow,
         )
