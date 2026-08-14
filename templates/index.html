@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
   <title>ArtFinder</title>
 <style>
@@ -19,17 +19,19 @@
     --shadow-lg:0 12px 40px rgba(0,0,0,.5);
     --shadow-glow:0 0 0 1px rgba(139,92,246,.35),0 8px 28px rgba(139,92,246,.28);
     --ring:rgba(139,92,246,.5);
+    --safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
-  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
   /* fundo com brilho radial sutil atrás de tudo */
   body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
     background:
       radial-gradient(1100px 600px at 82% -8%,rgba(139,92,246,.13),transparent 60%),
       radial-gradient(900px 500px at 8% 108%,rgba(236,72,153,.09),transparent 60%);}
   /* ── HEADER ── */
-  header{background:rgba(21,21,25,.72);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:54px;position:sticky;top:0;z-index:100}
+  header{background:rgba(21,21,25,.72);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:54px;position:sticky;top:var(--safe-top);z-index:100}
   .logo{display:flex;align-items:center;gap:9px}
   .logo-mark{font-size:20px;line-height:1;filter:drop-shadow(0 0 8px rgba(168,85,247,.6));transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
   .logo:hover .logo-mark{transform:rotate(-12deg) scale(1.15)}
@@ -98,7 +100,7 @@
   .lb-rate:hover{background:rgba(255,255,255,.16)}
   .lb-rate.active{border-color:var(--accent);background:rgba(139,92,246,.4);box-shadow:0 0 10px rgba(139,92,246,.4)}
   /* modo comparação */
-  #compareOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:450;align-items:center;justify-content:center;cursor:zoom-out}
+  #compareOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:450;align-items:center;justify-content:center;cursor:zoom-out;padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
   #compareOverlay.open{display:flex}
   #compareGrid{display:flex;gap:14px;width:96vw;height:90vh;cursor:default}
   .cmp-item{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -282,7 +284,7 @@
   .bar-count{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:rgba(255,255,255,.7)}
   .bar-section-title{font-size:12px;font-weight:600;color:var(--muted);padding:12px 16px 4px;text-transform:uppercase;letter-spacing:.08em}
   /* ── LIGHTBOX ── */
-  #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:400;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:zoom-out}
+  #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:400;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:zoom-out;padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
   #lightbox.open{display:flex}
   #lightbox img{max-width:90vw;max-height:84vh;border-radius:7px;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.7);cursor:default}
   .lb-bar{display:flex;gap:8px;align-items:center;cursor:default}
@@ -292,7 +294,7 @@
   .lb-close:hover{color:#fff}
   .lb-info{font-size:11px;color:rgba(255,255,255,.4)}
   /* ── MODAL ── */
-  .modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:300;align-items:center;justify-content:center}
+  .modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:300;align-items:center;justify-content:center;padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
   .modal-back.open{display:flex}
   .modal{background:linear-gradient(160deg,var(--surface2),var(--surface));border:1px solid var(--border);border-radius:16px;padding:24px 32px;width:380px;text-align:center;box-shadow:var(--shadow-lg);animation:modalPop .25s cubic-bezier(.34,1.4,.64,1)}
   @keyframes modalPop{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
@@ -309,7 +311,7 @@
   ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:8px;border:2px solid transparent;background-clip:content-box}
   ::-webkit-scrollbar-thumb:hover{background:var(--accent);background-clip:content-box}
   /* ── TOAST ── */
-  #toast{position:fixed;bottom:16px;right:16px;background:rgba(30,30,38,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;z-index:500;transform:translateY(60px);opacity:0;transition:transform .28s cubic-bezier(.34,1.4,.64,1),opacity .28s;max-width:280px;box-shadow:var(--shadow-lg)}
+  #toast{position:fixed;bottom:calc(16px + var(--safe-bottom));right:calc(16px + var(--safe-right));background:rgba(30,30,38,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;z-index:500;transform:translateY(60px);opacity:0;transition:transform .28s cubic-bezier(.34,1.4,.64,1),opacity .28s;max-width:280px;box-shadow:var(--shadow-lg)}
   #toast.show{transform:translateY(0);opacity:1}
   #toast.success{border-left:3px solid var(--green)}
   #toast.error{border-left:3px solid var(--red)}
@@ -325,7 +327,7 @@
   .cat-group-details summary::-webkit-details-marker{display:none;}
   .cat-group-details[open] summary{border-bottom:1px dashed rgba(255,255,255,0.1);padding-bottom:4px;margin-bottom:4px;}
   /* Cat Manager Modal */
-  .cm-modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:500;align-items:center;justify-content:center}
+  .cm-modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:500;align-items:center;justify-content:center;padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
   .cm-modal-back.open{display:flex}
   .cm-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(640px,calc(100vw - 24px));max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
   .cm-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -398,7 +400,7 @@
   @media (max-width:760px){
     .layout{overflow:visible}
     .sidebar-wrap{position:static}
-    aside{position:fixed;top:0;left:0;bottom:0;z-index:320;
+    aside{position:fixed;top:var(--safe-top);left:var(--safe-left);bottom:var(--safe-bottom);z-index:320;
       width:min(88vw,330px);min-width:min(88vw,330px);padding:16px 13px;
       transform:translateX(0);opacity:1;
       transition:transform .3s cubic-bezier(.4,0,.2,1);
@@ -857,7 +859,7 @@
           <div class="cm-form-row">
             <div style="flex:1;display:flex;flex-direction:column;gap:3px">
               <div class="cm-field-label">Nome</div>
-              <input type="text" id="cmLabel" placeholder="ex: Shadow Solo, Loona...">
+              <input type="text" id="cmLabel" placeholder="ex: Vex, V (Cyberpunk)...">
             </div>
             <div style="display:flex;flex-direction:column;gap:3px">
               <div class="cm-field-label">Cor</div>
@@ -871,14 +873,16 @@
             </div>
             <div style="flex:1;display:flex;flex-direction:column;gap:3px">
               <div class="cm-field-label">Grupo / Fandom</div>
-              <input type="text" id="cmGroup" placeholder="ex: Sonic, Helluva Boss...">
+              <input type="text" id="cmGroup" placeholder="ex: League of Legends, Cyberpunk 2077...">
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:3px">
             <div class="cm-field-label">Tags de busca</div>
             <div style="position:relative">
-              <textarea id="cmTags" placeholder="shadow_the_hedgehog -rouge_the_bat
-rouge_the_bat -shadow_the_hedgehog"></textarea>
+              <textarea id="cmTags" placeholder="vex_(league_of_legends)
+pixiv: ヴェックス
+tumblr: vex league of legends
+bluesky: &quot;vex&quot; &quot;league of legends&quot;"></textarea>
               <div id="cmTagSuggest" class="tag-suggest" style="display:none"></div>
             </div>
             <div class="cm-form-hint">Cada linha (ou <b>;</b>) = busca independente — resultados são unidos (OR). Espaço entre tags = AND. Prefixo <b>-tag</b> exclui. <b>Digite 2+ letras pra sugerir tags.</b></div>

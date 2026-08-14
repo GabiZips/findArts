@@ -76,6 +76,21 @@ class AppRouteTests(unittest.TestCase):
         self.assertIn('fetch("/api/search"', html)
         self.assertIn("Adicionar personagem ou tag", html)
 
+    def test_interface_respects_android_system_bar_safe_areas(self):
+        response = asyncio.run(app.index())
+        html = response.body.decode("utf-8")
+        self.assertIn("viewport-fit=cover", html)
+        self.assertIn("env(safe-area-inset-top,0px)", html)
+        self.assertIn("top:var(--safe-top)", html)
+        self.assertIn("bottom:var(--safe-bottom)", html)
+
+    def test_category_form_uses_source_mapping_examples(self):
+        response = asyncio.run(app.index())
+        html = response.body.decode("utf-8")
+        self.assertIn("vex_(league_of_legends)", html)
+        self.assertIn("pixiv: ヴェックス", html)
+        self.assertNotIn("shadow_the_hedgehog -rouge_the_bat", html)
+
     def test_lan_mode_rejects_remote_requests_without_token(self):
         async def next_handler(_request):
             return app.Response("ok")

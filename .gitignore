@@ -12,6 +12,7 @@ downloads/
 # Credenciais e sessões (NUNCA commitar!)
 .env
 *.env
+.local-secrets/
 twitter_cookies.json
 *_cookies.json
 *.token

@@ -82,6 +82,43 @@ jobs:
               exec /usr/local/bin/entrypoint.sh android debug
             '
 
+      - name: Sign APK with the stable ArtFinder key
+        shell: bash
+        env:
+          ARTFINDER_ANDROID_KEYSTORE_BASE64: ${{ secrets.ARTFINDER_ANDROID_KEYSTORE_BASE64 }}
+          ARTFINDER_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ARTFINDER_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$ARTFINDER_ANDROID_KEYSTORE_BASE64"
+          test -n "$ARTFINDER_ANDROID_KEYSTORE_PASSWORD"
+
+          apk="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          apksigner="$(find .buildozer "$HOME/.buildozer" -type f -name apksigner -print | sort -V | tail -1)"
+          test -n "$apk"
+          test -x "$apksigner"
+
+          keystore="$RUNNER_TEMP/artfinder-upload.p12"
+          signed_apk="$RUNNER_TEMP/$(basename "$apk")"
+          trap 'rm -f "$keystore" "$signed_apk"' EXIT
+          printf '%s' "$ARTFINDER_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+
+          export APKSIGNER_KEY_PASSWORD="$ARTFINDER_ANDROID_KEYSTORE_PASSWORD"
+          "$apksigner" sign \
+            --ks "$keystore" \
+            --ks-type PKCS12 \
+            --ks-key-alias artfinder \
+            --ks-pass env:APKSIGNER_KEY_PASSWORD \
+            --key-pass env:APKSIGNER_KEY_PASSWORD \
+            --out "$signed_apk" \
+            "$apk"
+          mv "$signed_apk" "$apk"
+
+          certificate="$($apksigner verify --verbose --print-certs "$apk")"
+          printf '%s\n' "$certificate"
+          grep -qi \
+            'certificate SHA-256 digest: e8d6011c9c44b130be635ec8973184d39681d711b7b5aee1ab15e7354b408567' \
+            <<< "$certificate"
+
       - name: Inspect Android package
         shell: bash
         run: |

@@ -2,7 +2,7 @@
 title = ArtFinder
 package.name = artfinder
 package.domain = io.github.gabizips
-version = 0.2.1
+version = 0.2.2
 
 source.dir = .
 source.include_exts = py,html,js,json,png,ico

@@ -72,6 +72,8 @@ class MobileBootstrapTests(unittest.TestCase):
         self.assertIn(f'href="/{MOBILE_LOG_NAME}"', page)
         self.assertIn("No module named urllib3", page)
         self.assertNotIn("/private/android/artfinder", page)
+        self.assertIn("viewport-fit=cover", page)
+        self.assertIn("safe-area-inset-top", page)
 
 
 class MobilePackagingTests(unittest.TestCase):
@@ -116,5 +118,17 @@ class MobilePackagingTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn(
             "rm -rf .buildozer/android/platform/build-arm64-v8a/build/venv",
+            workflow,
+        )
+
+    def test_android_workflow_requires_stable_signing_certificate(self):
+        workflow = (
+            Path(__file__).parents[1] / ".github" / "workflows" / "build-android.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ARTFINDER_ANDROID_KEYSTORE_BASE64", workflow)
+        self.assertIn("ARTFINDER_ANDROID_KEYSTORE_PASSWORD", workflow)
+        self.assertIn("apksigner verify --verbose --print-certs", workflow)
+        self.assertIn(
+            "e8d6011c9c44b130be635ec8973184d39681d711b7b5aee1ab15e7354b408567",
             workflow,
         )

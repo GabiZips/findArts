@@ -69,10 +69,10 @@ def _startup_error_html(
     safe_detail = html.escape(detail or f"{type(exc).__name__}: {exc}")
     return f"""<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>ArtFinder - erro de inicializacao</title>
 <style>
-body{{font-family:system-ui,sans-serif;background:#111118;color:#f5f5f7;margin:0;padding:28px}}
+body{{font-family:system-ui,sans-serif;background:#111118;color:#f5f5f7;margin:0;padding:calc(28px + env(safe-area-inset-top,0px)) calc(28px + env(safe-area-inset-right,0px)) calc(28px + env(safe-area-inset-bottom,0px)) calc(28px + env(safe-area-inset-left,0px))}}
 main{{max-width:680px;margin:auto;background:#1d1d28;border:1px solid #343448;border-radius:16px;padding:24px}}
 h1{{font-size:1.4rem;color:#ff7b8b}}code{{word-break:break-word;color:#d6b4ff}}
 p{{line-height:1.55;color:#d4d4dd}}
