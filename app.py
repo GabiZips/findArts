@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import shutil
+import socket
 import sys
 import tempfile
 import threading
@@ -54,6 +55,7 @@ from utils.lan_security import (
     token_matches,
 )
 from utils.normalize import normalize_posts
+from utils.pairing import PairingError, pairing_manager
 
 USER_CATS_FILE = Path(USER_CATEGORIES_PATH)
 DEFAULT_USER_CATS_FILE = Path(RESOURCE_DIR) / "defaults" / "categories.json"
@@ -170,6 +172,123 @@ def _credential_status_payload() -> dict:
             for source, keys in CREDENTIAL_FIELDS.items()
         ]
     }
+
+
+def _validate_credential_changes(
+    raw_values: object,
+    raw_removals: object,
+) -> tuple[dict[str, str], set[str]]:
+    """Validate credential mutations shared by settings and pairing imports."""
+    if not isinstance(raw_values, dict) or not isinstance(raw_removals, list):
+        raise ValueError("Formato de credenciais invalido")
+    if any(not isinstance(key, str) for key in raw_values) or any(
+        not isinstance(key, str) for key in raw_removals
+    ):
+        raise ValueError("Campo de credencial invalido")
+
+    unknown = (set(raw_values) | set(raw_removals)) - _CREDENTIAL_KEYS
+    if unknown:
+        raise ValueError("Campo de credencial desconhecido")
+
+    updates: dict[str, str] = {}
+    for key, raw_value in raw_values.items():
+        if not isinstance(raw_value, str):
+            raise ValueError(f"Valor invalido para {key}")
+        value = raw_value.strip()
+        if not value:
+            continue
+        if len(value) > 4096 or "\n" in value or "\r" in value or "\0" in value:
+            raise ValueError(f"Valor invalido para {key}")
+        updates[key] = value
+
+    removals = {str(key) for key in raw_removals}
+    updates = {key: value for key, value in updates.items() if key not in removals}
+    return updates, removals
+
+
+def _configured_credential_values() -> dict[str, str]:
+    """Read only whitelisted values for in-process encryption."""
+    import config as current_config
+
+    return {
+        key: value
+        for key in _CREDENTIAL_KEYS
+        if isinstance((value := getattr(current_config, key, "")), str) and value
+    }
+
+
+def _sanitize_pairing_categories(raw_categories: object) -> dict:
+    """Bound and normalize categories received from a decrypted pairing blob."""
+    if not isinstance(raw_categories, dict) or len(raw_categories) > 500:
+        raise ValueError("Categorias de pareamento invalidas")
+
+    clean: dict[str, dict] = {}
+    field_limits = {
+        "label": 200,
+        "emoji": 32,
+        "tags": 20_000,
+        "group": 200,
+        "color": 32,
+    }
+    for raw_key, raw_category in raw_categories.items():
+        if (
+            not isinstance(raw_key, str)
+            or not raw_key.strip()
+            or len(raw_key) > 200
+            or any(char in raw_key for char in "\r\n\0")
+            or not isinstance(raw_category, dict)
+        ):
+            raise ValueError("Categoria de pareamento invalida")
+
+        category: dict[str, object] = {}
+        for field, limit in field_limits.items():
+            value = raw_category.get(field)
+            if value is None:
+                continue
+            if not isinstance(value, str) or len(value) > limit or "\0" in value:
+                raise ValueError(f"Campo de categoria invalido: {field}")
+            category[field] = value
+        favorite = raw_category.get("favorite", False)
+        if not isinstance(favorite, bool):
+            raise ValueError("Campo de categoria invalido: favorite")
+        category["favorite"] = favorite
+
+        raw_source_tags = raw_category.get("source_tags")
+        if raw_source_tags is not None:
+            if not isinstance(raw_source_tags, dict) or len(raw_source_tags) > 30:
+                raise ValueError("Tags por fonte invalidas")
+            source_tags: dict[str, list[str]] = {}
+            for raw_source, raw_queries in raw_source_tags.items():
+                if (
+                    not isinstance(raw_source, str)
+                    or not raw_source.strip()
+                    or len(raw_source) > 50
+                    or not isinstance(raw_queries, list)
+                    or len(raw_queries) > 50
+                ):
+                    raise ValueError("Tags por fonte invalidas")
+                queries = []
+                for raw_query in raw_queries:
+                    if (
+                        not isinstance(raw_query, str)
+                        or not raw_query.strip()
+                        or len(raw_query) > 2_000
+                        or "\0" in raw_query
+                    ):
+                        raise ValueError("Consulta por fonte invalida")
+                    queries.append(raw_query.strip())
+                if queries:
+                    source_tags[raw_source.strip()] = queries
+            if source_tags:
+                category["source_tags"] = source_tags
+
+        category.setdefault("label", raw_key.replace("_", " ").title())
+        category.setdefault("emoji", "🎨")
+        category.setdefault("tags", raw_key)
+        category.setdefault("group", "Geral")
+        category.setdefault("color", "#6366f1")
+        clean[raw_key.strip()] = category
+    return clean
 
 
 def _split_tags(tags_str: str) -> list[str]:
@@ -446,38 +565,143 @@ async def credential_settings():
 @app.post("/api/settings/credentials")
 async def save_credential_settings(body: dict):
     """Save source credentials locally without ever returning their values."""
-    raw_values = body.get("values") or {}
-    raw_removals = body.get("clear") or []
-    if not isinstance(raw_values, dict) or not isinstance(raw_removals, list):
-        return JSONResponse({"error": "Formato de credenciais invalido"}, status_code=400)
-    if any(not isinstance(key, str) for key in raw_values) or any(
-        not isinstance(key, str) for key in raw_removals
-    ):
-        return JSONResponse({"error": "Campo de credencial invalido"}, status_code=400)
-
-    unknown = (set(raw_values) | set(raw_removals)) - _CREDENTIAL_KEYS
-    if unknown:
-        return JSONResponse({"error": "Campo de credencial desconhecido"}, status_code=400)
-
-    updates: dict[str, str] = {}
-    for key, raw_value in raw_values.items():
-        if not isinstance(raw_value, str):
-            return JSONResponse({"error": f"Valor invalido para {key}"}, status_code=400)
-        value = raw_value.strip()
-        if not value:
-            continue
-        if len(value) > 4096 or "\n" in value or "\r" in value or "\0" in value:
-            return JSONResponse({"error": f"Valor invalido para {key}"}, status_code=400)
-        updates[key] = value
-
-    removals = {str(key) for key in raw_removals}
-    updates = {key: value for key, value in updates.items() if key not in removals}
+    try:
+        updates, removals = _validate_credential_changes(
+            body.get("values") or {}, body.get("clear") or []
+        )
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
     try:
         _write_credentials(updates, removals)
         _apply_credentials(updates, removals)
     except OSError as exc:
         return JSONResponse({"error": f"Nao foi possivel salvar: {exc}"}, status_code=500)
     return {"ok": True, **_credential_status_payload()}
+
+
+@app.post("/api/pairing/create")
+async def create_pairing(request: Request, body: dict):
+    """Create a five-minute encrypted export reachable only on the LAN."""
+    client_host = request.client.host if request.client else ""
+    if not is_loopback_client(client_host):
+        return JSONResponse({"error": "Pareamento so pode ser criado no PC local"}, status_code=403)
+    if os.getenv("ARTFINDER_MOBILE", "").strip() == "1":
+        return JSONResponse({"error": "Crie o codigo no ArtFinder do PC"}, status_code=400)
+
+    raw_include_categories = body.get("categories", True)
+    raw_include_credentials = body.get("credentials", True)
+    if not isinstance(raw_include_categories, bool) or not isinstance(
+        raw_include_credentials, bool
+    ):
+        return JSONResponse({"error": "Opcoes de pareamento invalidas"}, status_code=400)
+    include_categories = raw_include_categories
+    include_credentials = raw_include_credentials
+    if not include_categories and not include_credentials:
+        return JSONResponse({"error": "Selecione algo para transferir"}, status_code=400)
+
+    categories = _load_user_cats() if include_categories else {}
+    try:
+        credentials, _unused = (
+            _validate_credential_changes(_configured_credential_values(), [])
+            if include_credentials
+            else ({}, set())
+        )
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    payload = {
+        "version": 1,
+        "source": socket.gethostname(),
+        "sections": {
+            "categories": include_categories,
+            "credentials": include_credentials,
+        },
+        "categories": categories,
+        "credentials": credentials,
+    }
+    try:
+        session = pairing_manager.create(payload)
+    except (PairingError, ImportError, OSError) as exc:
+        return JSONResponse({"error": str(exc)}, status_code=503)
+    return {
+        "ok": True,
+        "expires_at": session.expires_at,
+        "options": session.options,
+        "summary": {
+            "categories": len(categories),
+            "credentials": len(credentials),
+        },
+    }
+
+
+@app.post("/api/pairing/import")
+async def import_pairing(body: dict):
+    """Persist a locally decrypted and strictly validated pairing payload."""
+    if len(json.dumps(body, ensure_ascii=False)) > 600_000:
+        return JSONResponse({"error": "Pacote de pareamento grande demais"}, status_code=413)
+    payload = body.get("payload")
+    mode = body.get("mode", "merge")
+    if not isinstance(payload, dict) or payload.get("version") != 1:
+        return JSONResponse({"error": "Pacote de pareamento invalido"}, status_code=400)
+    if mode not in {"merge", "replace"}:
+        return JSONResponse({"error": "Modo de importacao invalido"}, status_code=400)
+
+    sections = payload.get("sections")
+    if not isinstance(sections, dict):
+        return JSONResponse({"error": "Secoes de pareamento invalidas"}, status_code=400)
+    has_categories = sections.get("categories") is True
+    has_credentials = sections.get("credentials") is True
+    if not has_categories and not has_credentials:
+        return JSONResponse({"error": "Pacote de pareamento vazio"}, status_code=400)
+
+    try:
+        imported_categories = (
+            _sanitize_pairing_categories(payload.get("categories"))
+            if has_categories
+            else {}
+        )
+        imported_credentials, _unused = (
+            _validate_credential_changes(payload.get("credentials"), [])
+            if has_credentials
+            else ({}, set())
+        )
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+    old_categories = _load_user_cats()
+    old_credentials = _configured_credential_values()
+    new_categories = (
+        imported_categories
+        if has_categories and mode == "replace"
+        else {**old_categories, **imported_categories}
+    )
+
+    try:
+        with _USER_CATS_LOCK, _CREDENTIALS_LOCK:
+            if has_categories:
+                _save_user_cats(new_categories)
+            if has_credentials and imported_credentials:
+                _write_credentials(imported_credentials, set())
+                _apply_credentials(imported_credentials, set())
+    except Exception as exc:
+        try:
+            with _USER_CATS_LOCK, _CREDENTIALS_LOCK:
+                if has_categories:
+                    _save_user_cats(old_categories)
+                if has_credentials:
+                    previous_removals = _CREDENTIAL_KEYS - set(old_credentials)
+                    _write_credentials(old_credentials, previous_removals)
+                    _apply_credentials(old_credentials, previous_removals)
+        except Exception:
+            pass
+        return JSONResponse({"error": f"Nao foi possivel importar: {exc}"}, status_code=500)
+
+    return {
+        "ok": True,
+        "source": str(payload.get("source") or "PC"),
+        "categories": len(imported_categories),
+        "credentials": len(imported_credentials),
+        "mode": mode,
+    }
 
 
 @app.get("/api/categories")

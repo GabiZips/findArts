@@ -112,7 +112,8 @@ diretamente no Android ou iPhone.
 Existe uma fundação experimental para gerar um APK Android nativo usando o
 WebView do sistema e o mesmo backend Python local. O workflow
 [Build Android](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml)
-é manual e gera `ArtFinder-Android-experimental`.
+é manual e gera `ArtFinder-Android-experimental`. As versões publicadas também
+incluem `ArtFinder-Android-10-16.apk` na página de Releases.
 
 > [!CAUTION]
 > O APK é compatível com Android 10 até 16 e ainda é experimental.
@@ -134,6 +135,27 @@ privado e não aparece no gerenciador de arquivos comum.
 
 As credenciais das fontes podem ser preenchidas dentro do próprio aplicativo
 em **Stats > Fontes e credenciais**, sem incluir senhas no APK.
+
+### Parear o PC com o celular
+
+Para levar as categorias, tags por fonte e chaves já configuradas no PC para o
+Android, conecte os dois aparelhos à mesma rede Wi-Fi e abra
+**Stats > Parear PC e celular** nos dois:
+
+1. No PC, escolha o que deseja transferir e toque em **Criar pareamento**.
+2. Leia o QR Code com a câmera do celular e copie todo o texto reconhecido.
+3. No Android, cole esse código, escolha **Mesclar** ou **Substituir** e toque
+   em **Receber configuração**.
+
+O código expira em cinco minutos e funciona uma única vez. O pacote trafega
+cifrado com AES-256-GCM, a chave fica somente dentro do QR/código e nenhum dado
+é enviado para uma nuvem. Trate o código como uma senha temporária e feche a
+tela ao terminar. O pareamento não transfere artes, banco de dados ou histórico.
+
+Redes de faculdade, empresa ou Wi-Fi público podem impedir que aparelhos se
+enxerguem. Nesse caso, use uma rede doméstica ou o ponto de acesso de outro
+aparelho. Se o Firewall do Windows perguntar, permita o ArtFinder apenas em
+redes privadas.
 
 O iPhone não está incluído neste build. iOS exige um projeto e assinatura
 próprios, além de um computador macOS com Xcode para gerar o `.ipa`.

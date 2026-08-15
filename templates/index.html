@@ -366,6 +366,15 @@
   .cred-field input[type="password"]{min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:7px 9px;font-family:inherit;outline:none}
   .cred-clear{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);white-space:nowrap}
   @media(max-width:620px){.cred-field{grid-template-columns:1fr}.cred-clear{margin-bottom:4px}}
+  .pair-panel{display:flex;flex-direction:column;gap:12px}
+  .pair-choice{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text)}
+  .pair-choice input{accent-color:var(--accent)}
+  .pair-code{width:100%;min-height:86px;resize:vertical;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font:10px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;padding:9px;word-break:break-all}
+  .pair-qr{display:block;width:min(280px,80vw);height:auto;margin:0 auto;background:#fff;border:8px solid #fff;border-radius:10px}
+  .pair-actions{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+  .pair-status{min-height:18px;color:var(--muted);font-size:11px;line-height:1.5}
+  .pair-warning{border:1px solid rgba(234,179,8,.3);background:rgba(234,179,8,.08);color:#fde68a;border-radius:8px;padding:9px 11px;font-size:10px;line-height:1.5}
+  .pair-select{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:7px 9px;max-width:100%}
   /* Fav art badge */
   .fav-art-badge{position:absolute;top:4px;right:4px;font-size:14px;text-shadow:0 1px 3px rgba(0,0,0,0.8);z-index:5;pointer-events:none;}
 
@@ -755,6 +764,13 @@
         </div>
         <div style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
           <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;margin-bottom:2px">Parear PC e celular</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.45">Transfira tags e credenciais em um pacote criptografado, temporário e sem nuvem.</div>
+          </div>
+          <button class="btn-hdr" onclick="openPairing()">Parear dispositivo</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+          <div style="flex:1">
             <div style="font-size:12px;font-weight:600;margin-bottom:2px">Pastas do aplicativo</div>
             <div style="font-size:11px;color:var(--muted);line-height:1.45">Abra as imagens baixadas ou a pasta onde ficam o .env, as categorias e o banco.</div>
           </div>
@@ -836,6 +852,48 @@
         <button class="btn-hdr" onclick="closeCredentialSettings()">Cancelar</button>
         <button class="cm-save-btn" id="saveCredentialsButton" onclick="saveCredentialSettings()">Salvar credenciais</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- DEVICE PAIRING MODAL -->
+<div class="cm-modal-back" id="pairingModal">
+  <div class="cm-modal" style="width:min(680px,calc(100vw - 24px))">
+    <div class="cm-header">
+      <h2>Parear PC e celular</h2>
+      <button class="cm-close" onclick="closePairing()">✕</button>
+    </div>
+    <div class="cm-body">
+      <div id="pairDesktopPanel" class="pair-panel" style="display:none">
+        <div class="cm-form-hint" style="font-size:11px;line-height:1.55">
+          Conecte PC e celular ao mesmo Wi-Fi. O código expira em cinco minutos e funciona uma vez.
+        </div>
+        <label class="pair-choice"><input id="pairIncludeCategories" type="checkbox" checked> Transferir categorias e tags</label>
+        <label class="pair-choice"><input id="pairIncludeCredentials" type="checkbox" checked> Transferir credenciais configuradas</label>
+        <div class="pair-warning">O QR contém a chave de descriptografia. Mostre-o somente ao seu próprio celular e não envie o código por mensagens.</div>
+        <div class="pair-actions"><button class="cm-save-btn" id="createPairingButton" onclick="createPairing()">Criar código de pareamento</button></div>
+        <div id="pairDesktopResult" class="pair-panel" style="display:none">
+          <select id="pairAddressSelect" class="pair-select" onchange="selectPairingOption()"></select>
+          <img id="pairQr" class="pair-qr" alt="QR Code de pareamento">
+          <textarea id="pairCode" class="pair-code" readonly spellcheck="false"></textarea>
+          <div class="pair-actions"><button class="btn-hdr" onclick="copyPairingCode()">Copiar código</button></div>
+        </div>
+      </div>
+      <div id="pairMobilePanel" class="pair-panel" style="display:none">
+        <div class="cm-form-hint" style="font-size:11px;line-height:1.55">
+          No PC, abra Stats → Parear dispositivo. Escaneie o QR com a câmera, copie o texto reconhecido e cole abaixo.
+        </div>
+        <textarea id="pairImportCode" class="pair-code" placeholder="artfinder-pair:v1:..." autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+        <label class="pair-choice">Categorias
+          <select id="pairImportMode" class="pair-select">
+            <option value="merge">Mesclar com as deste celular</option>
+            <option value="replace">Substituir as deste celular</option>
+          </select>
+        </label>
+        <div class="pair-warning">A importação não transfere imagens, banco ou histórico. Credenciais já existentes só são alteradas quando o PC envia um novo valor.</div>
+        <div class="pair-actions"><button class="cm-save-btn" id="importPairingButton" onclick="importPairing()">Importar do PC</button></div>
+      </div>
+      <div id="pairStatus" class="pair-status"></div>
     </div>
   </div>
 </div>
@@ -1243,6 +1301,158 @@ async function saveCredentialSettings(){
     toast(t("Credenciais salvas neste dispositivo."),"success");
   }catch(error){
     toast(`${t("Erro")}: ${error.message}`,"error");
+  }finally{
+    button.disabled=false;
+  }
+}
+
+let pairingOptions=[];
+let pairingExpiryTimer=null;
+
+async function openPairing(){
+  const modal=document.getElementById("pairingModal");
+  const status=document.getElementById("pairStatus");
+  modal.classList.add("open");
+  status.textContent=t("Verificando este dispositivo...");
+  document.getElementById("pairDesktopPanel").style.display="none";
+  document.getElementById("pairMobilePanel").style.display="none";
+  try{
+    const response=await fetch("/api/health",{cache:"no-store"});
+    const health=await response.json();
+    if(!response.ok) throw new Error(health.error||"Erro");
+    document.getElementById(health.mobile?"pairMobilePanel":"pairDesktopPanel").style.display="flex";
+    status.textContent=health.mobile?t("Cole o código criado no PC."):t("Pronto para criar um código temporário.");
+    applyTranslations(modal);
+  }catch(error){
+    status.textContent=`${t("Erro")}: ${error.message}`;
+  }
+}
+
+function closePairing(){
+  document.getElementById("pairingModal").classList.remove("open");
+  if(pairingExpiryTimer){clearInterval(pairingExpiryTimer);pairingExpiryTimer=null;}
+}
+
+async function createPairing(){
+  const button=document.getElementById("createPairingButton");
+  const status=document.getElementById("pairStatus");
+  const categories=document.getElementById("pairIncludeCategories").checked;
+  const credentials=document.getElementById("pairIncludeCredentials").checked;
+  if(!categories&&!credentials){toast(t("Selecione algo para transferir."),"error");return;}
+  button.disabled=true;
+  status.textContent=t("Criando pacote criptografado...");
+  try{
+    const response=await fetch("/api/pairing/create",{
+      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({categories,credentials})
+    });
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.error||"Erro ao criar pareamento");
+    pairingOptions=data.options||[];
+    if(!pairingOptions.length) throw new Error("Nenhum endereço local disponível");
+    const select=document.getElementById("pairAddressSelect");
+    select.innerHTML=pairingOptions.map((option,index)=>`<option value="${index}">${esc(option.address)}</option>`).join("");
+    document.getElementById("pairDesktopResult").style.display="flex";
+    selectPairingOption();
+    if(pairingExpiryTimer) clearInterval(pairingExpiryTimer);
+    const updateExpiry=()=>{
+      const remaining=Math.max(0,Math.ceil((Number(data.expires_at)*1000-Date.now())/1000));
+      status.textContent=remaining
+        ?`${data.summary.categories} ${t("categorias")}, ${data.summary.credentials} ${t("credenciais")} · ${t("expira em")} ${remaining}s`
+        :t("Código expirado. Crie outro para tentar novamente.");
+      if(!remaining&&pairingExpiryTimer){clearInterval(pairingExpiryTimer);pairingExpiryTimer=null;}
+    };
+    updateExpiry();
+    pairingExpiryTimer=setInterval(updateExpiry,1000);
+  }catch(error){
+    status.textContent=`${t("Erro")}: ${error.message}`;
+  }finally{
+    button.disabled=false;
+  }
+}
+
+function selectPairingOption(){
+  const index=parseInt(document.getElementById("pairAddressSelect").value)||0;
+  const option=pairingOptions[index];
+  if(!option)return;
+  document.getElementById("pairQr").src=option.qr;
+  document.getElementById("pairCode").value=option.code;
+}
+
+async function copyPairingCode(){
+  const field=document.getElementById("pairCode");
+  try{
+    await navigator.clipboard.writeText(field.value);
+  }catch(_error){
+    field.focus();field.select();document.execCommand("copy");
+  }
+  toast(t("Código copiado."),"success");
+}
+
+function pairingBase64Bytes(value){
+  const normalized=value.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-value.length%4)%4);
+  const binary=atob(normalized);
+  return Uint8Array.from(binary,char=>char.charCodeAt(0));
+}
+
+async function decryptPairingCode(rawCode){
+  const prefix="artfinder-pair:v1:";
+  const code=(rawCode||"").trim();
+  if(!code.startsWith(prefix))throw new Error(t("Código de pareamento inválido."));
+  let descriptor;
+  try{
+    descriptor=JSON.parse(new TextDecoder().decode(pairingBase64Bytes(code.slice(prefix.length))));
+  }catch(_error){throw new Error(t("Código de pareamento inválido."));}
+  const endpoint=new URL(descriptor.url);
+  const host=endpoint.hostname;
+  const parts=host.split(".").map(Number);
+  const privateIpv4=parts.length===4&&parts.every(part=>Number.isInteger(part)&&part>=0&&part<=255)&&(
+    parts[0]===10||(parts[0]===172&&parts[1]>=16&&parts[1]<=31)||(parts[0]===192&&parts[1]===168)
+  );
+  if(endpoint.protocol!=="http:"||!privateIpv4||!endpoint.pathname.startsWith("/v1/pair/")){
+    throw new Error(t("O código não aponta para um PC na rede local."));
+  }
+  if(!globalThis.crypto?.subtle)throw new Error(t("Este WebView não oferece criptografia segura."));
+  const keyBytes=pairingBase64Bytes(String(descriptor.key||""));
+  if(keyBytes.length!==32)throw new Error(t("Código de pareamento inválido."));
+  const response=await fetch(endpoint.toString(),{cache:"no-store",mode:"cors"});
+  if(response.status===410)throw new Error(t("Código expirado ou já utilizado."));
+  if(!response.ok)throw new Error(t("Não foi possível acessar o PC. Verifique o Wi-Fi e o firewall."));
+  const envelope=await response.json();
+  if(envelope.version!==1||envelope.algorithm!=="AES-256-GCM")throw new Error(t("Pacote incompatível."));
+  try{
+    const key=await crypto.subtle.importKey("raw",keyBytes,{name:"AES-GCM"},false,["decrypt"]);
+    const plaintext=await crypto.subtle.decrypt({
+      name:"AES-GCM",
+      iv:pairingBase64Bytes(envelope.nonce),
+      additionalData:new TextEncoder().encode("ArtFinder pairing v1")
+    },key,pairingBase64Bytes(envelope.ciphertext));
+    return JSON.parse(new TextDecoder().decode(plaintext));
+  }catch(_error){throw new Error(t("Não foi possível validar ou descriptografar o pacote."));}
+}
+
+async function importPairing(){
+  const button=document.getElementById("importPairingButton");
+  const status=document.getElementById("pairStatus");
+  const code=document.getElementById("pairImportCode").value.trim();
+  if(!code){toast(t("Cole o código criado no PC."),"error");return;}
+  if(!confirm(t("Importar tags e credenciais deste PC?")))return;
+  button.disabled=true;
+  status.textContent=t("Recebendo e descriptografando...");
+  try{
+    const payload=await decryptPairingCode(code);
+    const response=await fetch("/api/pairing/import",{
+      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({payload,mode:document.getElementById("pairImportMode").value})
+    });
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"Erro ao importar pareamento");
+    await loadCategories();
+    await loadSources();
+    await loadHeaderStats();
+    document.getElementById("pairImportCode").value="";
+    status.textContent=`${t("Pareamento concluído com")} ${data.source}: ${data.categories} ${t("categorias")}, ${data.credentials} ${t("credenciais")}.`;
+    toast(t("Configuração importada com segurança."),"success");
+  }catch(error){
+    status.textContent=`${t("Erro")}: ${error.message}`;
   }finally{
     button.disabled=false;
   }

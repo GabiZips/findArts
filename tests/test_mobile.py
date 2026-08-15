@@ -119,6 +119,7 @@ class MobilePackagingTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn('android:minSdkVersion="29"', workflow)
         self.assertIn('android:targetSdkVersion="36"', workflow)
+        self.assertIn('android:usesCleartextTraffic="true"', workflow)
 
     def test_android_workflow_verifies_freetype_fallback(self):
         workflow = (
@@ -150,3 +151,11 @@ class MobilePackagingTests(unittest.TestCase):
             "e8d6011c9c44b130be635ec8973184d39681d711b7b5aee1ab15e7354b408567",
             workflow,
         )
+
+    def test_tagged_release_publishes_the_android_apk(self):
+        workflow = (
+            Path(__file__).parents[1] / ".github" / "workflows" / "release.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("uses: ./.github/workflows/build-android.yml", workflow)
+        self.assertIn("secrets: inherit", workflow)
+        self.assertIn("ArtFinder-Android-10-16.apk", workflow)

@@ -23,6 +23,7 @@ REQUIRED_APP_MODULES = {
     "main": {"main.py", "main.pyc"},
     "mobile": {"mobile.py", "mobile.pyc"},
     "android_media": {"utils/android_media.py", "utils/android_media.pyc"},
+    "pairing": {"utils/pairing.py", "utils/pairing.pyc"},
 }
 REQUIRED_RUNTIME_PACKAGES = {
     "certifi",

@@ -31,12 +31,25 @@ jobs:
       - name: Build executable
         run: python -m PyInstaller --noconfirm --clean artfinder.spec
 
+      - name: Smoke-test packaged pairing
+        shell: pwsh
+        run: |
+          $env:ARTFINDER_SMOKE_TEST = '1'
+          $env:ARTFINDER_DATA_DIR = Join-Path $env:RUNNER_TEMP 'artfinder-smoke-data'
+          $process = Start-Process -FilePath dist/ArtFinder.exe -PassThru -Wait -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) {
+            throw "Packaged pairing smoke test failed with exit code $($process.ExitCode)."
+          }
+
       - name: Verify clean package contents
         shell: pwsh
         run: |
-          $contents = & pyi-archive_viewer -l dist/ArtFinder.exe | Out-String
+          $contents = & pyi-archive_viewer -r -b dist/ArtFinder.exe | Out-String
           if ($contents -notmatch 'defaults[\\]+categories\.json') {
             throw 'Empty category defaults are missing from the executable.'
+          }
+          if ($contents -notmatch 'utils[\\.]pairing' -or $contents -notmatch 'cryptography' -or $contents -notmatch 'qrcode') {
+            throw 'Encrypted pairing dependencies are missing from the executable.'
           }
           if ($contents -match 'user_categories\.json|''\.env''') {
             throw 'The executable contains local user data or credentials.'

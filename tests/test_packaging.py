@@ -24,6 +24,7 @@ def _apk(
             f"main.{extension}": b"",
             f"mobile.{extension}": b"",
             f"utils/android_media.{extension}": b"",
+            f"utils/pairing.{extension}": b"",
             "defaults/categories.json": json.dumps({"categories": {}}).encode(),
         }
         if personal_categories:

@@ -92,6 +92,15 @@ class AppRouteTests(unittest.TestCase):
         self.assertIn("📱 Salvar no celular", html)
         self.assertIn("Pictures/ArtFinder", html)
 
+    def test_interface_exposes_encrypted_device_pairing(self):
+        response = asyncio.run(app.index())
+        html = response.body.decode("utf-8")
+        self.assertIn('id="pairingModal"', html)
+        self.assertIn('fetch("/api/pairing/create"', html)
+        self.assertIn('fetch("/api/pairing/import"', html)
+        self.assertIn('crypto.subtle.decrypt', html)
+        self.assertIn("artfinder-pair:v1:", html)
+
     def test_category_form_uses_source_mapping_examples(self):
         response = asyncio.run(app.index())
         html = response.body.decode("utf-8")
@@ -243,6 +252,105 @@ class AppRouteTests(unittest.TestCase):
 
     def test_malformed_credential_clear_list_is_rejected(self):
         response = asyncio.run(app.save_credential_settings({"clear": [{}]}))
+        self.assertEqual(response.status_code, 400)
+
+    def test_mobile_cannot_create_pairing_export(self):
+        with patch.dict(os.environ, {"ARTFINDER_MOBILE": "1"}, clear=False):
+            response = asyncio.run(
+                app.create_pairing(
+                    self._request(client="127.0.0.1"),
+                    {"categories": True, "credentials": True},
+                )
+            )
+        self.assertEqual(response.status_code, 400)
+
+    def test_pairing_export_encrypts_only_whitelisted_configuration(self):
+        fake_session = MagicMock(
+            expires_at=123456,
+            options=[{"address": "192.168.1.10", "code": "opaque", "qr": "data:qr"}],
+        )
+        with (
+            patch.dict(os.environ, {"ARTFINDER_MOBILE": "0"}, clear=False),
+            patch.object(app, "_load_user_cats", return_value={"vex": {"tags": "vex"}}),
+            patch.object(
+                app,
+                "_configured_credential_values",
+                return_value={"PIXIV_REFRESH_TOKEN": "secret-token"},
+            ),
+            patch.object(app.pairing_manager, "create", return_value=fake_session) as create,
+        ):
+            response = asyncio.run(
+                app.create_pairing(
+                    self._request(client="127.0.0.1"),
+                    {"categories": True, "credentials": True},
+                )
+            )
+        payload = create.call_args.args[0]
+        self.assertEqual(payload["categories"]["vex"]["tags"], "vex")
+        self.assertEqual(payload["credentials"]["PIXIV_REFRESH_TOKEN"], "secret-token")
+        self.assertTrue(set(payload["credentials"]) <= app._CREDENTIAL_KEYS)
+        self.assertNotIn("secret-token", str(response))
+
+    def test_pairing_export_rejects_non_boolean_options(self):
+        with patch.dict(os.environ, {"ARTFINDER_MOBILE": "0"}, clear=False):
+            response = asyncio.run(
+                app.create_pairing(
+                    self._request(client="127.0.0.1"),
+                    {"categories": "yes", "credentials": True},
+                )
+            )
+        self.assertEqual(response.status_code, 400)
+
+    def test_pairing_import_merges_categories_and_saves_allowed_credentials(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            user_file = root / "user_categories.json"
+            user_file.write_text(
+                json.dumps({"categories": {"existing": {"tags": "existing"}}}),
+                encoding="utf-8",
+            )
+            payload = {
+                "version": 1,
+                "source": "My PC",
+                "sections": {"categories": True, "credentials": True},
+                "categories": {
+                    "vex": {
+                        "label": "Vex",
+                        "tags": "vex_(league_of_legends)",
+                        "source_tags": {"pixiv": ["ヴェックス"]},
+                    }
+                },
+                "credentials": {"PIXIV_REFRESH_TOKEN": "paired-token"},
+            }
+            with (
+                patch.object(app, "USER_CATS_FILE", user_file),
+                patch.object(app, "DATA_DIR", root),
+                patch.object(config, "PIXIV_REFRESH_TOKEN", ""),
+                patch.object(app, "_apply_credentials"),
+            ):
+                response = asyncio.run(
+                    app.import_pairing({"payload": payload, "mode": "merge"})
+                )
+                categories = app._load_user_cats()
+            self.assertTrue(response["ok"])
+            self.assertEqual(set(categories), {"existing", "vex"})
+            self.assertEqual(
+                categories["vex"]["source_tags"]["pixiv"],
+                ["ヴェックス"],
+            )
+            self.assertIn(
+                "PIXIV_REFRESH_TOKEN=paired-token",
+                (root / ".env").read_text(encoding="utf-8"),
+            )
+
+    def test_pairing_import_rejects_unknown_credential(self):
+        payload = {
+            "version": 1,
+            "sections": {"categories": False, "credentials": True},
+            "categories": {},
+            "credentials": {"UNSAFE_FIELD": "secret"},
+        }
+        response = asyncio.run(app.import_pairing({"payload": payload}))
         self.assertEqual(response.status_code, 400)
 
     def test_database_is_not_served_as_download(self):

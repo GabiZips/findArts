@@ -6,8 +6,10 @@ port and displayed inside a native pywebview window.
 
 from __future__ import annotations
 
+import base64
 import ctypes
 import datetime
+import json
 import os
 import shutil
 import socket
@@ -60,7 +62,12 @@ def _bootstrap_desktop_data() -> None:
     """Prepare writable desktop configuration before config.py is imported."""
     if not getattr(sys, "frozen", False):
         return
-    data_dir = user_data_dir()
+    configured_data_dir = os.getenv("ARTFINDER_DATA_DIR", "").strip()
+    data_dir = (
+        Path(configured_data_dir).expanduser().resolve()
+        if configured_data_dir
+        else user_data_dir()
+    )
     _enable_desktop_log(data_dir)
     _migrate_env_if_needed(data_dir, Path(sys.executable).resolve().parent)
 
@@ -71,6 +78,28 @@ import uvicorn
 
 from app import app
 from config import DATA_DIR, DOWNLOAD_DIR, RESOURCE_DIR
+
+
+def _run_packaged_smoke_test() -> int:
+    """Exercise pairing dependencies without opening the desktop window."""
+    from urllib.request import urlopen
+
+    from utils.pairing import PairingSession, decrypt_payload, parse_pairing_code
+
+    payload = {"version": 1, "probe": "packaged-pairing"}
+    session = PairingSession(payload, ttl_seconds=15, addresses=["127.0.0.1"])
+    try:
+        descriptor = parse_pairing_code(session.options[0]["code"])
+        encoded_key = descriptor["key"]
+        encoded_key += "=" * (-len(encoded_key) % 4)
+        key = base64.urlsafe_b64decode(encoded_key)
+        with urlopen(descriptor["url"], timeout=10) as response:  # noqa: S310
+            envelope = json.load(response)
+        if decrypt_payload(envelope, key) != payload:
+            raise RuntimeError("Packaged pairing payload did not round-trip")
+    finally:
+        session.close()
+    return 0
 
 
 def _show_fatal_error(message: str) -> None:
@@ -109,6 +138,9 @@ def _create_server() -> tuple[uvicorn.Server, socket.socket, str]:
 
 
 def main() -> int:
+    if os.getenv("ARTFINDER_SMOKE_TEST", "").strip() == "1":
+        return _run_packaged_smoke_test()
+
     try:
         import webview
     except ImportError:

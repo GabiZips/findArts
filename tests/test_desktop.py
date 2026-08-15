@@ -17,6 +17,16 @@ class DesktopBootstrapTests(unittest.TestCase):
         self.assertNotIn('("user_categories.json", ".")', spec)
         self.assertEqual(__import__("json").loads(defaults), {"categories": {}})
 
+    def test_windows_workflow_smoke_tests_packaged_pairing(self):
+        workflow = (
+            Path(__file__).resolve().parents[1]
+            / ".github"
+            / "workflows"
+            / "build-windows.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ARTFINDER_SMOKE_TEST", workflow)
+        self.assertIn("ARTFINDER_DATA_DIR", workflow)
+
     def test_windows_window_icon_is_an_ico_resource(self):
         with patch("utils.platform.sys.platform", "win32"):
             self.assertEqual(window_icon("root").suffix, ".ico")
