@@ -77,6 +77,16 @@ class AppRouteTests(unittest.TestCase):
         self.assertIn('fetch("/api/search"', html)
         self.assertIn("Adicionar personagem ou tag", html)
 
+    def test_category_manager_exposes_group_choices_and_source_overrides(self):
+        html = asyncio.run(app.index()).body.decode("utf-8")
+        self.assertIn('list="cmGroupOptions"', html)
+        self.assertIn('id="cmSearch"', html)
+        self.assertIn('data-cm-source="pixiv"', html)
+        self.assertIn('data-cm-source="bluesky"', html)
+        self.assertIn('id="cmQueryPreview"', html)
+        self.assertIn("replace_source_tags:true", html)
+        self.assertNotIn("onclick=\"editCmCat('${k}')\"", html)
+
     def test_interface_respects_android_system_bar_safe_areas(self):
         response = asyncio.run(app.index())
         html = response.body.decode("utf-8")
@@ -105,7 +115,8 @@ class AppRouteTests(unittest.TestCase):
         response = asyncio.run(app.index())
         html = response.body.decode("utf-8")
         self.assertIn("vex_(league_of_legends)", html)
-        self.assertIn("pixiv: ヴェックス", html)
+        self.assertIn('data-cm-source="pixiv"', html)
+        self.assertIn("ex: ヴェックス", html)
         self.assertNotIn("shadow_the_hedgehog -rouge_the_bat", html)
 
     def test_lan_mode_rejects_remote_requests_without_token(self):
@@ -462,6 +473,81 @@ class AppRouteTests(unittest.TestCase):
         self.assertEqual(base, "vex_(league_of_legends)")
         self.assertEqual(sources["pixiv"], ["ヴェックス"])
         self.assertEqual(sources["tumblr"], ["vex lol"])
+
+    def test_category_editor_can_remove_an_existing_source_override(self):
+        existing = {
+            "vex": {
+                "label": "Vex",
+                "tags": "vex_(league_of_legends)",
+                "source_tags": {"pixiv": ["ヴェックス"]},
+            }
+        }
+        saved = {}
+        with (
+            patch.object(app, "_load_user_cats", return_value=existing),
+            patch.object(app, "_save_user_cats", side_effect=lambda cats: saved.update(cats)),
+        ):
+            response = asyncio.run(app.create_category({
+                "key": "vex",
+                "label": "Vex",
+                "tags": "vex_(league_of_legends)",
+                "source_tags": {},
+                "replace_source_tags": True,
+                "auto_map": False,
+            }))
+        self.assertTrue(response["ok"])
+        self.assertNotIn("source_tags", saved["vex"])
+
+    def test_new_category_key_is_url_safe_and_source_queries_are_split(self):
+        saved = {}
+        with (
+            patch.object(app, "_load_user_cats", return_value={}),
+            patch.object(app, "_save_user_cats", side_effect=lambda cats: saved.update(cats)),
+        ):
+            response = asyncio.run(app.create_category({
+                "key": "V (Cyberpunk)",
+                "label": "V",
+                "tags": "v_(cyberpunk_2077)",
+                "source_tags": {"bsky": "V Cyberpunk; V Cyberpunk 2077"},
+                "replace_source_tags": True,
+                "auto_map": False,
+            }))
+        self.assertEqual(response["key"], "v_cyberpunk")
+        self.assertEqual(saved["v_cyberpunk"]["source_tags"]["bluesky"], [
+            "V Cyberpunk",
+            "V Cyberpunk 2077",
+        ])
+
+    def test_category_rejects_unknown_source_override(self):
+        with patch.object(app, "_load_user_cats", return_value={}):
+            response = asyncio.run(app.create_category({
+                "key": "vex",
+                "label": "Vex",
+                "tags": "vex_(league_of_legends)",
+                "source_tags": {"unknown": ["vex"]},
+                "auto_map": False,
+            }))
+        self.assertEqual(response.status_code, 400)
+
+    def test_direct_source_tags_extend_legacy_prefixed_tags(self):
+        saved = {}
+        with (
+            patch.object(app, "_load_user_cats", return_value={}),
+            patch.object(app, "_save_user_cats", side_effect=lambda cats: saved.update(cats)),
+        ):
+            response = asyncio.run(app.create_category({
+                "key": "vex",
+                "label": "Vex",
+                "tags": "vex_(league_of_legends); pixiv: ヴェックス",
+                "source_tags": {"pixiv": ["Vex LoL"]},
+                "replace_source_tags": True,
+                "auto_map": False,
+            }))
+        self.assertTrue(response["ok"])
+        self.assertEqual(saved["vex"]["source_tags"]["pixiv"], [
+            "ヴェックス",
+            "Vex LoL",
+        ])
 
     def test_filename_components_have_no_path_syntax(self):
         self.assertEqual(_safe_component("../../bad:id"), "badid")

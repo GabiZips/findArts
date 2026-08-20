@@ -16,6 +16,7 @@ import socket
 import sys
 import tempfile
 import threading
+import unicodedata
 import webbrowser
 from pathlib import Path
 from threading import Timer
@@ -712,6 +713,16 @@ async def get_categories():
 
 
 _SOURCE_PREFIX_RE = None  # compilado sob demanda em create_category
+_CATEGORY_SOURCE_NAMES = {
+    "danbooru",
+    "gelbooru",
+    "safebooru",
+    "e621",
+    "pixiv",
+    "tumblr",
+    "bluesky",
+    "deviantart",
+}
 
 
 def _parse_source_prefixes(tags_field: str) -> tuple[str, dict[str, list[str]]]:
@@ -738,6 +749,51 @@ def _parse_source_prefixes(tags_field: str) -> tuple[str, dict[str, list[str]]]:
         else:
             booru_parts.append(part)
     return "; ".join(booru_parts), src_tags
+
+
+def _normalize_category_key(raw_key: object, existing: dict) -> str:
+    """Return an URL-safe key while preserving keys created by older releases."""
+    if not isinstance(raw_key, str):
+        return ""
+    raw_key = raw_key.strip().lower()
+    if raw_key in existing:
+        return raw_key
+    ascii_key = unicodedata.normalize("NFKD", raw_key).encode("ascii", "ignore").decode()
+    import re
+    return re.sub(r"_+", "_", re.sub(r"[^a-z0-9_-]+", "_", ascii_key)).strip("_-")
+
+
+def _normalize_category_source_tags(raw_source_tags: object) -> dict[str, list[str]]:
+    """Validate and normalize exact queries configured for each source."""
+    if raw_source_tags is None:
+        return {}
+    if not isinstance(raw_source_tags, dict) or len(raw_source_tags) > len(_CATEGORY_SOURCE_NAMES) + 1:
+        raise ValueError("Tags por fonte invalidas")
+
+    normalized: dict[str, list[str]] = {}
+    for raw_source, raw_queries in raw_source_tags.items():
+        if not isinstance(raw_source, str):
+            raise ValueError("Fonte invalida")
+        source = raw_source.strip().lower()
+        if source == "bsky":
+            source = "bluesky"
+        if source not in _CATEGORY_SOURCE_NAMES:
+            raise ValueError(f"Fonte desconhecida: {source}")
+        queries = raw_queries if isinstance(raw_queries, list) else [raw_queries]
+        if len(queries) > 50:
+            raise ValueError("Muitas consultas para uma fonte")
+        clean: list[str] = []
+        for raw_query in queries:
+            if not isinstance(raw_query, str):
+                raise ValueError("Consulta por fonte invalida")
+            for query in _split_tags(raw_query):
+                if len(query) > 2_000 or "\0" in query:
+                    raise ValueError("Consulta por fonte invalida")
+                if query not in clean:
+                    clean.append(query)
+        if clean:
+            normalized[source] = clean
+    return normalized
 
 
 def _auto_map_category(key: str) -> dict:
@@ -776,41 +832,74 @@ def _auto_map_category(key: str) -> dict:
 async def create_category(body: dict):
     """Cria ou atualiza uma categoria.
     Body: {key, label, tags, group, emoji, color, favorite,
-           source_tags?: {fonte: [queries]}, auto_map?: bool}
+           source_tags?: {fonte: [queries]}, replace_source_tags?: bool,
+           auto_map?: bool}
 
     No campo tags, entradas com prefixo de fonte viram a query exata
     daquela fonte:  "yamato_(one_piece); pixiv: ヤマト(ONEPIECE)".
     Sem override manual, o app descobre tags do Pixiv/e621 sozinho em
     segundo plano (wiki do Danbooru + validação nas APIs reais).
     """
-    key = body.get("key", "").strip().replace(" ", "_").lower()
-    if not key or not body.get("tags"):
-        return JSONResponse({"error": "key e tags sao obrigatorios"}, status_code=400)
-
-    booru_tags, src_tags = _parse_source_prefixes(body.get("tags", ""))
-
-    # source_tags passado direto no body (via API) complementa os prefixos
-    for src, qs in (body.get("source_tags") or {}).items():
-        qs = qs if isinstance(qs, list) else [qs]
-        dst = src_tags.setdefault(str(src).lower(), [])
-        dst.extend(q for q in qs if q and q not in dst)
-
     cats = _load_user_cats()
+    key = _normalize_category_key(body.get("key", ""), cats)
+    raw_tags = body.get("tags", "")
+    if not isinstance(raw_tags, str):
+        return JSONResponse({"error": "Tags invalidas"}, status_code=400)
+    booru_tags, prefixed_source_tags = _parse_source_prefixes(raw_tags)
+    if not key or not booru_tags:
+        return JSONResponse({"error": "key e tags principais sao obrigatorios"}, status_code=400)
+    if len(booru_tags) > 20_000:
+        return JSONResponse({"error": "Tags excedem o limite permitido"}, status_code=400)
+
+    try:
+        explicit_source_tags = _normalize_category_source_tags(body.get("source_tags"))
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    src_tags = {source: list(queries) for source, queries in prefixed_source_tags.items()}
+    for source, queries in explicit_source_tags.items():
+        destination = src_tags.setdefault(source, [])
+        destination.extend(query for query in queries if query not in destination)
+
+    def clean_text(field: str, default: str, limit: int) -> str:
+        value = body.get(field, default)
+        if not isinstance(value, str) or "\0" in value or len(value) > limit:
+            raise ValueError(f"Campo invalido: {field}")
+        return value.strip() or default
+
+    try:
+        label = clean_text("label", key, 200)
+        emoji = clean_text("emoji", "🎨", 32)
+        group = clean_text("group", "Geral", 200)
+        color = clean_text("color", "#6366f1", 32)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    import re
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+        return JSONResponse({"error": "Campo invalido: color"}, status_code=400)
+    if not isinstance(body.get("favorite", False), bool):
+        return JSONResponse({"error": "Campo invalido: favorite"}, status_code=400)
+    if not isinstance(body.get("replace_source_tags", False), bool):
+        return JSONResponse({"error": "Campo invalido: replace_source_tags"}, status_code=400)
+
     old = cats.get(key) or {}
     # Se as tags booru não mudaram, preserva os overrides antigos;
-    # se mudaram, descarta (estariam mapeando o personagem errado).
-    if _split_tags(old.get("tags", "")) == _split_tags(booru_tags):
+    # se mudaram, descarta (estariam mapeando o personagem errado). O editor
+    # visual envia replace_source_tags para também permitir apagar um override.
+    if (
+        not body.get("replace_source_tags", False)
+        and _split_tags(old.get("tags", "")) == _split_tags(booru_tags)
+    ):
         merged = dict(old.get("source_tags") or {})
         merged.update(src_tags)
         src_tags = merged
 
     cats[key] = {
-        "label":    body.get("label", key),
-        "emoji":    body.get("emoji", "🎨"),
+        "label":    label,
+        "emoji":    emoji,
         "tags":     booru_tags,
-        "group":    body.get("group", "Geral"),
-        "favorite": bool(body.get("favorite", False)),
-        "color":    body.get("color", "#6366f1"),
+        "group":    group,
+        "favorite": body.get("favorite", False),
+        "color":    color,
     }
     if src_tags:
         cats[key]["source_tags"] = src_tags

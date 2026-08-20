@@ -329,13 +329,21 @@
   /* Cat Manager Modal */
   .cm-modal-back{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:500;align-items:center;justify-content:center;padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
   .cm-modal-back.open{display:flex}
-  .cm-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(640px,calc(100vw - 24px));max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
+  .cm-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(860px,calc(100vw - 24px));max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
   .cm-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
   .cm-header h2{font-size:15px;font-weight:700}
   .cm-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;transition:color .1s}
   .cm-close:hover{color:var(--text)}
   .cm-body{flex:1;overflow-y:auto;padding:14px 22px;display:flex;flex-direction:column;gap:18px}
   .cm-list{display:flex;flex-direction:column;gap:3px}
+  .cm-toolbar{display:grid;grid-template-columns:minmax(180px,1fr) minmax(150px,.45fr) auto;gap:7px;align-items:center;margin:7px 0 8px}
+  .cm-toolbar input,.cm-toolbar select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:7px 9px;outline:none;min-width:0}
+  .cm-toolbar input:focus,.cm-toolbar select:focus{border-color:var(--accent)}
+  .cm-list-summary{font-size:10px;color:var(--muted);white-space:nowrap;text-align:right}
+  .cm-saved-group{display:flex;flex-direction:column;gap:3px;margin-top:7px}
+  .cm-saved-group-title{display:flex;align-items:center;gap:7px;padding:3px 5px 1px;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+  .cm-saved-group-title::after{content:"";height:1px;background:var(--border);flex:1}
+  .cm-saved-group-count{font-size:9px;background:var(--surface3);padding:1px 6px;border-radius:10px}
   .cm-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);transition:opacity .15s,background .15s}
   .cm-row.drag-over{border:1px dashed var(--accent);background:rgba(124,58,237,.12)}
   .cm-row.dragging{opacity:.4}
@@ -349,6 +357,8 @@
   .cm-row-fav.on{opacity:1}
   .cm-row-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:all .1s}
   .cm-row-del:hover{color:var(--red);background:rgba(239,68,68,.15)}
+  .cm-row-action{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:all .1s}
+  .cm-row-action:hover{color:var(--accent2);background:rgba(124,58,237,.15)}
   .cm-section-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
   .cm-form{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
   .cm-form input,.cm-form textarea,.cm-form select{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 9px;font-family:inherit;outline:none;width:100%}
@@ -357,6 +367,27 @@
   .cm-form-row{display:flex;gap:8px}
   .cm-form-row input{flex:1}
   .cm-form-hint{font-size:10px;color:var(--muted)}
+  .cm-form-notice{display:none;font-size:10px;line-height:1.45;padding:7px 9px;border-radius:6px;border:1px solid rgba(234,179,8,.3);background:rgba(234,179,8,.08);color:#fde68a}
+  .cm-form-notice.show{display:block}
+  .cm-source-details{border:1px solid var(--border);border-radius:8px;background:rgba(0,0,0,.08);overflow:hidden}
+  .cm-source-details>summary{cursor:pointer;list-style:none;padding:9px 11px;font-size:11px;font-weight:650;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .cm-source-details>summary::-webkit-details-marker{display:none}
+  .cm-source-details>summary::after{content:"＋";color:var(--muted);font-size:13px}
+  .cm-source-details[open]>summary::after{content:"−"}
+  .cm-source-body{padding:0 11px 11px;display:flex;flex-direction:column;gap:9px}
+  .cm-source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .cm-source-field{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .cm-source-field textarea{height:54px;min-height:54px;font-size:11px;resize:vertical}
+  .cm-source-field-label{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10px;font-weight:650;color:var(--muted)}
+  .cm-override-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .15s}
+  .cm-source-field.has-value .cm-override-dot{opacity:1}
+  .cm-source-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .cm-source-status{font-size:10px;color:var(--muted);flex:1}
+  .cm-query-preview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  .cm-query-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;min-width:0}
+  .cm-query-head{display:flex;justify-content:space-between;gap:6px;font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .cm-query-kind{color:var(--accent2);font-weight:600;text-transform:none;letter-spacing:0}
+  .cm-query-values{font:10px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text);overflow-wrap:anywhere;margin-top:3px}
   .cm-save-btn{padding:8px;border:none;border-radius:7px;background:linear-gradient(135deg,var(--accent),#a855f7);color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
   .cm-save-btn:hover{transform:translateY(-1px)}
   .cred-group{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
@@ -365,7 +396,14 @@
   .cred-field code{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
   .cred-field input[type="password"]{min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:7px 9px;font-family:inherit;outline:none}
   .cred-clear{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);white-space:nowrap}
-  @media(max-width:620px){.cred-field{grid-template-columns:1fr}.cred-clear{margin-bottom:4px}}
+  @media(max-width:620px){
+    .cred-field{grid-template-columns:1fr}.cred-clear{margin-bottom:4px}
+    .cm-modal{width:100%;height:100%;max-height:100%;border-radius:0}
+    .cm-header{padding:14px 16px}.cm-body{padding:12px 14px}
+    .cm-toolbar{grid-template-columns:1fr 1fr}.cm-list-summary{grid-column:1/-1;text-align:left}
+    .cm-source-grid,.cm-query-preview{grid-template-columns:1fr}
+    .cm-row-tags{display:none}.cm-row-group{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  }
   .pair-panel{display:flex;flex-direction:column;gap:12px}
   .pair-choice{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text)}
   .pair-choice input{accent-color:var(--accent)}
@@ -909,6 +947,13 @@
       <!-- Lista de categorias existentes -->
       <div>
         <div class="cm-section-title">Categorias salvas</div>
+        <div class="cm-toolbar">
+          <input type="search" id="cmSearch" placeholder="Buscar por nome, grupo ou tag..." autocomplete="off">
+          <select id="cmGroupFilter" aria-label="Filtrar por grupo">
+            <option value="">Todos os grupos</option>
+          </select>
+          <div class="cm-list-summary" id="cmListSummary"></div>
+        </div>
         <div class="cm-list" id="cmList"></div>
       </div>
       <!-- Formulário de nova categoria -->
@@ -929,23 +974,48 @@
             <div style="flex:1;display:flex;flex-direction:column;gap:3px">
               <div class="cm-field-label">Chave única</div>
               <input type="text" id="cmKey" placeholder="gerada automaticamente a partir do nome">
+              <div class="cm-form-hint" id="cmKeyHint">Usada internamente pelo app.</div>
             </div>
             <div style="flex:1;display:flex;flex-direction:column;gap:3px">
               <div class="cm-field-label">Grupo / Fandom</div>
-              <input type="text" id="cmGroup" placeholder="ex: League of Legends, Cyberpunk 2077...">
+              <input type="text" id="cmGroup" list="cmGroupOptions" placeholder="ex: League of Legends, Cyberpunk 2077..." autocomplete="off">
+              <datalist id="cmGroupOptions"></datalist>
+              <div class="cm-form-hint">Escolha um grupo existente ou digite um novo.</div>
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:3px">
-            <div class="cm-field-label">Tags de busca</div>
+            <div class="cm-field-label">Tags principais</div>
             <div style="position:relative">
-              <textarea id="cmTags" placeholder="vex_(league_of_legends)
-pixiv: ヴェックス
-tumblr: vex league of legends
-bluesky: &quot;vex&quot; &quot;league of legends&quot;"></textarea>
+              <textarea id="cmTags" placeholder="vex_(league_of_legends)"></textarea>
               <div id="cmTagSuggest" class="tag-suggest" style="display:none"></div>
             </div>
             <div class="cm-form-hint">Cada linha (ou <b>;</b>) = busca independente — resultados são unidos (OR). Espaço entre tags = AND. Prefixo <b>-tag</b> exclui. <b>Digite 2+ letras pra sugerir tags.</b></div>
           </div>
+          <div class="cm-form-notice" id="cmFormNotice"></div>
+          <details class="cm-source-details" id="cmSourceDetails">
+            <summary><span>Tags específicas por fonte</span><span class="cm-form-hint">opcional</span></summary>
+            <div class="cm-source-body">
+              <div class="cm-form-hint">Se um campo ficar vazio, a fonte usa as tags principais. Use uma linha por consulta alternativa (OR).</div>
+              <div class="cm-source-grid">
+                <label class="cm-source-field"><span class="cm-source-field-label">Danbooru <i class="cm-override-dot"></i></span><textarea data-cm-source="danbooru" placeholder="usa as tags principais"></textarea></label>
+                <label class="cm-source-field"><span class="cm-source-field-label">Gelbooru <i class="cm-override-dot"></i></span><textarea data-cm-source="gelbooru" placeholder="usa as tags principais"></textarea></label>
+                <label class="cm-source-field"><span class="cm-source-field-label">Safebooru <i class="cm-override-dot"></i></span><textarea data-cm-source="safebooru" placeholder="usa as tags principais"></textarea></label>
+                <label class="cm-source-field"><span class="cm-source-field-label">e621 <i class="cm-override-dot"></i></span><textarea data-cm-source="e621" placeholder="ex: vex_(league_of_legends)"></textarea></label>
+                <label class="cm-source-field"><span class="cm-source-field-label">Pixiv <i class="cm-override-dot"></i></span><textarea data-cm-source="pixiv" placeholder="ex: ヴェックス"></textarea></label>
+                <label class="cm-source-field"><span class="cm-source-field-label">Tumblr <i class="cm-override-dot"></i></span><textarea data-cm-source="tumblr" placeholder="ex: vex league of legends"></textarea></label>
+                <label class="cm-source-field"><span class="cm-source-field-label">Bluesky <i class="cm-override-dot"></i></span><textarea data-cm-source="bluesky" placeholder="ex: &quot;vex&quot; &quot;league of legends&quot;"></textarea></label>
+                <label class="cm-source-field"><span class="cm-source-field-label">DeviantArt <i class="cm-override-dot"></i></span><textarea data-cm-source="deviantart" placeholder="ex: vex league of legends"></textarea></label>
+              </div>
+              <div class="cm-source-actions">
+                <button class="btn-sm" id="cmSuggestSourcesButton" type="button" onclick="suggestCmSourceTags()">Sugerir Pixiv e e621</button>
+                <span class="cm-source-status" id="cmSourceStatus">Sugestões usam aliases públicos e validação nas fontes; você pode editar tudo.</span>
+              </div>
+              <div>
+                <div class="cm-field-label" style="margin-bottom:5px">Prévia da busca por fonte</div>
+                <div class="cm-query-preview" id="cmQueryPreview"></div>
+              </div>
+            </div>
+          </details>
           <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
             <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap">
               <input type="checkbox" id="cmFav"> Favoritar no sidebar
@@ -1458,79 +1528,133 @@ async function importPairing(){
   }
 }
 
-function openCatManager(){document.getElementById("catManagerModal").classList.add("open");renderCmList();}
+const CM_SOURCE_DEFS=[
+  ["danbooru","Danbooru"],["gelbooru","Gelbooru"],["safebooru","Safebooru"],["e621","e621"],
+  ["pixiv","Pixiv"],["tumblr","Tumblr"],["bluesky","Bluesky"],["deviantart","DeviantArt"]
+];
+let _dragSrcKey=null,cmEditingKey=null,cmKeyTouched=false;
+
+function cmSplitQueries(value){return String(value||"").split(/[;\n]+/).map(v=>v.trim()).filter(Boolean);}
+function cmSafeColor(value){return /^#[0-9a-f]{6}$/i.test(value||"")?value:"#6366f1";}
+function cmSlug(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9_-]+/g,"_").replace(/_+/g,"_").replace(/^[_-]+|[_-]+$/g,"");}
+function cmSourceInputs(){return [...document.querySelectorAll("[data-cm-source]")];}
+function collectCmSourceTags(){
+  const result={};
+  cmSourceInputs().forEach(input=>{const values=cmSplitQueries(input.value);if(values.length)result[input.dataset.cmSource]=values;});
+  return result;
+}
+function renderCmGroupChoices(){
+  const counts={};
+  Object.values(userCats).forEach(c=>{const group=(c.group||"Geral").trim()||"Geral";counts[group]=(counts[group]||0)+1;});
+  const groups=Object.entries(counts).sort((a,b)=>a[0].localeCompare(b[0],undefined,{sensitivity:"base"}));
+  document.getElementById("cmGroupOptions").innerHTML=groups.map(([group,count])=>`<option value="${esc(group)}">${count} ${t("categorias")}</option>`).join("");
+  const filter=document.getElementById("cmGroupFilter"),selected=filter.value;
+  filter.innerHTML=`<option value="">${t("Todos os grupos")}</option>`+groups.map(([group,count])=>`<option value="${esc(group)}">${esc(group)} (${count})</option>`).join("");
+  if([...filter.options].some(option=>option.value===selected))filter.value=selected;
+}
+function openCatManager(){
+  document.getElementById("catManagerModal").classList.add("open");
+  renderCmGroupChoices();renderCmList();updateCmFormState();
+}
 function closeCatManager(){document.getElementById("catManagerModal").classList.remove("open");}
-let _dragSrcKey = null;
 function renderCmList(){
-  const el=document.getElementById("cmList");
-  const entries=Object.entries(userCats);
-  if(!entries.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px">Nenhuma categoria</div>`;return;}
-  el.innerHTML=entries.map(([k,c])=>`
-    <div class="cm-row" draggable="true" data-key="${k}">
-      <span class="cm-drag-handle" title="Arrastar para reordenar">⠿</span>
-      <span class="cm-row-color" style="background:${c.color||"#6366f1"}"></span>
-      <span class="cm-row-label">${esc(c.emoji||"")} ${esc(c.label)}</span>
-      <span class="cm-row-group">${esc(c.group||"Geral")}</span>
-      <span class="cm-row-tags" title="${esc(c.tags)}">${esc(c.tags)}</span>
-      <span class="cm-row-fav ${c.favorite?"on":""}" onclick="toggleFavCat('${k}',this)" title="Favoritar">&#x2B50;</span>
-      <span style="font-size:11px;color:var(--muted);cursor:pointer;padding:2px 4px" onclick="editCmCat('${k}')" title="Editar">&#x270F;&#xFE0F;</span>
-      <button class="cm-row-del" onclick="deleteCmCat('${k}')" title="Remover">&#x1F5D1;</button>
-    </div>`).join("");
-  // Drag-and-drop reordering
-  el.querySelectorAll('.cm-row').forEach(row=>{
-    row.addEventListener('dragstart', e=>{
-      _dragSrcKey = row.dataset.key;
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    row.addEventListener('dragend', ()=>row.classList.remove('dragging'));
-    row.addEventListener('dragover', e=>{ e.preventDefault(); row.classList.add('drag-over'); });
-    row.addEventListener('dragleave', ()=>row.classList.remove('drag-over'));
-    row.addEventListener('drop', async e=>{
-      e.preventDefault();
-      row.classList.remove('drag-over');
-      if(!_dragSrcKey || _dragSrcKey===row.dataset.key) return;
-      // Reorder userCats in memory
-      const keys = Object.keys(userCats);
-      const fromIdx = keys.indexOf(_dragSrcKey);
-      const toIdx = keys.indexOf(row.dataset.key);
-      if(fromIdx<0||toIdx<0) return;
-      keys.splice(fromIdx,1);
-      keys.splice(toIdx,0,_dragSrcKey);
-      const newCats = {};
-      keys.forEach(k=>newCats[k]=userCats[k]);
-      userCats = newCats;
-      renderCmList();
-      // Save new order via API (save each category to preserve order)
+  const el=document.getElementById("cmList"),search=document.getElementById("cmSearch").value.trim().toLocaleLowerCase(),groupFilter=document.getElementById("cmGroupFilter").value;
+  const allEntries=Object.entries(userCats);
+  const entries=allEntries.filter(([key,c])=>{
+    if(groupFilter&&(c.group||"Geral")!==groupFilter)return false;
+    const sourceText=Object.values(c.source_tags||{}).flat().join(" ");
+    return !search||[key,c.label,c.group,c.tags,sourceText].join(" ").toLocaleLowerCase().includes(search);
+  });
+  document.getElementById("cmListSummary").textContent=`${entries.length} de ${allEntries.length} ${t("categorias")}`;
+  if(!entries.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px">${t(allEntries.length?"Nenhuma categoria encontrada":"Nenhuma categoria")}</div>`;return;}
+  const grouped=new Map();
+  entries.forEach(entry=>{const group=entry[1].group||"Geral";if(!grouped.has(group))grouped.set(group,[]);grouped.get(group).push(entry);});
+  const filtering=Boolean(search||groupFilter);
+  el.innerHTML=[...grouped.entries()].map(([group,items])=>`
+    <section class="cm-saved-group">
+      <div class="cm-saved-group-title"><span>${esc(group)}</span><span class="cm-saved-group-count">${items.length}</span></div>
+      ${items.map(([k,c])=>`
+        <div class="cm-row" draggable="${filtering?"false":"true"}" data-key="${esc(k)}">
+          <span class="cm-drag-handle" title="${filtering?t("Limpe os filtros para reordenar"):t("Arrastar para reordenar")}" style="${filtering?"opacity:.25":""}">⠿</span>
+          <span class="cm-row-color" style="background:${cmSafeColor(c.color)}"></span>
+          <span class="cm-row-label">${esc(c.emoji||"")} ${esc(c.label||k)}</span>
+          <span class="cm-row-group">${esc(c.group||"Geral")}</span>
+          <span class="cm-row-tags" title="${esc(c.tags||"")}">${esc(c.tags||"")}</span>
+          <button class="cm-row-action cm-row-fav ${c.favorite?"on":""}" data-action="favorite" title="${t("Favoritar")}">&#x2B50;</button>
+          <button class="cm-row-action" data-action="edit" title="${t("Editar")}">&#x270F;&#xFE0F;</button>
+          <button class="cm-row-del" data-action="delete" title="${t("Remover")}">&#x1F5D1;</button>
+        </div>`).join("")}
+    </section>`).join("");
+  el.querySelectorAll("[data-action]").forEach(button=>button.addEventListener("click",()=>{
+    const key=button.closest(".cm-row").dataset.key;
+    if(button.dataset.action==="edit")editCmCat(key);
+    else if(button.dataset.action==="delete")deleteCmCat(key);
+    else toggleFavCat(key,button);
+  }));
+  if(filtering)return;
+  el.querySelectorAll(".cm-row").forEach(row=>{
+    row.addEventListener("dragstart",e=>{_dragSrcKey=row.dataset.key;row.classList.add("dragging");e.dataTransfer.effectAllowed="move";});
+    row.addEventListener("dragend",()=>row.classList.remove("dragging"));
+    row.addEventListener("dragover",e=>{e.preventDefault();row.classList.add("drag-over");});
+    row.addEventListener("dragleave",()=>row.classList.remove("drag-over"));
+    row.addEventListener("drop",async e=>{
+      e.preventDefault();row.classList.remove("drag-over");
+      if(!_dragSrcKey||_dragSrcKey===row.dataset.key)return;
+      const keys=Object.keys(userCats),fromIdx=keys.indexOf(_dragSrcKey),toIdx=keys.indexOf(row.dataset.key);
+      if(fromIdx<0||toIdx<0)return;
+      keys.splice(fromIdx,1);keys.splice(toIdx,0,_dragSrcKey);
+      const newCats={};keys.forEach(key=>newCats[key]=userCats[key]);userCats=newCats;renderCmList();
       try{
-        await fetch('/api/categories/reorder', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({order: keys})
-        });
+        const response=await fetch("/api/categories/reorder",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({order:keys})});
+        if(!response.ok)throw new Error(`HTTP ${response.status}`);
         await loadCategories();
-      } catch(err){ toast('Erro ao salvar ordem: '+err.message,'error'); }
+      }catch(err){toast(t("Erro ao salvar ordem")+": "+err.message,"error");}
     });
   });
 }
 function clearCmForm(){
   ["cmEmoji","cmLabel","cmKey","cmGroup","cmTags"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("cmColor").value="#6366f1";
-  document.getElementById("cmFav").checked=false;
+  cmSourceInputs().forEach(input=>input.value="");
+  document.getElementById("cmColor").value="#6366f1";document.getElementById("cmFav").checked=false;
+  document.getElementById("cmSourceDetails").open=false;document.getElementById("cmSourceStatus").textContent=t("Sugestões usam aliases públicos e validação nas fontes; você pode editar tudo.");
+  cmEditingKey=null;cmKeyTouched=false;document.getElementById("cmKey").readOnly=false;document.getElementById("cmKeyHint").textContent=t("Usada internamente pelo app.");updateCmFormState();
 }
 function editCmCat(key){
   const c=userCats[key];if(!c)return;
-  document.getElementById("cmEmoji").value=c.emoji||"";
-  document.getElementById("cmLabel").value=c.label||"";
-  document.getElementById("cmKey").value=key;
-  document.getElementById("cmGroup").value=c.group||"";
-  const sourceLines=Object.entries(c.source_tags||{}).flatMap(([source,queries])=>
-    (Array.isArray(queries)?queries:[queries]).filter(Boolean).map(query=>`${source}: ${query}`)
-  );
-  document.getElementById("cmTags").value=[c.tags||"",...sourceLines].filter(Boolean).join(";\n");
-  document.getElementById("cmColor").value=c.color||"#6366f1";
-  document.getElementById("cmFav").checked=!!c.favorite;
-  document.getElementById("cmTags").focus();
+  cmEditingKey=key;cmKeyTouched=true;
+  document.getElementById("cmEmoji").value=c.emoji||"";document.getElementById("cmLabel").value=c.label||"";
+  document.getElementById("cmKey").value=key;document.getElementById("cmKey").readOnly=true;document.getElementById("cmKeyHint").textContent=t("A chave fica bloqueada durante a edição para evitar duplicatas.");
+  document.getElementById("cmGroup").value=c.group||"";document.getElementById("cmTags").value=c.tags||"";
+  document.getElementById("cmColor").value=cmSafeColor(c.color);document.getElementById("cmFav").checked=!!c.favorite;
+  const sourceTags=Object.fromEntries(Object.entries(c.source_tags||{}).map(([source,queries])=>[source.toLowerCase()==="bsky"?"bluesky":source.toLowerCase(),queries]));
+  cmSourceInputs().forEach(input=>{const queries=sourceTags[input.dataset.cmSource]||[];input.value=(Array.isArray(queries)?queries:[queries]).filter(Boolean).join("\n");});
+  document.getElementById("cmSourceDetails").open=Object.keys(sourceTags).length>0;updateCmFormState();document.getElementById("cmTags").focus();
+}
+function updateCmFormState(){
+  const tags=cmSplitQueries(document.getElementById("cmTags").value),sourceTags=collectCmSourceTags(),notice=document.getElementById("cmFormNotice");
+  cmSourceInputs().forEach(input=>input.closest(".cm-source-field").classList.toggle("has-value",Boolean(input.value.trim())));
+  const duplicates=Object.entries(userCats).filter(([key,c])=>key!==cmEditingKey&&JSON.stringify(cmSplitQueries(c.tags))===JSON.stringify(tags)).map(([,c])=>c.label).filter(Boolean);
+  const typedKey=document.getElementById("cmKey").value.trim().toLowerCase();
+  let message="";
+  if(!cmEditingKey&&typedKey&&userCats[typedKey])message=t("Essa chave já existe e salvar substituiria a categoria atual.");
+  else if(tags.length&&duplicates.length)message=`${t("Estas tags principais já são usadas por")}: ${duplicates.join(", ")}.`;
+  notice.textContent=message;notice.classList.toggle("show",Boolean(message));
+  document.getElementById("cmQueryPreview").innerHTML=CM_SOURCE_DEFS.map(([id,label])=>{
+    const custom=sourceTags[id],queries=custom||tags;
+    return `<div class="cm-query-item"><div class="cm-query-head"><span>${label}</span><span class="cm-query-kind">${t(custom?"específica":"principal")}</span></div><div class="cm-query-values">${queries.length?queries.map(esc).join("<br>"):t("sem consulta")}</div></div>`;
+  }).join("");
+}
+async function suggestCmSourceTags(){
+  const tags=cmSplitQueries(document.getElementById("cmTags").value),button=document.getElementById("cmSuggestSourcesButton"),status=document.getElementById("cmSourceStatus");
+  if(!tags.length){toast(t("Digite as tags principais primeiro."),"error");return;}
+  button.disabled=true;status.textContent=t("Consultando aliases e validando tags...");
+  try{
+    const results=await Promise.all(tags.map(tag=>fetch("/api/suggest-source-tags?tags="+encodeURIComponent(tag)).then(async response=>{const data=await response.json();if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`);return data.suggestions||{};})));
+    const merged={};results.forEach(suggestions=>Object.entries(suggestions).forEach(([source,queries])=>{merged[source]=[...new Set([...(merged[source]||[]),...(Array.isArray(queries)?queries:[queries])].filter(Boolean))];}));
+    let added=0;cmSourceInputs().forEach(input=>{const suggestions=merged[input.dataset.cmSource]||[];if(!suggestions.length)return;const next=[...new Set([...cmSplitQueries(input.value),...suggestions])];added+=next.length-cmSplitQueries(input.value).length;input.value=next.join("\n");});
+    status.textContent=added?t("Sugestões adicionadas. Revise antes de salvar."):t("Nenhuma sugestão nova foi encontrada; preencha manualmente se necessário.");updateCmFormState();
+  }catch(error){status.textContent=t("Não foi possível sugerir tags")+": "+error.message;}
+  finally{button.disabled=false;}
 }
 
 function removeFavGrid(src,pid,cardEl){
@@ -1551,37 +1675,43 @@ function removeFavGrid(src,pid,cardEl){
 async function saveCmCategory(){
   const label=document.getElementById("cmLabel").value.trim();
   const tags=document.getElementById("cmTags").value.trim();
-  if(!label||!tags){toast("Nome e tags são obrigatórios.","error");return}
+  if(!label||!cmSplitQueries(tags).length){toast(t("Nome e tags são obrigatórios."),"error");return}
   const rawKey=document.getElementById("cmKey").value.trim();
-  const key=rawKey||(label.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/(^_|_$)/g,""));
+  const key=rawKey||cmSlug(label);
+  if(!key){toast(t("Não foi possível gerar uma chave. Digite uma chave manualmente."),"error");return;}
   const body={key,label,tags,
     emoji:document.getElementById("cmEmoji").value.trim()||"\uD83C\uDFA8",
     group:document.getElementById("cmGroup").value.trim()||"Geral",
     color:document.getElementById("cmColor").value,
     favorite:document.getElementById("cmFav").checked,
+    source_tags:collectCmSourceTags(),
+    replace_source_tags:true,
+    auto_map:false,
   };
   try{
-    const r=await(await fetch("/api/categories",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})).json();
+    const response=await fetch("/api/categories",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}),r=await response.json();
     if(r.error){toast("Erro: "+r.error,"error");return}
-    toast(`"${label}" salvo!`,"success");
+    toast(`"${label}" ${t("salvo!")}`,"success");
     clearCmForm();
     await loadCategories();
+    renderCmGroupChoices();
     renderCmList();
   }catch(e){toast("Erro: "+e.message,"error")}
 }
 async function deleteCmCat(key){
   if(!confirm(`Remover "${userCats[key]?.label||key}"?`))return;
   try{
-    const r=await(await fetch(`/api/categories/${key}`,{method:"DELETE"})).json();
+    const r=await(await fetch(`/api/categories/${encodeURIComponent(key)}`,{method:"DELETE"})).json();
     if(r.error){toast("Erro: "+r.error,"error");return}
-    toast("Removida.","success");
+    if(cmEditingKey===key)clearCmForm();toast(t("Removida."),"success");
     await loadCategories();
+    renderCmGroupChoices();
     renderCmList();
   }catch(e){toast("Erro: "+e.message,"error")}
 }
 async function toggleFavCat(key,el){
   try{
-    const r=await(await fetch(`/api/categories/${key}/favorite`,{method:"POST"})).json();
+    const r=await(await fetch(`/api/categories/${encodeURIComponent(key)}/favorite`,{method:"POST"})).json();
     el.classList.toggle("on",r.favorite);
     await loadCategories();
     renderCmList();
@@ -3055,12 +3185,13 @@ function cmTagPick(val){
   const np=(before+ins).length;
   ta.setSelectionRange(np,np);
   document.getElementById('cmTagSuggest').style.display='none';
+  updateCmFormState();
   ta.focus();
 }
 (function(){
   const ta=document.getElementById('cmTags');
   if(!ta) return;
-  ta.addEventListener('input',()=>{ clearTimeout(cmTagTimer); cmTagTimer=setTimeout(cmTagSuggest,180); });
+  ta.addEventListener('input',()=>{ clearTimeout(cmTagTimer); cmTagTimer=setTimeout(cmTagSuggest,180); updateCmFormState(); });
   ta.addEventListener('blur',()=>setTimeout(()=>{const b=document.getElementById('cmTagSuggest'); if(b)b.style.display='none';},150));
   ta.addEventListener('keydown',(e)=>{
     const box=document.getElementById('cmTagSuggest');
@@ -3074,6 +3205,16 @@ function cmTagPick(val){
     items.forEach((el,i)=>el.classList.toggle('active',i===cmTagActive));
     if(items[cmTagActive]) items[cmTagActive].scrollIntoView({block:'nearest'});
   });
+  document.getElementById("cmLabel")?.addEventListener("input",event=>{
+    if(!cmEditingKey&&!cmKeyTouched)document.getElementById("cmKey").value=cmSlug(event.target.value);
+    updateCmFormState();
+  });
+  document.getElementById("cmKey")?.addEventListener("input",()=>{cmKeyTouched=true;updateCmFormState();});
+  document.getElementById("cmSearch")?.addEventListener("input",renderCmList);
+  document.getElementById("cmGroupFilter")?.addEventListener("change",renderCmList);
+  cmSourceInputs().forEach(input=>input.addEventListener("input",updateCmFormState));
+  window.addEventListener("artfinder:language",()=>{renderCmGroupChoices();renderCmList();updateCmFormState();});
+  updateCmFormState();
 })();
 
 init();

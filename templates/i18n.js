@@ -190,15 +190,28 @@
     "Confirmar": "Confirm",
     "Gerenciar Categorias": "Manage Categories",
     "Categorias salvas": "Saved categories",
+    "Buscar por nome, grupo ou tag...": "Search by name, group, or tag...",
+    "Filtrar por grupo": "Filter by group",
+    "Todos os grupos": "All groups",
     "Adicionar / Editar": "Add / Edit",
     "Nome": "Name",
     "ex: Vex, V (Cyberpunk)...": "e.g. Vex, V (Cyberpunk)...",
     "Cor": "Color",
     "Chave única": "Unique key",
     "gerada automaticamente a partir do nome": "automatically generated from the name",
+    "Usada internamente pelo app.": "Used internally by the app.",
     "Grupo / Fandom": "Group / Fandom",
     "ex: League of Legends, Cyberpunk 2077...": "e.g. League of Legends, Cyberpunk 2077...",
+    "Escolha um grupo existente ou digite um novo.": "Choose an existing group or type a new one.",
     "Tags de busca": "Search tags",
+    "Tags principais": "Main tags",
+    "Tags específicas por fonte": "Source-specific tags",
+    "opcional": "optional",
+    "Se um campo ficar vazio, a fonte usa as tags principais. Use uma linha por consulta alternativa (OR).": "When a field is empty, that source uses the main tags. Use one line per alternative query (OR).",
+    "usa as tags principais": "uses the main tags",
+    "Sugerir Pixiv e e621": "Suggest Pixiv and e621",
+    "Sugestões usam aliases públicos e validação nas fontes; você pode editar tudo.": "Suggestions use public aliases and source validation; everything remains editable.",
+    "Prévia da busca por fonte": "Search preview by source",
     "Cada linha (ou": "Each line (or",
     ") = busca independente — resultados são unidos (OR). Espaço entre tags = AND. Prefixo": ") = independent search — results are merged (OR). A space between tags = AND. Prefix",
     "exclui.": "excludes.",
@@ -238,6 +251,25 @@
     ,"Favoritar artista": "Favorite artist"
     ,"Nenhum resultado para este filtro.": "No results for this filter."
     ,"Nenhuma categoria": "No categories"
+    ,"Nenhuma categoria encontrada": "No matching categories"
+    ,"Limpe os filtros para reordenar": "Clear filters to reorder"
+    ,"Arrastar para reordenar": "Drag to reorder"
+    ,"Favoritar": "Favorite"
+    ,"Editar": "Edit"
+    ,"A chave fica bloqueada durante a edição para evitar duplicatas.": "The key is locked while editing to prevent duplicates."
+    ,"Essa chave já existe e salvar substituiria a categoria atual.": "This key already exists; saving would replace the current category."
+    ,"Estas tags principais já são usadas por": "These main tags are already used by"
+    ,"específica": "custom"
+    ,"principal": "main"
+    ,"sem consulta": "no query"
+    ,"Digite as tags principais primeiro.": "Enter the main tags first."
+    ,"Consultando aliases e validando tags...": "Looking up aliases and validating tags..."
+    ,"Sugestões adicionadas. Revise antes de salvar.": "Suggestions added. Review them before saving."
+    ,"Nenhuma sugestão nova foi encontrada; preencha manualmente se necessário.": "No new suggestions were found; enter them manually if needed."
+    ,"Não foi possível sugerir tags": "Could not suggest tags"
+    ,"Não foi possível gerar uma chave. Digite uma chave manualmente.": "Could not generate a key. Enter one manually."
+    ,"salvo!": "saved!"
+    ,"Removida.": "Removed."
     ,"Selecione ao menos uma categoria.": "Select at least one category."
     ,"Selecione ao menos uma fonte.": "Select at least one source."
     ,"Selecione imagens primeiro.": "Select images first."
@@ -295,6 +327,7 @@
     [/^Configuração necessária: (.+)$/, "Configuration required: $1"],
     [/^Erro: (.+)$/, "Error: $1"],
     [/^(\d+) selecionada\(s\)$/, "$1 selected"],
+    [/^(\d+) de (\d+) categorias$/, "$1 of $2 categories"],
     [/^(\d+) grupo\(s\) de quase-duplicatas\.(.*)$/, "$1 near-duplicate group(s).$2"]
     ,[/^Guardando arte\.\.\.$/, "Saving artwork..."]
     ,[/^(\d+) arte\(s\) ocultada\(s\)\.$/, "$1 artwork item(s) hidden."]
