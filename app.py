@@ -9,6 +9,7 @@ Uso:
 
 import asyncio
 import hashlib
+import ipaddress
 import json
 import os
 import shutil
@@ -56,7 +57,7 @@ from utils.lan_security import (
     token_matches,
 )
 from utils.normalize import normalize_posts
-from utils.pairing import PairingError, pairing_manager
+from utils.pairing import PairingError, pairing_manager, parse_pairing_code
 
 USER_CATS_FILE = Path(USER_CATEGORIES_PATH)
 DEFAULT_USER_CATS_FILE = Path(RESOURCE_DIR) / "defaults" / "categories.json"
@@ -632,6 +633,81 @@ async def create_pairing(request: Request, body: dict):
             "credentials": len(credentials),
         },
     }
+
+
+def _validated_pairing_endpoint(code: object) -> str:
+    if not isinstance(code, str) or len(code) > 12_000:
+        raise PairingError("Codigo de pareamento invalido")
+    descriptor = parse_pairing_code(code.strip())
+    endpoint = urlsplit(descriptor["url"])
+    try:
+        address = ipaddress.ip_address(endpoint.hostname or "")
+    except ValueError as exc:
+        raise PairingError("Endereco de pareamento invalido") from exc
+    if (
+        endpoint.scheme != "http"
+        or not address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or endpoint.username
+        or endpoint.password
+        or not endpoint.path.startswith("/v1/pair/")
+    ):
+        raise PairingError("Endereco de pareamento invalido")
+    return descriptor["url"]
+
+
+@app.post("/api/pairing/fetch")
+async def fetch_pairing_envelope(request: Request, body: dict):
+    """Fetch the encrypted LAN envelope through the local Android backend.
+
+    Keeping this request out of the WebView avoids cross-origin/private-network
+    restrictions. The AES key remains only in the code and decryption still
+    happens locally in the WebView.
+    """
+    client_host = request.client.host if request.client else ""
+    if not is_loopback_client(client_host):
+        return JSONResponse({"error": "Pareamento permitido apenas neste dispositivo"}, status_code=403)
+    try:
+        endpoint = _validated_pairing_endpoint(body.get("code"))
+    except PairingError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+    def download_envelope():
+        with _requests.Session() as session:
+            session.trust_env = False
+            return session.get(
+                endpoint,
+                headers={"Accept": "application/json"},
+                timeout=(3, 8),
+            )
+
+    try:
+        response = await asyncio.get_running_loop().run_in_executor(None, download_envelope)
+    except _requests.Timeout:
+        return JSONResponse({"error": "O PC demorou demais para responder"}, status_code=504)
+    except _requests.RequestException:
+        return JSONResponse(
+            {"error": "Nao foi possivel acessar o PC. Verifique o Wi-Fi e o firewall"},
+            status_code=502,
+        )
+    if response.status_code == 410:
+        return JSONResponse({"error": "Codigo expirado ou ja utilizado"}, status_code=410)
+    if response.status_code != 200 or len(response.content) > 600_000:
+        return JSONResponse({"error": "Resposta de pareamento invalida"}, status_code=502)
+    try:
+        envelope = response.json()
+    except ValueError:
+        return JSONResponse({"error": "Resposta de pareamento invalida"}, status_code=502)
+    if (
+        not isinstance(envelope, dict)
+        or envelope.get("version") != 1
+        or envelope.get("algorithm") != "AES-256-GCM"
+        or not isinstance(envelope.get("nonce"), str)
+        or not isinstance(envelope.get("ciphertext"), str)
+    ):
+        return JSONResponse({"error": "Pacote de pareamento incompativel"}, status_code=502)
+    return {"ok": True, "envelope": envelope}
 
 
 @app.post("/api/pairing/import")

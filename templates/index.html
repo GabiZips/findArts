@@ -919,8 +919,10 @@
       </div>
       <div id="pairMobilePanel" class="pair-panel" style="display:none">
         <div class="cm-form-hint" style="font-size:11px;line-height:1.55">
-          No PC, abra Stats → Parear dispositivo. Escaneie o QR com a câmera, copie o texto reconhecido e cole abaixo.
+          No PC, abra Stats → Parear dispositivo. Leia o QR aqui ou cole o código completo abaixo.
         </div>
+        <input id="pairQrImage" type="file" accept="image/*" capture="environment" style="display:none" onchange="readPairingQr(this)">
+        <div class="pair-actions" style="justify-content:flex-start"><button class="btn-hdr" type="button" onclick="document.getElementById('pairQrImage').click()">Ler QR com a câmera</button></div>
         <textarea id="pairImportCode" class="pair-code" placeholder="artfinder-pair:v1:..." autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
         <label class="pair-choice">Categorias
           <select id="pairImportMode" class="pair-select">
@@ -1484,10 +1486,13 @@ async function decryptPairingCode(rawCode){
   if(!globalThis.crypto?.subtle)throw new Error(t("Este WebView não oferece criptografia segura."));
   const keyBytes=pairingBase64Bytes(String(descriptor.key||""));
   if(keyBytes.length!==32)throw new Error(t("Código de pareamento inválido."));
-  const response=await fetch(endpoint.toString(),{cache:"no-store",mode:"cors"});
+  const response=await fetch("/api/pairing/fetch",{
+    method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code}),cache:"no-store"
+  });
+  const relay=await response.json();
   if(response.status===410)throw new Error(t("Código expirado ou já utilizado."));
-  if(!response.ok)throw new Error(t("Não foi possível acessar o PC. Verifique o Wi-Fi e o firewall."));
-  const envelope=await response.json();
+  if(!response.ok)throw new Error(relay.error||t("Não foi possível acessar o PC. Verifique o Wi-Fi e o firewall."));
+  const envelope=relay.envelope;
   if(envelope.version!==1||envelope.algorithm!=="AES-256-GCM")throw new Error(t("Pacote incompatível."));
   try{
     const key=await crypto.subtle.importKey("raw",keyBytes,{name:"AES-GCM"},false,["decrypt"]);
@@ -1500,13 +1505,36 @@ async function decryptPairingCode(rawCode){
   }catch(_error){throw new Error(t("Não foi possível validar ou descriptografar o pacote."));}
 }
 
+async function readPairingQr(input){
+  const status=document.getElementById("pairStatus"),file=input.files?.[0];
+  if(!file)return;
+  status.textContent=t("Lendo QR Code...");
+  try{
+    if(!globalThis.BarcodeDetector)throw new Error(t("Este Android não oferece leitura de QR nesta tela. Cole o código abaixo."));
+    const bitmap=await createImageBitmap(file);
+    let detected;
+    try{detected=await new BarcodeDetector({formats:["qr_code"]}).detect(bitmap);}
+    finally{bitmap.close?.();}
+    const code=detected?.map(item=>item.rawValue).find(value=>value?.startsWith("artfinder-pair:v1:"));
+    if(!code)throw new Error(t("QR Code de pareamento não encontrado. Tente aproximar a câmera da tela."));
+    document.getElementById("pairImportCode").value=code;
+    status.textContent=t("QR lido. Importando...");
+    await importPairing();
+  }catch(error){
+    status.textContent=`${t("Erro")}: ${error.message}`;
+    toast(error.message,"error");
+  }finally{input.value="";}
+}
+
 async function importPairing(){
   const button=document.getElementById("importPairingButton");
   const status=document.getElementById("pairStatus");
   const code=document.getElementById("pairImportCode").value.trim();
   if(!code){toast(t("Cole o código criado no PC."),"error");return;}
-  if(!confirm(t("Importar tags e credenciais deste PC?")))return;
+  document.activeElement?.blur();
   button.disabled=true;
+  const previousLabel=button.textContent;
+  button.textContent=t("Importando...");
   status.textContent=t("Recebendo e descriptografando...");
   try{
     const payload=await decryptPairingCode(code);
@@ -1523,8 +1551,10 @@ async function importPairing(){
     toast(t("Configuração importada com segurança."),"success");
   }catch(error){
     status.textContent=`${t("Erro")}: ${error.message}`;
+    toast(error.message,"error");
   }finally{
     button.disabled=false;
+    button.textContent=previousLabel;
   }
 }
 

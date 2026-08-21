@@ -111,6 +111,13 @@ class AppRouteTests(unittest.TestCase):
         self.assertIn('crypto.subtle.decrypt', html)
         self.assertIn("artfinder-pair:v1:", html)
 
+    def test_mobile_pairing_uses_local_relay_and_exposes_qr_reader(self):
+        html = asyncio.run(app.index()).body.decode("utf-8")
+        self.assertIn('fetch("/api/pairing/fetch"', html)
+        self.assertIn('capture="environment"', html)
+        self.assertIn("new BarcodeDetector", html)
+        self.assertNotIn('confirm(t("Importar tags e credenciais deste PC?"))', html)
+
     def test_category_form_uses_source_mapping_examples(self):
         response = asyncio.run(app.index())
         html = response.body.decode("utf-8")
@@ -363,6 +370,51 @@ class AppRouteTests(unittest.TestCase):
         }
         response = asyncio.run(app.import_pairing({"payload": payload}))
         self.assertEqual(response.status_code, 400)
+
+    def test_mobile_pairing_relay_fetches_private_endpoint_without_proxy(self):
+        from utils import pairing
+
+        code = pairing._pairing_code(
+            "http://192.168.1.20:54321/v1/pair/token",
+            b"k" * 32,
+        )
+        envelope = {
+            "version": 1,
+            "algorithm": "AES-256-GCM",
+            "nonce": "nonce",
+            "ciphertext": "ciphertext",
+        }
+        response = MagicMock(status_code=200, content=b"envelope")
+        response.json.return_value = envelope
+        session = MagicMock()
+        session.__enter__.return_value = session
+        session.get.return_value = response
+        with patch.object(app._requests, "Session", return_value=session):
+            result = asyncio.run(app.fetch_pairing_envelope(
+                self._request(client="127.0.0.1"),
+                {"code": code},
+            ))
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["envelope"], envelope)
+        self.assertFalse(session.trust_env)
+        session.get.assert_called_once_with(
+            "http://192.168.1.20:54321/v1/pair/token",
+            headers={"Accept": "application/json"},
+            timeout=(3, 8),
+        )
+
+    def test_mobile_pairing_relay_rejects_public_endpoint(self):
+        from utils import pairing
+
+        code = pairing._pairing_code(
+            "http://8.8.8.8:54321/v1/pair/token",
+            b"k" * 32,
+        )
+        result = asyncio.run(app.fetch_pairing_envelope(
+            self._request(client="127.0.0.1"),
+            {"code": code},
+        ))
+        self.assertEqual(result.status_code, 400)
 
     def test_database_is_not_served_as_download(self):
         response = asyncio.run(app.downloaded_file("artfinder.db"))
