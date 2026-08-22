@@ -17,21 +17,20 @@ permissions or raw public filesystem paths.
 - Use API 29 for the manifest and native-library floor, and target API 36. This
   covers Android 10 through Android 16 while opting into current platform
   behavior.
-- Keep the app-private downloaded file as the canonical copy used by ArtFinder.
-- Publish a second copy to `Pictures/ArtFinder` with `MediaStore`,
+- Publish the image directly to `Pictures/ArtFinder` with `MediaStore`,
   `RELATIVE_PATH` and the pending-item lifecycle.
-- Store the returned `content://` URI in SQLite so ArtFinder can remove the
+- Treat that MediaStore row as the single canonical copy and store the returned
+  `content://` URI in local app preferences so ArtFinder can remove the
   MediaStore row it owns.
 - Do not request broad or legacy storage permissions.
-- Treat public export failure as partial success: keep the private download and
-  expose a retry button. Treat public deletion failure as a failed deletion and
-  preserve the private copy and URI for retry.
+- Validate the downloaded byte signature and enforce a 100 MB limit before
+  committing the pending MediaStore item.
 
 ## Consequences
 
 - Images are visible to photo applications and survive an ArtFinder uninstall.
-- A downloaded image uses storage twice while both copies exist.
+- A downloaded image uses one public copy shared by ArtFinder and photo apps.
 - Removing an image outside ArtFinder can make the recorded public URI stale;
   ArtFinder treats a missing MediaStore row as already removed.
-- Desktop and Linux behavior is unchanged because PyJNIus is loaded only in the
-  packaged Android process.
+- Desktop and Linux behavior is unchanged; the MediaStore implementation lives
+  only in the native Android project.

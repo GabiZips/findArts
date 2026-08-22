@@ -1,6 +1,6 @@
 # ADR-0001: Shared web UI with platform-specific packages
 
-**Status:** Accepted  
+**Status:** Superseded by ADR-0003
 **Date:** 2026-08-06  
 **Decider:** Project maintainer
 
@@ -17,8 +17,8 @@ Keep FastAPI and the web interface as the shared application core.
 
 - Windows: pywebview + PyInstaller `.exe`.
 - Linux: pywebview with PySide6 + PyInstaller inside an AppImage.
-- Android: python-for-android WebView bootstrap + local FastAPI server inside an
-  experimental `.apk`.
+- Android: this ADR originally selected a python-for-Android WebView package;
+  ADR-0003 replaces that choice with a native Kotlin/Compose client.
 - iOS: deferred until a macOS/Xcode build and an iOS-specific bridge can be
   maintained and tested.
 - Localization: one runtime dictionary shared by browser, desktop and mobile.

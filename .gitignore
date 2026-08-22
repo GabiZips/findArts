@@ -29,6 +29,10 @@ build/
 webview/
 .buildozer/
 bin/
+android-native/.gradle/
+android-native/.kotlin/
+android-native/local.properties
+android-native/app/build/
 *.AppImage
 *.AppDir/
 

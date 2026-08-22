@@ -1,4 +1,4 @@
-name: Build experimental ArtFinder for Android
+name: Build native ArtFinder for Android
 
 on:
   workflow_dispatch:
@@ -13,74 +13,32 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python tests
-        uses: actions/setup-python@v5
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements-core.lock
+          distribution: temurin
+          java-version: "17"
 
-      - name: Install test dependencies
-        run: python -m pip install --require-hashes -r requirements-core.lock
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Run tests
-        run: python -m unittest discover -s tests -v
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Restore Android build cache
-        id: android-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            .buildozer
-            ~/.buildozer
-          key: android-buildozer-${{ hashFiles('buildozer.spec', 'requirements.txt') }}-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: |
-            android-buildozer-${{ hashFiles('buildozer.spec', 'requirements.txt') }}-
-            android-buildozer-
-
-      - name: Prime FreeType source cache
+      - name: Install Android platform
         shell: bash
-        run: |
-          freetype_dir=".buildozer/android/platform/build-arm64-v8a/packages/freetype"
-          freetype_archive="$freetype_dir/freetype-2.14.1.tar.gz"
-          mkdir -p "$freetype_dir"
-          curl --fail --location --retry 5 --retry-all-errors --connect-timeout 30 \
-            "https://sourceforge.net/projects/freetype/files/freetype2/2.14.1/freetype-2.14.1.tar.gz/download" \
-            --output "$freetype_archive"
-          echo "174d9e53402e1bf9ec7277e22ec199ba3e55a6be2c0740cb18c0ee9850fc8c34  $freetype_archive" \
-            | sha256sum --check --strict
-          touch "$freetype_dir/.mark-freetype-2.14.1.tar.gz"
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Recreate python-for-android build environment
-        shell: bash
-        run: |
-          # This venv is disposable. Restoring it across p4a/pip updates can mix
-          # incompatible pip internals and break dependency resolution.
-          rm -rf .buildozer/android/platform/build-arm64-v8a/build/venv
-
-      - name: Build debug APK
-        run: |
-          mkdir -p .buildozer "$HOME/.buildozer"
-          docker run --rm \
-            --volume "$PWD:/home/user/hostcwd" \
-            --volume "$HOME/.buildozer:/home/user/.buildozer" \
-            --workdir /home/user/hostcwd \
-            --entrypoint /bin/bash \
-            ghcr.io/kivy/buildozer@sha256:60df51d2bcb537c3eb7894eeb9b9b12d93a3d615fb8f08e760195e887298f200 -lc '
-              apt-get update -qq &&
-              DEBIAN_FRONTEND=noninteractive apt-get install -qq --yes --no-install-recommends curl &&
-              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh &&
-              HOME=/home/user sh /tmp/rustup-init.sh -y --profile minimal &&
-              export PATH="/home/user/.cargo/bin:$PATH" &&
-              exec /usr/local/bin/entrypoint.sh android debug
-            '
+      - name: Test, lint and build native APK
+        working-directory: android-native
+        run: ./gradlew --no-daemon test lint assembleRelease
 
       - name: Sign APK with the stable ArtFinder key
         shell: bash
@@ -91,62 +49,48 @@ jobs:
           test -n "$ARTFINDER_ANDROID_KEYSTORE_BASE64"
           test -n "$ARTFINDER_ANDROID_KEYSTORE_PASSWORD"
 
-          apk="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          apksigner="$(find .buildozer "$HOME/.buildozer" -type f -name apksigner -print | sort -V | tail -1)"
-          test -n "$apk"
-          test -x "$apksigner"
-
+          unsigned="android-native/app/build/outputs/apk/release/app-release-unsigned.apk"
+          aligned="$RUNNER_TEMP/ArtFinder-Android-10-16-aligned.apk"
+          signed="android-native/app/build/outputs/apk/release/ArtFinder-Android-10-16.apk"
           keystore="$RUNNER_TEMP/artfinder-upload.p12"
-          signed_apk="$RUNNER_TEMP/$(basename "$apk")"
-          trap 'rm -f "$keystore" "$signed_apk"' EXIT
+          build_tools="$ANDROID_HOME/build-tools/36.0.0"
+          trap 'rm -f "$keystore" "$aligned"' EXIT
+
+          test -f "$unsigned"
           printf '%s' "$ARTFINDER_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
           chmod 600 "$keystore"
+          "$build_tools/zipalign" -f -p 4 "$unsigned" "$aligned"
 
           export APKSIGNER_KEY_PASSWORD="$ARTFINDER_ANDROID_KEYSTORE_PASSWORD"
-          "$apksigner" sign \
-            --ks "$keystore" \
-            --ks-type PKCS12 \
-            --ks-key-alias artfinder \
-            --ks-pass env:APKSIGNER_KEY_PASSWORD \
-            --key-pass env:APKSIGNER_KEY_PASSWORD \
-            --out "$signed_apk" \
-            "$apk"
-          mv "$signed_apk" "$apk"
+          "$build_tools/apksigner" sign \
+            --ks "$keystore" --ks-type PKCS12 --ks-key-alias artfinder \
+            --ks-pass env:APKSIGNER_KEY_PASSWORD --key-pass env:APKSIGNER_KEY_PASSWORD \
+            --out "$signed" "$aligned"
 
-          certificate="$($apksigner verify --verbose --print-certs "$apk")"
+          certificate="$($build_tools/apksigner verify --verbose --print-certs "$signed")"
           printf '%s\n' "$certificate"
           grep -qi \
             'certificate SHA-256 digest: e8d6011c9c44b130be635ec8973184d39681d711b7b5aee1ab15e7354b408567' \
             <<< "$certificate"
 
-      - name: Inspect Android package
+      - name: Inspect native Android package
         shell: bash
         run: |
-          apk="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
-          test -n "$apk"
-          python scripts/inspect_android_apk.py "$apk"
+          apk="android-native/app/build/outputs/apk/release/ArtFinder-Android-10-16.apk"
+          build_tools="$ANDROID_HOME/build-tools/36.0.0"
+          badging="$($build_tools/aapt dump badging "$apk")"
+          printf '%s\n' "$badging"
+          grep -q "package: name='io.github.gabizips.artfinder' versionCode='50000' versionName='0.5.0'" <<< "$badging"
+          grep -q "sdkVersion:'29'" <<< "$badging"
+          grep -q "targetSdkVersion:'36'" <<< "$badging"
+          listing="$(unzip -Z1 "$apk")"
+          ! grep -Eq '(^|/)(\.env|user_categories\.json)$' <<< "$listing"
+          "$build_tools/apksigner" verify --verbose "$apk"
 
-          manifest="$(find .buildozer -path '*/src/main/AndroidManifest.xml' -print -quit)"
-          test -n "$manifest"
-          grep -q 'android:allowBackup="false"' "$manifest"
-          grep -q 'android:usesCleartextTraffic="true"' "$manifest"
-          grep -q 'android:minSdkVersion="29"' "$manifest"
-          grep -q 'android:targetSdkVersion="36"' "$manifest"
-          ! grep -Eq 'READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|MANAGE_EXTERNAL_STORAGE' "$manifest"
-
-      - name: Save Android build cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .buildozer
-            ~/.buildozer
-          key: android-buildozer-${{ hashFiles('buildozer.spec', 'requirements.txt') }}-${{ github.run_id }}-${{ github.run_attempt }}
-
-      - name: Upload Android APK
+      - name: Upload native Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: ArtFinder-Android-experimental
-          path: bin/*.apk
+          name: ArtFinder-Android-native
+          path: android-native/app/build/outputs/apk/release/ArtFinder-Android-10-16.apk
           if-no-files-found: error
           retention-days: 14

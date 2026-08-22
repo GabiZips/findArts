@@ -2,6 +2,7 @@
 
 [![Build Windows](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml)
 [![Build Linux](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml)
+[![Build Android](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml)
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 
 [Português](README.md) · [English](README.en.md)
@@ -51,30 +52,26 @@ chmod +x ArtFinder-Linux-x86_64.AppImage
 Linux data is stored under `$XDG_DATA_HOME/artfinder` or
 `~/.local/share/artfinder`.
 
-## Android 10 through 16 (experimental)
+## Android 10 through 16
 
-The manual [Android build workflow](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml)
-uses python-for-android's native WebView bootstrap and creates an experimental
-APK. It embeds the local Python backend; it does not require an ArtFinder cloud
-server.
+Releases include `ArtFinder-Android-10-16.apk`, a native Kotlin and Jetpack
+Compose client. It does not open a website, embed Python or depend on an
+ArtFinder cloud server. One APK supports Android 10 (API 29) through Android 16
+(API 36), including Android 14.
 
-The APK supports Android 10 through 16 and each version still needs physical-device
-validation. **Save to phone** keeps a private copy for ArtFinder's internal
-Gallery and publishes another copy under `Pictures/ArtFinder` through Android's
-MediaStore, without requesting broad storage access. Older private downloads
-show a `📱` retry/export button. Deleting an image in ArtFinder removes both
-copies; if public deletion fails, the private copy is kept so the operation can
-be retried. iOS is not part of this build and requires a separate Xcode-based
-package and signing process.
+A fresh install starts without characters. Tags, credentials and Gallery
+metadata stay on the device; credentials are encrypted with an Android
+Keystore key. Updating from the former Python APK performs a one-time migration
+of compatible categories and credentials when the old private data is still
+available.
 
-If Python startup fails, the APK keeps a local diagnostic page open instead of
-silently closing. The page displays the technical details and can open
-`mobile-startup.log`, which is stored privately and is not visible in a normal
-Android file manager.
+**Save to Gallery** publishes one copy under `Pictures/ArtFinder` through
+MediaStore, without broad storage permissions. ArtFinder's Gallery references
+that same copy. The native QR scanner processes codes on the device and ships
+its scanner model inside the APK.
 
-Source credentials can be entered inside the application under
-**Stats > Sources and credentials**, so secrets do not need to be embedded in
-the APK.
+iOS is not part of this build and requires a separate Xcode-based package and
+signing process.
 
 ## Browser access from another device
 
@@ -136,8 +133,7 @@ bluesky: "vex" "league of legends"
 Unprefixed text is the booru query. `source: query` overrides take precedence
 over automatic suggestions.
 
-The proposed path from the experimental WebView APK to a native Android UI is
-documented in
+The native Android architecture decision is documented in
 [`docs/adr/0003-mobile-implementation-strategy.md`](docs/adr/0003-mobile-implementation-strategy.md).
 
 ## Legal and content notice

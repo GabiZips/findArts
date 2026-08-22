@@ -24,9 +24,8 @@ maintenance responsibilities.
   key in the HTTP request, response, server logs or persistent files.
 - Serve only the encrypted envelope, once, from a temporary HTTP server that
   listens for at most five minutes.
-- Decrypt in the Android WebView using the Web Crypto API, then submit the
-  plaintext only to the app's loopback backend for strict validation and local
-  persistence.
+- Decrypt inside the native Android repository using the platform AES-GCM
+  implementation, then strictly validate and persist the plaintext locally.
 - Allow category merge or replacement. Accept only the existing credential
   allowlist and bounded category fields. Do not transfer downloads, SQLite
   data, history or caches.
@@ -50,9 +49,9 @@ maintenance responsibilities.
 - The common PC-to-phone setup requires no external server, subscription or
   project-operated credential database.
 - The desktop executable needs the `cryptography` and `qrcode` packages.
-- The Android WebView bootstrap must keep cleartext traffic enabled for its
-  loopback server and the temporary LAN endpoint; CI verifies the generated
-  manifest before publishing the APK.
+- The Android app permits cleartext only because the temporary LAN endpoint is
+  HTTP. It accepts only literal RFC1918 private IPv4 addresses and the expected
+  `/v1/pair/` path before making a request.
 - Windows Firewall may request permission for private-network access while a
   pairing session is active.
 - Cross-network synchronization and automatic multi-device updates remain out

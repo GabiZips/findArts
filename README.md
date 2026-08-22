@@ -2,6 +2,7 @@
 
 [![Build Windows](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml)
 [![Build Linux](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-linux.yml)
+[![Build Android](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml/badge.svg)](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml)
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-desktop-0078D4?logo=windows&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-AppImage-FCC624?logo=linux&logoColor=black)
@@ -109,43 +110,35 @@ Linux; cada sistema recebe seu próprio build.
 O arquivo `.exe` funciona somente no Windows e não pode ser instalado
 diretamente no Android ou iPhone.
 
-Existe uma fundação experimental para gerar um APK Android nativo usando o
-WebView do sistema e o mesmo backend Python local. O workflow
-[Build Android](https://github.com/GabiZips/findArts/actions/workflows/build-android.yml)
-é manual e gera `ArtFinder-Android-experimental`. As versões publicadas também
-incluem `ArtFinder-Android-10-16.apk` na página de Releases.
+As Releases incluem `ArtFinder-Android-10-16.apk`, um cliente Android nativo
+feito em Kotlin e Jetpack Compose. Ele não abre um site, não incorpora Python e
+não depende de um servidor do ArtFinder. O mesmo APK atende Android 10 (API 29)
+até Android 16 (API 36), inclusive Android 14.
 
-> [!CAUTION]
-> O APK é compatível com Android 10 até 16 e ainda é experimental.
-> Cada versão precisa ser validada em aparelho físico antes de ser tratada como
-> estável.
+O aplicativo começa sem personagens. Tags, credenciais e galeria ficam no
+próprio aparelho; credenciais são cifradas com uma chave do Android Keystore.
+Quem atualiza o antigo APK Python recebe uma migração única das categorias e
+credenciais compatíveis, quando os dados antigos ainda estiverem acessíveis.
 
-Ao tocar em **Salvar no celular**, o ArtFinder mantém uma cópia privada para a
-Galeria interna e publica outra em `Pictures/ArtFinder`, visível no Google Fotos
-e em outros aplicativos de galeria. Não é solicitada permissão ampla de
-armazenamento. Imagens antigas que só existem dentro do ArtFinder exibem o botão
-`📱` para exportação. Ao apagar uma imagem pelo aplicativo, as duas cópias são
-removidas; se a remoção pública falhar, a privada é preservada para permitir uma
-nova tentativa.
+Ao tocar em **Salvar na galeria**, a imagem é publicada em
+`Pictures/ArtFinder` pelo MediaStore, visível no Google Fotos e em outros
+aplicativos. Não é solicitada permissão ampla de armazenamento. A Galeria do
+ArtFinder referencia essa mesma cópia, evitando duplicar o arquivo. Apagar no
+aplicativo remove a imagem que ele criou e o registro local.
 
-Se uma dependência Python falhar durante a inicialização, o APK mostra uma
-tela de diagnóstico em vez de simplesmente fechar. A própria tela exibe os
-detalhes e permite abrir o `mobile-startup.log`, que fica no armazenamento
-privado e não aparece no gerenciador de arquivos comum.
-
-As credenciais das fontes podem ser preenchidas dentro do próprio aplicativo
-em **Stats > Fontes e credenciais**, sem incluir senhas no APK.
+O leitor de QR Code é nativo, usa a câmera e processa o código no aparelho. O
+modelo do leitor vem embutido no APK; ele não precisa baixar um scanner depois
+da instalação.
 
 ### Parear o PC com o celular
 
 Para levar as categorias, tags por fonte e chaves já configuradas no PC para o
 Android, conecte os dois aparelhos à mesma rede Wi-Fi e abra
-**Stats > Parear PC e celular** nos dois:
+**Configurações > Parear com o PC** no Android e a área de pareamento no PC:
 
 1. No PC, escolha o que deseja transferir e toque em **Criar pareamento**.
-2. Leia o QR Code com a câmera do celular e copie todo o texto reconhecido.
-3. No Android, cole esse código, escolha **Mesclar** ou **Substituir** e toque
-   em **Receber configuração**.
+2. No Android, toque em **Ler QR Code** e aponte a câmera, ou cole o código.
+3. Escolha **Mesclar** ou **Substituir** e toque em **Receber configuração**.
 
 O código expira em cinco minutos e funciona uma única vez. O pacote trafega
 cifrado com AES-256-GCM, a chave fica somente dentro do QR/código e nenhum dado
@@ -225,8 +218,9 @@ desktop.py              janela nativa e servidor privado
 app.py                  API FastAPI e interface local
 config.py               configurações e diretórios de dados
 artfinder.spec          empacotamento desktop Windows/Linux
-mobile.py / main.py     servidor local usado pelo APK Android
-buildozer.spec          empacotamento Android experimental
+android-native/         cliente Kotlin/Compose, testes e Gradle do Android
+mobile.py / main.py     bootstrap legado do antigo APK Python
+buildozer.spec          empacotamento Android legado, não publicado
 scripts/                inspeção de artefatos e controles de empacotamento
 templates/index.html    interface
 templates/i18n.js       tradução português/inglês
@@ -244,8 +238,7 @@ As decisões e limitações da arquitetura multiplataforma estão registradas em
 [`docs/adr/0001-multiplatform-packaging.md`](docs/adr/0001-multiplatform-packaging.md).
 O acesso em rede e os canais de Release estão registrados em
 [`docs/adr/0002-local-access-and-release-channels.md`](docs/adr/0002-local-access-and-release-channels.md).
-A estratégia proposta para evoluir o APK experimental para uma interface
-Android nativa está em
+A decisão da interface Android nativa está em
 [`docs/adr/0003-mobile-implementation-strategy.md`](docs/adr/0003-mobile-implementation-strategy.md).
 
 ## Licença e segurança

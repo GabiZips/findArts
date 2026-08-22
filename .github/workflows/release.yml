@@ -39,7 +39,7 @@ jobs:
           mkdir -p upload
           cp release-assets/ArtFinder-Windows/ArtFinder.exe upload/ArtFinder-Windows.exe
           cp release-assets/ArtFinder-Linux-x86_64/ArtFinder-Linux-x86_64.AppImage upload/ArtFinder-Linux-x86_64.AppImage
-          android_apk="$(find release-assets/ArtFinder-Android-experimental -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          android_apk="$(find release-assets/ArtFinder-Android-native -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$android_apk"
           cp "$android_apk" upload/ArtFinder-Android-10-16.apk
           (cd upload && sha256sum ArtFinder-Windows.exe ArtFinder-Linux-x86_64.AppImage ArtFinder-Android-10-16.apk > SHA256SUMS.txt)
