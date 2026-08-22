@@ -143,6 +143,14 @@ class MobilePackagingTests(unittest.TestCase):
             workflow,
         )
 
+    def test_windows_package_check_matches_code_only_pairing(self):
+        workflow = (self.project / ".github" / "workflows" / "build-windows.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("utils[\\\\.]pairing", workflow)
+        self.assertIn("cryptography", workflow)
+        self.assertNotIn("qrcode", workflow.lower())
+
     def test_tagged_release_publishes_the_android_apk(self):
         workflow = (self.project / ".github" / "workflows" / "release.yml").read_text(
             encoding="utf-8"

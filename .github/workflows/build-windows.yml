@@ -48,7 +48,7 @@ jobs:
           if ($contents -notmatch 'defaults[\\]+categories\.json') {
             throw 'Empty category defaults are missing from the executable.'
           }
-          if ($contents -notmatch 'utils[\\.]pairing' -or $contents -notmatch 'cryptography' -or $contents -notmatch 'qrcode') {
+          if ($contents -notmatch 'utils[\\.]pairing' -or $contents -notmatch 'cryptography') {
             throw 'Encrypted pairing dependencies are missing from the executable.'
           }
           if ($contents -match 'user_categories\.json|''\.env''') {
