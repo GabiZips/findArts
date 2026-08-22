@@ -26,8 +26,7 @@ security boundary and responsibility for other users' credentials.
   Chaquopy. Keep the category and source-tag data contract compatible with the
   desktop pairing protocol.
 - Store credentials with an Android Keystore-backed encryption key, download
-  through MediaStore and scan QR codes with CameraX and the bundled ML Kit
-  barcode model.
+  through MediaStore and import the temporary desktop pairing code directly.
 - Support Android 10 through 16 with `minSdk 29` and `targetSdk 36`.
 - Consider Flutter only if shipping Android and iOS from one UI codebase becomes
   an immediate requirement. That path requires replacing or separately hosting

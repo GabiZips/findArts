@@ -1,7 +1,7 @@
 """Short-lived encrypted desktop-to-mobile configuration pairing.
 
 The desktop serves only an AES-GCM ciphertext over the local network. The
-decryption key lives in the QR/pairing code and is never included in the HTTP
+decryption key lives in the pairing code and is never included in the HTTP
 request, response, logs, or persistent files.
 """
 
@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import atexit
 import base64
-import io
 import ipaddress
 import json
 import secrets
@@ -139,26 +138,6 @@ def parse_pairing_code(code: str) -> dict[str, str]:
     return {"url": endpoint, "key": key}
 
 
-def _qr_data_uri(code: str) -> str:
-    """Render a pairing code as an embedded SVG without external services."""
-    import qrcode
-    from qrcode.image.svg import SvgPathImage
-
-    qr = qrcode.QRCode(
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=7,
-        border=4,
-    )
-    qr.add_data(code)
-    qr.make(fit=True)
-    image = qr.make_image(image_factory=SvgPathImage)
-    output = io.BytesIO()
-    image.save(output)
-    return "data:image/svg+xml;base64," + base64.b64encode(output.getvalue()).decode(
-        "ascii"
-    )
-
-
 @dataclass
 class _SessionState:
     path: str
@@ -223,20 +202,9 @@ class PairingSession:
                 "Nenhum endereco de rede local foi encontrado; conecte PC e celular ao mesmo Wi-Fi"
             )
         self.options = []
-        try:
-            for address in lan_addresses:
-                endpoint = f"http://{address}:{port}{self._state.path}"
-                code = _pairing_code(endpoint, key)
-                self.options.append(
-                    {
-                        "address": address,
-                        "code": code,
-                        "qr": _qr_data_uri(code),
-                    }
-                )
-        except Exception as exc:
-            self.close()
-            raise PairingError("Nao foi possivel gerar o QR Code") from exc
+        for address in lan_addresses:
+            endpoint = f"http://{address}:{port}{self._state.path}"
+            self.options.append({"address": address, "code": _pairing_code(endpoint, key)})
 
     def _create_server(self) -> ThreadingHTTPServer:
         session = self

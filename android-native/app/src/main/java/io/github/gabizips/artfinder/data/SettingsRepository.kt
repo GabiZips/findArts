@@ -3,11 +3,13 @@ package io.github.gabizips.artfinder.data
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.gabizips.artfinder.model.Category
 import io.github.gabizips.artfinder.model.GalleryItem
 import io.github.gabizips.artfinder.model.SettingsSnapshot
+import io.github.gabizips.artfinder.model.SearchOptions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -19,6 +21,13 @@ class SettingsRepository(private val context: Context) {
     private val credentialsKey = stringPreferencesKey("encrypted_credentials_v1")
     private val galleryKey = stringPreferencesKey("gallery_v1")
     private val legacyMigrationKey = booleanPreferencesKey("legacy_python_migrated_v1")
+    private val searchPagesKey = intPreferencesKey("search_pages_v1")
+    private val searchSfwKey = booleanPreferencesKey("search_sfw_v1")
+    private val searchSensitiveKey = booleanPreferencesKey("search_sensitive_v1")
+    private val searchNsfwKey = booleanPreferencesKey("search_nsfw_v1")
+    private val searchPeriodKey = intPreferencesKey("search_period_days_v1")
+    private val searchMinScoreKey = intPreferencesKey("search_min_score_v1")
+    private val searchHideAiKey = booleanPreferencesKey("search_hide_ai_v1")
     private val vault = CredentialVault()
 
     val snapshot: Flow<SettingsSnapshot> = context.artFinderDataStore.data.map { preferences ->
@@ -27,7 +36,29 @@ class SettingsRepository(private val context: Context) {
             categories = runCatching { JsonCodec.categoriesFromJson(preferences[categoriesKey].orEmpty()) }.getOrDefault(emptyList()),
             gallery = runCatching { JsonCodec.galleryFromJson(preferences[galleryKey].orEmpty()) }.getOrDefault(emptyList()),
             configuredCredentials = encrypted.filterValues { vault.decrypt(it)?.isNotBlank() == true }.keys,
+            searchOptions = SearchOptions(
+                pages = (preferences[searchPagesKey] ?: 5).coerceIn(1, 25),
+                includeSfw = preferences[searchSfwKey] ?: true,
+                includeSensitive = preferences[searchSensitiveKey] ?: true,
+                includeNsfw = preferences[searchNsfwKey] ?: false,
+                periodDays = preferences[searchPeriodKey] ?: 0,
+                minScore = (preferences[searchMinScoreKey] ?: 0).coerceAtLeast(0),
+                hideAi = preferences[searchHideAiKey] ?: true,
+            ),
         )
+    }
+
+    suspend fun saveSearchOptions(options: SearchOptions) {
+        require(options.includeSfw || options.includeSensitive || options.includeNsfw)
+        context.artFinderDataStore.edit { preferences ->
+            preferences[searchPagesKey] = options.pages.coerceIn(1, 25)
+            preferences[searchSfwKey] = options.includeSfw
+            preferences[searchSensitiveKey] = options.includeSensitive
+            preferences[searchNsfwKey] = options.includeNsfw
+            preferences[searchPeriodKey] = options.periodDays.coerceAtLeast(0)
+            preferences[searchMinScoreKey] = options.minScore.coerceAtLeast(0)
+            preferences[searchHideAiKey] = options.hideAi
+        }
     }
 
     suspend fun credentials(): Map<String, String> {

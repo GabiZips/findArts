@@ -29,9 +29,8 @@ colormath>=3.0.0
 # Parsing HTML
 beautifulsoup4>=4.12.0
 
-# Pareamento local PC -> celular: pacote autenticado e QR offline.
+# Pareamento local PC -> celular: pacote autenticado e código temporário.
 cryptography>=49.0.0
-qrcode>=8.2
 
 # Pixiv (API oficial do app móvel)
 pixivpy3>=3.7.0

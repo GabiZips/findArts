@@ -109,20 +109,25 @@ class MobilePackagingTests(unittest.TestCase):
         self.assertNotIn("MANAGE_EXTERNAL_STORAGE", manifest)
         self.assertIn('android:allowBackup="false"', manifest)
 
-    def test_android_uses_native_qr_and_mediastore(self):
+    def test_android_uses_pairing_code_only_and_mediastore(self):
         build = (self.project / "android-native" / "app" / "build.gradle.kts").read_text(
             encoding="utf-8"
         )
         scanner = (
             self.project / "android-native" / "app" / "src" / "main" / "java"
             / "io" / "github" / "gabizips" / "artfinder" / "ui" / "screen" / "QrScanner.kt"
-        ).read_text(encoding="utf-8")
+        )
+        manifest = (self.project / "android-native" / "app" / "src" / "main" / "AndroidManifest.xml").read_text(
+            encoding="utf-8"
+        )
         gallery = (
             self.project / "android-native" / "app" / "src" / "main" / "java"
             / "io" / "github" / "gabizips" / "artfinder" / "data" / "GalleryRepository.kt"
         ).read_text(encoding="utf-8")
-        self.assertIn("com.google.mlkit:barcode-scanning", build)
-        self.assertIn("BarcodeScanning.getClient", scanner)
+        self.assertNotIn("com.google.mlkit:barcode-scanning", build)
+        self.assertNotIn("androidx.camera", build)
+        self.assertFalse(scanner.exists())
+        self.assertNotIn("android.permission.CAMERA", manifest)
         self.assertIn("MediaStore.Images.Media.RELATIVE_PATH", gallery)
         self.assertIn('Environment.DIRECTORY_PICTURES + "/ArtFinder"', gallery)
 

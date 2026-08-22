@@ -42,6 +42,17 @@ data class ArtPost(
     val rating: String = "sfw",
     val categoryKey: String,
     val postDate: Long = 0,
+    val isAi: Boolean = false,
+)
+
+data class SearchOptions(
+    val pages: Int = 5,
+    val includeSfw: Boolean = true,
+    val includeSensitive: Boolean = true,
+    val includeNsfw: Boolean = false,
+    val periodDays: Int = 0,
+    val minScore: Int = 0,
+    val hideAi: Boolean = true,
 )
 
 data class GalleryItem(
@@ -53,15 +64,24 @@ data class GalleryItem(
     val artist: String,
     val categoryKey: String,
     val savedAt: Long,
+    val rating: String = "sfw",
 )
 
 data class SearchOutcome(
     val posts: List<ArtPost>,
     val errors: Map<ArtSource, String>,
+    val requestCount: Int,
+)
+
+data class SearchProgress(
+    val requestCount: Int = 0,
+    val completedSources: Int = 0,
+    val totalSources: Int = 0,
 )
 
 data class SettingsSnapshot(
     val categories: List<Category> = emptyList(),
     val gallery: List<GalleryItem> = emptyList(),
     val configuredCredentials: Set<String> = emptySet(),
+    val searchOptions: SearchOptions = SearchOptions(),
 )

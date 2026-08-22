@@ -19,7 +19,7 @@ class PairingCryptoTests(unittest.TestCase):
             option = session.options[0]
             descriptor = pairing.parse_pairing_code(option["code"])
             self.assertNotIn(descriptor["key"], descriptor["url"])
-            self.assertTrue(option["qr"].startswith("data:image/svg+xml;base64,"))
+            self.assertEqual(set(option), {"address", "code"})
 
             with urllib.request.urlopen(descriptor["url"], timeout=2) as response:
                 envelope = json.loads(response.read())

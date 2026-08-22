@@ -20,7 +20,7 @@ maintenance responsibilities.
   high-entropy one-time endpoint.
 - Encrypt the selected configuration with AES-256-GCM and bind it to the
   protocol version using authenticated additional data.
-- Put the endpoint and decryption key in the QR/pairing code. Never include the
+- Put the endpoint and decryption key in the pairing code. Never include the
   key in the HTTP request, response, server logs or persistent files.
 - Serve only the encrypted envelope, once, from a temporary HTTP server that
   listens for at most five minutes.
@@ -35,7 +35,7 @@ maintenance responsibilities.
 - A passive observer on the Wi-Fi can see the endpoint and encrypted envelope,
   but not the configuration plaintext or the key.
 - AES-GCM detects modification of the envelope or use of the wrong key.
-- Anyone who sees or copies the QR/pairing code before it is used can retrieve
+- Anyone who sees or copies the pairing code before it is used can retrieve
   and decrypt the package. The UI therefore treats it as a temporary secret.
 - The endpoint can be consumed by another LAN client as a denial of service;
   creating a new pairing invalidates the previous session.
@@ -48,7 +48,7 @@ maintenance responsibilities.
 
 - The common PC-to-phone setup requires no external server, subscription or
   project-operated credential database.
-- The desktop executable needs the `cryptography` and `qrcode` packages.
+- The desktop executable needs the `cryptography` package.
 - The Android app permits cleartext only because the temporary LAN endpoint is
   HTTP. It accepts only literal RFC1918 private IPv4 addresses and the expected
   `/v1/pair/` path before making a request.

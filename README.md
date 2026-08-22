@@ -126,9 +126,10 @@ aplicativos. Não é solicitada permissão ampla de armazenamento. A Galeria do
 ArtFinder referencia essa mesma cópia, evitando duplicar o arquivo. Apagar no
 aplicativo remove a imagem que ele criou e o registro local.
 
-O leitor de QR Code é nativo, usa a câmera e processa o código no aparelho. O
-modelo do leitor vem embutido no APK; ele não precisa baixar um scanner depois
-da instalação.
+Na busca, é possível escolher de 1 a 25 páginas por fonte, com padrão de 5,
+filtrar por SFW/Sensível/NSFW, período, score e arte de IA. Buscas grandes
+mostram o custo estimado e pedem confirmação entre 21 e 25 páginas. Conteúdo
+NSFW fica borrado até ser revelado com um toque; qualquer resolução é aceita.
 
 ### Parear o PC com o celular
 
@@ -137,11 +138,11 @@ Android, conecte os dois aparelhos à mesma rede Wi-Fi e abra
 **Configurações > Parear com o PC** no Android e a área de pareamento no PC:
 
 1. No PC, escolha o que deseja transferir e toque em **Criar pareamento**.
-2. No Android, toque em **Ler QR Code** e aponte a câmera, ou cole o código.
+2. Copie o código completo exibido no PC e cole-o no Android.
 3. Escolha **Mesclar** ou **Substituir** e toque em **Receber configuração**.
 
 O código expira em cinco minutos e funciona uma única vez. O pacote trafega
-cifrado com AES-256-GCM, a chave fica somente dentro do QR/código e nenhum dado
+cifrado com AES-256-GCM, a chave fica somente dentro do código e nenhum dado
 é enviado para uma nuvem. Trate o código como uma senha temporária e feche a
 tela ao terminar. O pareamento não transfere artes, banco de dados ou histórico.
 

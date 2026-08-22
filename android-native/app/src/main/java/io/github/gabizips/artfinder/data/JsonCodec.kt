@@ -65,6 +65,7 @@ internal object JsonCodec {
             put("artist", item.artist)
             put("category_key", item.categoryKey)
             put("saved_at", item.savedAt)
+            put("rating", item.rating)
         }) }
     }.toString()
 
@@ -80,6 +81,7 @@ internal object JsonCodec {
                 source = value.optString("source"), sourceId = value.optString("source_id"),
                 pageUrl = value.optString("page_url"), artist = value.optString("artist"),
                 categoryKey = value.optString("category_key"), savedAt = value.optLong("saved_at"),
+                rating = value.optString("rating", "sfw"),
             )
         }
     }

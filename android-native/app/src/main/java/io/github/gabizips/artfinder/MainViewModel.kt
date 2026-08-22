@@ -4,16 +4,22 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gabizips.artfinder.data.PairingImport
+import io.github.gabizips.artfinder.data.applySearchOptions
 import io.github.gabizips.artfinder.model.ArtPost
 import io.github.gabizips.artfinder.model.ArtSource
 import io.github.gabizips.artfinder.model.Category
 import io.github.gabizips.artfinder.model.GalleryItem
 import io.github.gabizips.artfinder.model.SettingsSnapshot
+import io.github.gabizips.artfinder.model.SearchOptions
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.update
 
 data class SearchUiState(
     val loading: Boolean = false,
@@ -23,6 +29,10 @@ data class SearchUiState(
     val selectedSources: Set<ArtSource> = setOf(ArtSource.DANBOORU, ArtSource.SAFEBOORU, ArtSource.E621),
     val message: String? = null,
     val saving: Set<String> = emptySet(),
+    val estimatedRequests: Int = 0,
+    val requestCount: Int = 0,
+    val completedSources: Int = 0,
+    val totalSources: Int = 0,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -35,6 +45,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val pairingBusy = MutableStateFlow(false)
     val pairingMessage = MutableStateFlow<String?>(null)
     val pairingError = MutableStateFlow(false)
+    private var searchJob: Job? = null
+    private var optionsSaveJob: Job? = null
+    private var currentSearchOptions = SearchOptions()
+    private var lastRawPosts: List<ArtPost> = emptyList()
 
     fun selectCategory(key: String) { searchState.value = searchState.value.copy(selectedCategory = key) }
     fun toggleSource(source: ArtSource) {
@@ -43,22 +57,71 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         searchState.value = searchState.value.copy(selectedSources = next)
     }
 
-    fun search(pages: Int = 1) = viewModelScope.launch {
-        val state = searchState.value
-        val category = settings.value.categories.firstOrNull { it.key == state.selectedCategory }
-            ?: settings.value.categories.firstOrNull()
-        if (category == null || state.selectedSources.isEmpty()) {
-            searchState.value = state.copy(message = app.getString(R.string.choose_tag_source))
-            return@launch
+    fun estimateRequests(category: Category?, sources: Set<ArtSource>, pages: Int): Int =
+        category?.let { container.search.estimateRequestCount(it, sources, pages) } ?: 0
+
+    fun updateSearchOptions(options: SearchOptions) {
+        currentSearchOptions = options
+        if (lastRawPosts.isNotEmpty()) {
+            searchState.update { it.copy(posts = applySearchOptions(lastRawPosts, options)) }
         }
-        searchState.value = state.copy(loading = true, message = null, selectedCategory = category.key)
-        runCatching {
-            container.search.search(category, state.selectedSources, pages, container.settings.credentials())
-        }.onSuccess { outcome ->
-            searchState.value = searchState.value.copy(loading = false, posts = outcome.posts, errors = outcome.errors)
-        }.onFailure { error ->
-            searchState.value = searchState.value.copy(loading = false, message = error.message ?: app.getString(R.string.search_failed))
+        optionsSaveJob?.cancel()
+        optionsSaveJob = viewModelScope.launch {
+            delay(250)
+            runCatching { container.settings.saveSearchOptions(options) }
+                .onFailure { error -> searchState.update { state -> state.copy(message = error.message) } }
         }
+    }
+
+    fun search(optionsOverride: SearchOptions? = null) {
+        if (searchJob?.isActive == true) return
+        searchJob = viewModelScope.launch {
+            val state = searchState.value
+            val category = settings.value.categories.firstOrNull { it.key == state.selectedCategory }
+                ?: settings.value.categories.firstOrNull()
+            if (category == null || state.selectedSources.isEmpty()) {
+                searchState.value = state.copy(message = app.getString(R.string.choose_tag_source))
+                return@launch
+            }
+            val options = optionsOverride ?: settings.value.searchOptions
+            currentSearchOptions = options
+            val estimate = container.search.estimateRequestCount(category, state.selectedSources, options.pages)
+            searchState.value = state.copy(
+                loading = true, message = null, errors = emptyMap(), selectedCategory = category.key,
+                estimatedRequests = estimate, requestCount = 0, completedSources = 0,
+                totalSources = state.selectedSources.size,
+            )
+            try {
+                val outcome = container.search.search(
+                    category, state.selectedSources, options, container.settings.credentials(),
+                ) { progress ->
+                    searchState.update {
+                        it.copy(
+                            requestCount = progress.requestCount,
+                            completedSources = progress.completedSources,
+                            totalSources = progress.totalSources,
+                        )
+                    }
+                }
+                lastRawPosts = outcome.posts
+                searchState.update {
+                    it.copy(
+                        loading = false, posts = applySearchOptions(outcome.posts, currentSearchOptions), errors = outcome.errors,
+                        requestCount = outcome.requestCount,
+                    )
+                }
+            } catch (_: CancellationException) {
+                searchState.update { it.copy(loading = false, message = app.getString(R.string.search_cancelled)) }
+            } catch (error: Throwable) {
+                searchState.update { it.copy(loading = false, message = error.message ?: app.getString(R.string.search_failed)) }
+            } finally {
+                searchJob = null
+            }
+        }
+    }
+
+    fun cancelSearch() {
+        searchJob?.cancel()
     }
 
     fun importPairing(code: String, replace: Boolean) = viewModelScope.launch {

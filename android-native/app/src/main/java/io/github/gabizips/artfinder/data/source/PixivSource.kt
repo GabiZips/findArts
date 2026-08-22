@@ -3,6 +3,7 @@ package io.github.gabizips.artfinder.data.source
 import io.github.gabizips.artfinder.model.ArtPost
 import io.github.gabizips.artfinder.model.ArtSource
 import io.github.gabizips.artfinder.model.Category
+import io.github.gabizips.artfinder.model.SearchOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -16,7 +17,7 @@ import java.util.TimeZone
 internal class PixivSource : SourceClient {
     override val source = ArtSource.PIXIV
 
-    override suspend fun search(category: Category, pages: Int, credentials: Map<String, String>) = withContext(Dispatchers.IO) {
+    override suspend fun search(category: Category, options: SearchOptions, credentials: Map<String, String>, tracker: RequestTracker) = withContext(Dispatchers.IO) {
         val refreshToken = credentials["PIXIV_REFRESH_TOKEN"].orEmpty()
         require(refreshToken.isNotBlank()) { "Configure PIXIV_REFRESH_TOKEN." }
         val authHeaders = pixivHeaders()
@@ -26,7 +27,7 @@ internal class PixivSource : SourceClient {
                 "get_secure_url" to "1", "client_id" to CLIENT_ID, "client_secret" to CLIENT_SECRET,
                 "grant_type" to "refresh_token", "refresh_token" to refreshToken,
             ),
-            authHeaders,
+            authHeaders, tracker,
         ))
         val auth = authRoot.optJSONObject("response") ?: authRoot
         val accessToken = auth.getString("access_token")
@@ -35,7 +36,7 @@ internal class PixivSource : SourceClient {
             val query = if (exact) rawQuery else derivedTextQuery(rawQuery)
             var offset: Int? = null
             buildList {
-                for (page in 0 until pages) {
+                for (page in 0 until options.pages) {
                     val root = JSONObject(Http.get(
                         "https://app-api.pixiv.net/v1/search/illust",
                         mapOf(
@@ -44,12 +45,12 @@ internal class PixivSource : SourceClient {
                             "sort" to "date_desc", "filter" to "for_ios", "search_ai_type" to 0,
                             "offset" to offset,
                         ),
-                        pixivHeaders() + ("Authorization" to "Bearer $accessToken"),
+                        pixivHeaders() + ("Authorization" to "Bearer $accessToken"), tracker,
                     ))
                     val illustrations = root.optJSONArray("illusts") ?: JSONArray()
                     for (index in 0 until illustrations.length()) {
                         val item = illustrations.optJSONObject(index) ?: continue
-                        if (item.int("illust_ai_type") == 2) continue
+                        val isAi = item.int("illust_ai_type") == 2
                         val id = item.string("id")
                         val width = item.int("width")
                         val height = item.int("height")
@@ -58,13 +59,14 @@ internal class PixivSource : SourceClient {
                         val tags = item.optJSONArray("tags")?.let { array ->
                             (0 until array.length()).joinToString(" ") { array.optJSONObject(it)?.string("name").orEmpty() }
                         }.orEmpty()
-                        if (id.isBlank() || image.first.isBlank() || !isAccepted(width, height, rating, tags)) continue
+                        if (id.isBlank() || image.first.isBlank()) continue
                         add(ArtPost(
                             id = id, source = source, url = image.first, previewUrl = image.second,
                             pageUrl = "https://www.pixiv.net/artworks/$id", width = width, height = height,
                             score = item.int("total_bookmarks"),
                             artist = item.optJSONObject("user")?.string("name").orEmpty(),
                             tags = tags, rating = rating, categoryKey = category.key,
+                            postDate = item.epochSeconds("create_date"), isAi = isAi,
                         ))
                     }
                     val next = root.string("next_url")

@@ -3,6 +3,7 @@ package io.github.gabizips.artfinder.data.source
 import io.github.gabizips.artfinder.model.ArtPost
 import io.github.gabizips.artfinder.model.ArtSource
 import io.github.gabizips.artfinder.model.Category
+import io.github.gabizips.artfinder.model.SearchOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -11,25 +12,24 @@ import org.json.JSONObject
 internal class BlueskySource : SourceClient {
     override val source = ArtSource.BLUESKY
 
-    override suspend fun search(category: Category, pages: Int, credentials: Map<String, String>) = withContext(Dispatchers.IO) {
+    override suspend fun search(category: Category, options: SearchOptions, credentials: Map<String, String>, tracker: RequestTracker) = withContext(Dispatchers.IO) {
         val handle = credentials["BSKY_HANDLE"].orEmpty()
         val password = credentials["BSKY_PASSWORD"].orEmpty()
         require(handle.isNotBlank() && password.isNotBlank()) { "Configure BSKY_HANDLE e uma app password." }
         val session = JSONObject(Http.postJson(
             "https://bsky.social/xrpc/com.atproto.server.createSession",
-            JSONObject().put("identifier", handle).put("password", password),
+            JSONObject().put("identifier", handle).put("password", password), tracker = tracker,
         ))
         val token = session.getString("accessJwt")
         category.queriesFor(source).flatMap { rawQuery ->
-            val query = category.sourceTags[source.id]?.firstOrNull()?.takeIf(String::isNotBlank)
-                ?: derivedTextQuery(rawQuery)
+            val query = if (category.sourceTags[source.id].isNullOrEmpty()) derivedTextQuery(rawQuery) else rawQuery
             var cursor: String? = null
             buildList {
-                for (page in 0 until pages) {
+                for (page in 0 until options.pages) {
                     val root = JSONObject(Http.get(
                         "https://bsky.social/xrpc/app.bsky.feed.searchPosts",
                         mapOf("q" to query, "limit" to 100, "cursor" to cursor),
-                        mapOf("Authorization" to "Bearer $token"),
+                        mapOf("Authorization" to "Bearer $token"), tracker,
                     ))
                     val posts = root.optJSONArray("posts") ?: JSONArray()
                     for (index in 0 until posts.length()) {
@@ -42,15 +42,19 @@ internal class BlueskySource : SourceClient {
                         val postId = uri.substringAfterLast('/')
                         val tags = extractBlueskyTags(record)
                         val labels = post.optJSONArray("labels") ?: JSONArray()
-                        val nsfw = (0 until labels.length()).any { labels.optJSONObject(it)?.string("val") in NSFW_TERMS }
+                        val labelValues = (0 until labels.length()).mapNotNull { labels.optJSONObject(it)?.string("val") }
                         for (imageIndex in 0 until images.length()) {
                             val image = images.optJSONObject(imageIndex) ?: continue
                             val aspect = image.optJSONObject("aspectRatio") ?: JSONObject()
                             val url = image.string("fullsize")
                             val width = aspect.int("width")
                             val height = aspect.int("height")
-                            val rating = if (nsfw || tags.lowercase().split(' ').any { it in NSFW_TERMS }) "nsfw" else "sfw"
-                            if (url.isBlank() || !isAccepted(width, height, rating, tags)) continue
+                            val rating = when {
+                                labelValues.any { it in NSFW_TAGS } -> "nsfw"
+                                labelValues.any { it in SENSITIVE_TAGS } -> "sensitive"
+                                else -> ratingFromTags(tags)
+                            }
+                            if (url.isBlank()) continue
                             val id = if (images.length() > 1) "${postId}_$imageIndex" else postId
                             add(ArtPost(
                                 id = id, source = source, url = url,
@@ -59,6 +63,7 @@ internal class BlueskySource : SourceClient {
                                 width = width, height = height, score = post.int("likeCount"),
                                 artist = author.string("displayName").ifBlank { author.string("handle") },
                                 tags = tags, rating = rating, categoryKey = category.key,
+                                postDate = record.epochSeconds("createdAt"),
                             ))
                         }
                     }
@@ -82,46 +87,50 @@ internal class BlueskySource : SourceClient {
         return tags.joinToString(" ")
     }
 
-    private companion object {
-        val NSFW_TERMS = setOf("porn", "sexual", "nudity", "nsfw", "explicit", "graphic-media", "r18", "18+")
-    }
 }
 
 internal class TumblrSource : SourceClient {
     override val source = ArtSource.TUMBLR
 
-    override suspend fun search(category: Category, pages: Int, credentials: Map<String, String>) = withContext(Dispatchers.IO) {
+    override suspend fun search(category: Category, options: SearchOptions, credentials: Map<String, String>, tracker: RequestTracker) = withContext(Dispatchers.IO) {
         val apiKey = credentials["TUMBLR_API_KEY"].orEmpty()
         require(apiKey.isNotBlank()) { "Configure TUMBLR_API_KEY." }
-        val offsets = listOf(0, 30, 90, 180, 365).take(pages)
-        val now = System.currentTimeMillis() / 1000
         category.queriesFor(source).flatMap { rawQuery ->
             val tags = if (category.sourceTags[source.id].isNullOrEmpty()) {
                 derivedTextQuery(rawQuery).split(Regex("\\s{2,}")).filter(String::isNotBlank)
             } else listOf(rawQuery)
             tags.flatMap { tag ->
-                offsets.flatMap { days ->
-                    val params = mutableMapOf<String, Any?>("tag" to tag, "api_key" to apiKey, "limit" to 20, "npf" to "true")
-                    if (days > 0) params["before"] = now - days * 86_400L
-                    val root = JSONObject(Http.get("https://api.tumblr.com/v2/tagged", params))
-                    val posts = root.optJSONArray("response") ?: JSONArray()
-                    (0 until posts.length()).flatMap { index ->
-                        val post = posts.optJSONObject(index) ?: return@flatMap emptyList()
-                        val postTags = post.optJSONArray("tags")?.let { array ->
-                            (0 until array.length()).joinToString(" ") { array.optString(it) }
-                        }.orEmpty()
-                        if (containsAi(postTags)) return@flatMap emptyList()
-                        val postId = post.string("id")
-                        extractTumblrImages(post).mapIndexedNotNull { imageIndex, image ->
-                            if (!isAccepted(image.width, image.height, "sfw", postTags)) return@mapIndexedNotNull null
-                            ArtPost(
-                                id = if (imageIndex == 0) postId else "${postId}_$imageIndex",
-                                source = source, url = image.url, previewUrl = image.preview,
-                                pageUrl = post.string("post_url"), width = image.width, height = image.height,
-                                score = post.int("note_count"), artist = post.string("blog_name"),
-                                tags = postTags, categoryKey = category.key, postDate = post.long("timestamp"),
-                            )
+                var before: Long? = null
+                buildList {
+                    for (page in 0 until options.pages) {
+                        val params = mutableMapOf<String, Any?>("tag" to tag, "api_key" to apiKey, "limit" to 20, "npf" to "true")
+                        before?.let { params["before"] = it }
+                        val root = JSONObject(Http.get("https://api.tumblr.com/v2/tagged", params, tracker = tracker))
+                        val posts = root.optJSONArray("response") ?: JSONArray()
+                        if (posts.length() == 0) break
+                        val pageItems = (0 until posts.length()).flatMap { index ->
+                            val post = posts.optJSONObject(index) ?: return@flatMap emptyList()
+                            val postTags = post.optJSONArray("tags")?.let { array ->
+                                (0 until array.length()).joinToString(" ") { array.optString(it) }
+                            }.orEmpty()
+                            val postId = post.string("id")
+                            extractTumblrImages(post).mapIndexedNotNull { imageIndex, image ->
+                                ArtPost(
+                                    id = if (imageIndex == 0) postId else "${postId}_$imageIndex",
+                                    source = source, url = image.url, previewUrl = image.preview,
+                                    pageUrl = post.string("post_url"), width = image.width, height = image.height,
+                                    score = post.int("note_count"), artist = post.string("blog_name"),
+                                    tags = postTags, rating = ratingFromTags(postTags), categoryKey = category.key,
+                                    postDate = post.epochSeconds("timestamp"),
+                                )
+                            }
                         }
+                        addAll(pageItems)
+                        val nextBefore = (0 until posts.length()).mapNotNull { index ->
+                            posts.optJSONObject(index)?.epochSeconds("timestamp")?.takeIf { it > 0 }
+                        }.minOrNull()?.minus(1)
+                        if (nextBefore == null || nextBefore == before) break
+                        before = nextBefore
                     }
                 }
             }
@@ -164,25 +173,27 @@ internal class TumblrSource : SourceClient {
 internal class DeviantArtSource : SourceClient {
     override val source = ArtSource.DEVIANTART
 
-    override suspend fun search(category: Category, pages: Int, credentials: Map<String, String>) = withContext(Dispatchers.IO) {
+    override suspend fun search(category: Category, options: SearchOptions, credentials: Map<String, String>, tracker: RequestTracker) = withContext(Dispatchers.IO) {
         val clientId = credentials["DEVIANTART_CLIENT_ID"].orEmpty()
         val clientSecret = credentials["DEVIANTART_CLIENT_SECRET"].orEmpty()
         require(clientId.isNotBlank() && clientSecret.isNotBlank()) { "Configure as credenciais do DeviantArt." }
         val token = JSONObject(Http.postForm("https://www.deviantart.com/oauth2/token", mapOf(
             "grant_type" to "client_credentials", "client_id" to clientId, "client_secret" to clientSecret,
-        ))).getString("access_token")
+        ), tracker = tracker)).getString("access_token")
         category.queriesFor(source).flatMap { rawQuery ->
             val tag = if (category.sourceTags[source.id].isNullOrEmpty()) derivedTextQuery(rawQuery) else rawQuery
-            (0 until pages).flatMap { page ->
+            buildList {
+            for (page in 0 until options.pages) {
                 val root = JSONObject(Http.get(
                     "https://www.deviantart.com/api/v1/oauth2/browse/tags",
                     mapOf("tag" to tag, "offset" to page * 24, "limit" to 24, "mature_content" to "true"),
-                    mapOf("Authorization" to "Bearer $token"),
+                    mapOf("Authorization" to "Bearer $token"), tracker,
                 ))
                 val results = root.optJSONArray("results") ?: JSONArray()
-                (0 until results.length()).mapNotNull { index ->
+                if (results.length() == 0) break
+                addAll((0 until results.length()).mapNotNull { index ->
                     val item = results.optJSONObject(index) ?: return@mapNotNull null
-                    if (item.optBoolean("is_deleted") || item.optBoolean("is_mature")) return@mapNotNull null
+                    if (item.optBoolean("is_deleted")) return@mapNotNull null
                     val content = item.optJSONObject("content") ?: item.optJSONObject("preview") ?: JSONObject()
                     val fallback = item.optJSONArray("thumbs")?.let { thumbs ->
                         (0 until thumbs.length()).mapNotNull(thumbs::optJSONObject).maxByOrNull { it.int("width") }
@@ -192,16 +203,19 @@ internal class DeviantArtSource : SourceClient {
                     val width = media.int("width")
                     val height = media.int("height")
                     val title = item.string("title")
-                    if (url.isBlank() || !isAccepted(width, height, "sfw", "$tag $title")) return@mapNotNull null
+                    if (url.isBlank()) return@mapNotNull null
                     val id = item.string("deviationid").ifBlank { item.string("deviation_id") }
                     ArtPost(
                         id = id, source = source, url = url, previewUrl = url,
                         pageUrl = item.string("url"), width = width, height = height,
                         score = item.optJSONObject("stats")?.int("favourites") ?: 0,
                         artist = item.optJSONObject("author")?.string("username").orEmpty(),
-                        tags = tag, categoryKey = category.key, postDate = item.long("published_time"),
+                        tags = tag, rating = if (item.optBoolean("is_mature")) "nsfw" else ratingFromTags("$tag $title"),
+                        categoryKey = category.key, postDate = item.epochSeconds("published_time"),
                     )
-                }
+                })
+                if (!root.optBoolean("has_more", true)) break
+            }
             }
         }.distinctBy { "${it.source.id}:${it.id}" }
     }

@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.gabizips.artfinder"
         minSdk = 29
         targetSdk = 36
-        versionCode = 50000
-        versionName = "0.5.0"
+        versionCode = 60000
+        versionName = "0.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -66,11 +66,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.3.0")
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
-
-    implementation("androidx.camera:camera-camera2:1.5.1")
-    implementation("androidx.camera:camera-lifecycle:1.5.1")
-    implementation("androidx.camera:camera-view:1.5.1")
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.3.0")

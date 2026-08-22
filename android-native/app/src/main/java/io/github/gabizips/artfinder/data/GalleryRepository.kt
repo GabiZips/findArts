@@ -23,7 +23,7 @@ class GalleryRepository(
     suspend fun save(post: ArtPost): GalleryItem = withContext(Dispatchers.IO) {
         val request = Request.Builder().url(post.url).apply {
             if (post.source.id == "pixiv") header("Referer", "https://www.pixiv.net/")
-            header("User-Agent", "ArtFinder-Android/0.5.0")
+            header("User-Agent", "ArtFinder-Android/0.6.0")
         }.build()
         val downloaded = client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Falha ao baixar: HTTP ${response.code}")
@@ -70,6 +70,7 @@ class GalleryRepository(
             uid = "${post.source.id}:${post.id}", contentUri = uri.toString(),
             source = post.source.id, sourceId = post.id, pageUrl = post.pageUrl,
             artist = post.artist, categoryKey = post.categoryKey, savedAt = System.currentTimeMillis(),
+            rating = post.rating,
         )
         settings.addGalleryItem(item)
         item

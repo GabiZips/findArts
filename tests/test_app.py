@@ -111,11 +111,11 @@ class AppRouteTests(unittest.TestCase):
         self.assertIn('crypto.subtle.decrypt', html)
         self.assertIn("artfinder-pair:v1:", html)
 
-    def test_mobile_pairing_uses_local_relay_and_exposes_qr_reader(self):
+    def test_mobile_pairing_uses_local_relay_and_code_only(self):
         html = asyncio.run(app.index()).body.decode("utf-8")
         self.assertIn('fetch("/api/pairing/fetch"', html)
-        self.assertIn('capture="environment"', html)
-        self.assertIn("new BarcodeDetector", html)
+        self.assertNotIn('capture="environment"', html)
+        self.assertNotIn("BarcodeDetector", html)
         self.assertNotIn('confirm(t("Importar tags e credenciais deste PC?"))', html)
 
     def test_category_form_uses_source_mapping_examples(self):
@@ -285,7 +285,7 @@ class AppRouteTests(unittest.TestCase):
     def test_pairing_export_encrypts_only_whitelisted_configuration(self):
         fake_session = MagicMock(
             expires_at=123456,
-            options=[{"address": "192.168.1.10", "code": "opaque", "qr": "data:qr"}],
+            options=[{"address": "192.168.1.10", "code": "opaque"}],
         )
         with (
             patch.dict(os.environ, {"ARTFINDER_MOBILE": "0"}, clear=False),

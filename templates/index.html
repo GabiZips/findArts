@@ -408,7 +408,6 @@
   .pair-choice{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text)}
   .pair-choice input{accent-color:var(--accent)}
   .pair-code{width:100%;min-height:86px;resize:vertical;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font:10px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;padding:9px;word-break:break-all}
-  .pair-qr{display:block;width:min(280px,80vw);height:auto;margin:0 auto;background:#fff;border:8px solid #fff;border-radius:10px}
   .pair-actions{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
   .pair-status{min-height:18px;color:var(--muted);font-size:11px;line-height:1.5}
   .pair-warning{border:1px solid rgba(234,179,8,.3);background:rgba(234,179,8,.08);color:#fde68a;border-radius:8px;padding:9px 11px;font-size:10px;line-height:1.5}
@@ -908,21 +907,18 @@
         </div>
         <label class="pair-choice"><input id="pairIncludeCategories" type="checkbox" checked> Transferir categorias e tags</label>
         <label class="pair-choice"><input id="pairIncludeCredentials" type="checkbox" checked> Transferir credenciais configuradas</label>
-        <div class="pair-warning">O QR contém a chave de descriptografia. Mostre-o somente ao seu próprio celular e não envie o código por mensagens.</div>
+        <div class="pair-warning">O código contém a chave de descriptografia. Cole-o somente no seu próprio celular e não o envie por mensagens.</div>
         <div class="pair-actions"><button class="cm-save-btn" id="createPairingButton" onclick="createPairing()">Criar código de pareamento</button></div>
         <div id="pairDesktopResult" class="pair-panel" style="display:none">
           <select id="pairAddressSelect" class="pair-select" onchange="selectPairingOption()"></select>
-          <img id="pairQr" class="pair-qr" alt="QR Code de pareamento">
           <textarea id="pairCode" class="pair-code" readonly spellcheck="false"></textarea>
           <div class="pair-actions"><button class="btn-hdr" onclick="copyPairingCode()">Copiar código</button></div>
         </div>
       </div>
       <div id="pairMobilePanel" class="pair-panel" style="display:none">
         <div class="cm-form-hint" style="font-size:11px;line-height:1.55">
-          No PC, abra Stats → Parear dispositivo. Leia o QR aqui ou cole o código completo abaixo.
+          No PC, abra Stats → Parear dispositivo. Copie o código completo e cole-o abaixo.
         </div>
-        <input id="pairQrImage" type="file" accept="image/*" capture="environment" style="display:none" onchange="readPairingQr(this)">
-        <div class="pair-actions" style="justify-content:flex-start"><button class="btn-hdr" type="button" onclick="document.getElementById('pairQrImage').click()">Ler QR com a câmera</button></div>
         <textarea id="pairImportCode" class="pair-code" placeholder="artfinder-pair:v1:..." autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
         <label class="pair-choice">Categorias
           <select id="pairImportMode" class="pair-select">
@@ -1446,7 +1442,6 @@ function selectPairingOption(){
   const index=parseInt(document.getElementById("pairAddressSelect").value)||0;
   const option=pairingOptions[index];
   if(!option)return;
-  document.getElementById("pairQr").src=option.qr;
   document.getElementById("pairCode").value=option.code;
 }
 
@@ -1503,27 +1498,6 @@ async function decryptPairingCode(rawCode){
     },key,pairingBase64Bytes(envelope.ciphertext));
     return JSON.parse(new TextDecoder().decode(plaintext));
   }catch(_error){throw new Error(t("Não foi possível validar ou descriptografar o pacote."));}
-}
-
-async function readPairingQr(input){
-  const status=document.getElementById("pairStatus"),file=input.files?.[0];
-  if(!file)return;
-  status.textContent=t("Lendo QR Code...");
-  try{
-    if(!globalThis.BarcodeDetector)throw new Error(t("Este Android não oferece leitura de QR nesta tela. Cole o código abaixo."));
-    const bitmap=await createImageBitmap(file);
-    let detected;
-    try{detected=await new BarcodeDetector({formats:["qr_code"]}).detect(bitmap);}
-    finally{bitmap.close?.();}
-    const code=detected?.map(item=>item.rawValue).find(value=>value?.startsWith("artfinder-pair:v1:"));
-    if(!code)throw new Error(t("QR Code de pareamento não encontrado. Tente aproximar a câmera da tela."));
-    document.getElementById("pairImportCode").value=code;
-    status.textContent=t("QR lido. Importando...");
-    await importPairing();
-  }catch(error){
-    status.textContent=`${t("Erro")}: ${error.message}`;
-    toast(error.message,"error");
-  }finally{input.value="";}
 }
 
 async function importPairing(){

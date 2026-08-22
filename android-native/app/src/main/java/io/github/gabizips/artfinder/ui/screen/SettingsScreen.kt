@@ -1,23 +1,16 @@
 package io.github.gabizips.artfinder.ui.screen
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Key
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,14 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.gabizips.artfinder.MainViewModel
 import io.github.gabizips.artfinder.R
@@ -51,17 +40,12 @@ import io.github.gabizips.artfinder.model.SettingsSnapshot
 
 @Composable
 fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
-    val context = LocalContext.current
     val busy by viewModel.pairingBusy.collectAsStateWithLifecycle()
     val message by viewModel.pairingMessage.collectAsStateWithLifecycle()
     val messageIsError by viewModel.pairingError.collectAsStateWithLifecycle()
     var code by remember { mutableStateOf("") }
     var replace by remember { mutableStateOf(false) }
-    var showScanner by remember { mutableStateOf(false) }
     var editingCredential by remember { mutableStateOf<String?>(null) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        showScanner = granted
-    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -76,12 +60,6 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(stringResource(R.string.pair_devices), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.pair_instructions))
-                    Button(onClick = {
-                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) showScanner = true
-                        else permission.launch(Manifest.permission.CAMERA)
-                    }, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Outlined.QrCodeScanner, null); Text(" ${stringResource(R.string.scan_qr)}")
-                    }
                     OutlinedTextField(
                         value = code, onValueChange = { code = it.take(12_000) },
                         label = { Text(stringResource(R.string.paste_code)) }, minLines = 3,
@@ -125,18 +103,6 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
                 stringResource(R.string.legal_notice),
                 style = MaterialTheme.typography.bodySmall,
             )
-        }
-    }
-
-    if (showScanner) {
-        Dialog(onDismissRequest = { showScanner = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Box(Modifier.fillMaxSize()) {
-                QrScanner(onCode = { value -> code = value; showScanner = false })
-                TextButton(
-                    onClick = { showScanner = false },
-                    modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp),
-                ) { Text(stringResource(R.string.close)) }
-            }
         }
     }
 

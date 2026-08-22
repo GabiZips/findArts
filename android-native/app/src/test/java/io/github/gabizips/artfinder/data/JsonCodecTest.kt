@@ -1,6 +1,7 @@
 package io.github.gabizips.artfinder.data
 
 import io.github.gabizips.artfinder.model.Category
+import io.github.gabizips.artfinder.model.GalleryItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -18,5 +19,15 @@ class JsonCodecTest {
     @Test
     fun invalidEmptyCategoriesAreIgnored() {
         assertEquals(emptyList<Category>(), JsonCodec.categoriesFromJson("{\"bad\":{\"tags\":\"\"}}"))
+    }
+
+    @Test
+    fun galleryRoundTripPreservesNsfwRating() {
+        val original = GalleryItem(
+            uid = "pixiv:1", contentUri = "content://image/1", source = "pixiv", sourceId = "1",
+            pageUrl = "https://example.com/1", artist = "artist", categoryKey = "test",
+            savedAt = 123L, rating = "nsfw",
+        )
+        assertEquals(listOf(original), JsonCodec.galleryFromJson(JsonCodec.galleryToJson(listOf(original))))
     }
 }

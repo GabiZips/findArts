@@ -2,6 +2,8 @@ package io.github.gabizips.artfinder.ui.screen
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,14 +21,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -33,8 +41,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,9 +52,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -57,15 +70,26 @@ import io.github.gabizips.artfinder.R
 import io.github.gabizips.artfinder.SearchUiState
 import io.github.gabizips.artfinder.model.ArtPost
 import io.github.gabizips.artfinder.model.ArtSource
+import io.github.gabizips.artfinder.model.Category
+import io.github.gabizips.artfinder.model.SearchOptions
 import io.github.gabizips.artfinder.model.SettingsSnapshot
 import io.github.gabizips.artfinder.ui.previewModel
+import kotlin.math.roundToInt
 
 @Composable
 fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: MainViewModel) {
-    var expanded by remember { mutableStateOf(false) }
+    var categoryExpanded by remember { mutableStateOf(false) }
+    var optionsExpanded by rememberSaveable { mutableStateOf(false) }
+    var confirmLargeSearch by remember { mutableStateOf(false) }
+    var draftOptions by remember { mutableStateOf(settings.searchOptions) }
+    LaunchedEffect(settings.searchOptions) { draftOptions = settings.searchOptions }
     LaunchedEffect(settings.categories, state.selectedCategory) {
         if (state.selectedCategory == null && settings.categories.isNotEmpty()) viewModel.selectCategory(settings.categories.first().key)
     }
+    val selectedCategory = settings.categories.firstOrNull { it.key == state.selectedCategory } ?: settings.categories.firstOrNull()
+    val estimate = viewModel.estimateRequests(selectedCategory, state.selectedSources, draftOptions.pages)
+    val startSearch = { viewModel.search(draftOptions) }
+
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(stringResource(R.string.search_artworks), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -73,14 +97,14 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
                 Text(stringResource(R.string.no_categories))
             } else {
                 Box {
-                    val selected = settings.categories.firstOrNull { it.key == state.selectedCategory } ?: settings.categories.first()
-                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                    val selected = selectedCategory ?: settings.categories.first()
+                    OutlinedButton(onClick = { categoryExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                         Text("${selected.emoji} ${selected.label} · ${selected.group}", modifier = Modifier.weight(1f))
                     }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    DropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
                         settings.categories.forEach { category ->
                             DropdownMenuItem(text = { Text("${category.emoji} ${category.label} · ${category.group}") }, onClick = {
-                                viewModel.selectCategory(category.key); expanded = false
+                                viewModel.selectCategory(category.key); categoryExpanded = false
                             })
                         }
                     }
@@ -95,17 +119,51 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
                     )
                 }
             }
-            Button(
-                onClick = { viewModel.search() }, enabled = !state.loading && settings.categories.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (state.loading) stringResource(R.string.searching) else stringResource(R.string.search)) }
+            SearchOptionsCard(
+                expanded = optionsExpanded,
+                options = draftOptions,
+                estimatedRequests = estimate,
+                onExpandedChange = { optionsExpanded = it },
+                onOptionsChange = { updated ->
+                    draftOptions = updated
+                    viewModel.updateSearchOptions(updated)
+                },
+            )
+            if (state.loading) {
+                OutlinedButton(onClick = viewModel::cancelSearch, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.cancel_search))
+                }
+                Text(
+                    stringResource(
+                        R.string.search_progress_details,
+                        state.completedSources, state.totalSources, state.requestCount, state.estimatedRequests,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            } else {
+                Button(
+                    onClick = {
+                        if (draftOptions.pages >= 21) confirmLargeSearch = true else startSearch()
+                    },
+                    enabled = settings.categories.isNotEmpty() && state.selectedSources.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.search)) }
+            }
             state.message?.let {
-                Card(Modifier.fillMaxWidth()) { Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(it, Modifier.weight(1f)); TextButton(onClick = viewModel::clearMessages) { Text("OK") }
-                } }
+                Card(Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(it, Modifier.weight(1f)); TextButton(onClick = viewModel::clearMessages) { Text("OK") }
+                    }
+                }
             }
             if (state.errors.isNotEmpty()) {
                 Text(state.errors.entries.joinToString("\n") { "${it.key.label}: ${it.value}" }, color = MaterialTheme.colorScheme.error)
+            }
+            if (!state.loading && (state.requestCount > 0 || state.posts.isNotEmpty())) {
+                Text(
+                    stringResource(R.string.search_summary, state.posts.size, state.requestCount),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
         if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -120,20 +178,156 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
             ) { items(state.posts, key = { "${it.source.id}:${it.id}" }) { post -> ArtCard(post, state, viewModel) } }
         }
     }
+
+    if (confirmLargeSearch) {
+        AlertDialog(
+            onDismissRequest = { confirmLargeSearch = false },
+            title = { Text(stringResource(R.string.large_search_title)) },
+            text = { Text(stringResource(R.string.large_search_confirmation, draftOptions.pages, estimate)) },
+            confirmButton = {
+                TextButton(onClick = { confirmLargeSearch = false; startSearch() }) { Text(stringResource(R.string.continue_search)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmLargeSearch = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+}
+
+@Composable
+private fun SearchOptionsCard(
+    expanded: Boolean,
+    options: SearchOptions,
+    estimatedRequests: Int,
+    onExpandedChange: (Boolean) -> Unit,
+    onOptionsChange: (SearchOptions) -> Unit,
+) {
+    ElevatedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                Modifier.fillMaxWidth().clickable { onExpandedChange(!expanded) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.search_options), fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(R.string.pages_and_requests, options.pages, estimatedRequests),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
+            }
+            AnimatedVisibility(expanded) {
+                Column(
+                    Modifier.padding(top = 10.dp).heightIn(max = 390.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(stringResource(R.string.pages_per_source, options.pages), fontWeight = FontWeight.SemiBold)
+                    Slider(
+                        value = options.pages.toFloat(),
+                        onValueChange = { onOptionsChange(options.copy(pages = it.roundToInt().coerceIn(1, 25))) },
+                        valueRange = 1f..25f,
+                        steps = 23,
+                    )
+                    SearchWarning(options.pages, estimatedRequests)
+                    Text(stringResource(R.string.content_rating), fontWeight = FontWeight.SemiBold)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        item {
+                            FilterChip(options.includeSfw, { toggleRating(options, "sfw", onOptionsChange) }, { Text("SFW") })
+                        }
+                        item {
+                            FilterChip(options.includeSensitive, { toggleRating(options, "sensitive", onOptionsChange) }, { Text(stringResource(R.string.sensitive)) })
+                        }
+                        item {
+                            FilterChip(options.includeNsfw, { toggleRating(options, "nsfw", onOptionsChange) }, { Text("NSFW") })
+                        }
+                    }
+                    Text(stringResource(R.string.nsfw_blur_notice), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.period), fontWeight = FontWeight.SemiBold)
+                    val periods = listOf(0 to R.string.period_all, 7 to R.string.period_7, 30 to R.string.period_30, 90 to R.string.period_90, 180 to R.string.period_180, 365 to R.string.period_365)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(periods) { (days, label) ->
+                            FilterChip(
+                                selected = options.periodDays == days,
+                                onClick = { onOptionsChange(options.copy(periodDays = days)) },
+                                label = { Text(stringResource(label)) },
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = options.minScore.takeIf { it > 0 }?.toString().orEmpty(),
+                        onValueChange = { value ->
+                            val clean = value.filter(Char::isDigit).take(7)
+                            onOptionsChange(options.copy(minScore = clean.toIntOrNull() ?: 0))
+                        },
+                        label = { Text(stringResource(R.string.minimum_score)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.hide_ai), fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.hide_ai_hint), style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked = options.hideAi, onCheckedChange = { onOptionsChange(options.copy(hideAi = it)) })
+                    }
+                    Text(stringResource(R.string.any_resolution), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+private fun toggleRating(options: SearchOptions, rating: String, onChange: (SearchOptions) -> Unit) {
+    val activeCount = listOf(options.includeSfw, options.includeSensitive, options.includeNsfw).count { it }
+    val currentlyActive = when (rating) {
+        "sfw" -> options.includeSfw
+        "sensitive" -> options.includeSensitive
+        else -> options.includeNsfw
+    }
+    if (currentlyActive && activeCount == 1) return
+    onChange(
+        when (rating) {
+            "sfw" -> options.copy(includeSfw = !options.includeSfw)
+            "sensitive" -> options.copy(includeSensitive = !options.includeSensitive)
+            else -> options.copy(includeNsfw = !options.includeNsfw)
+        },
+    )
+}
+
+@Composable
+private fun SearchWarning(pages: Int, requests: Int) {
+    val (message, color) = when (pages) {
+        in 1..5 -> R.string.search_size_normal to MaterialTheme.colorScheme.onSurfaceVariant
+        in 6..10 -> R.string.search_size_medium to Color(0xFFFBC02D)
+        in 11..20 -> R.string.search_size_large to Color(0xFFFF8F00)
+        else -> R.string.search_size_very_large to MaterialTheme.colorScheme.error
+    }
+    Text(stringResource(message, requests), color = color, style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
 private fun ArtCard(post: ArtPost, state: SearchUiState, viewModel: MainViewModel) {
     val context = LocalContext.current
     val uid = "${post.source.id}:${post.id}"
+    var nsfwRevealed by rememberSaveable(uid) { mutableStateOf(false) }
+    val hiddenNsfw = post.rating.equals("nsfw", ignoreCase = true) && !nsfwRevealed
     ElevatedCard(Modifier.fillMaxWidth()) {
-        AsyncImage(
-            model = post.previewModel(context), contentDescription = post.tags,
-            modifier = Modifier.fillMaxWidth().height(210.dp).clickable {
-                if (post.pageUrl.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(post.pageUrl)))
+        Box(
+            Modifier.fillMaxWidth().height(210.dp).clickable {
+                if (hiddenNsfw) nsfwRevealed = true
+                else if (post.pageUrl.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(post.pageUrl)))
             },
-            contentScale = ContentScale.Crop,
-        )
+        ) {
+            AsyncImage(
+                model = post.previewModel(context), contentDescription = post.tags,
+                modifier = Modifier.fillMaxSize().blur(if (hiddenNsfw) 24.dp else 0.dp),
+                contentScale = ContentScale.Crop,
+            )
+            if (hiddenNsfw) {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)), contentAlignment = Alignment.Center) {
+                    Text(stringResource(R.string.tap_reveal_nsfw), color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
         Column(Modifier.padding(10.dp)) {
             Text(post.source.label, fontWeight = FontWeight.Bold)
             Text(post.artist.ifBlank { stringResource(R.string.unknown_artist) }, maxLines = 1, overflow = TextOverflow.Ellipsis)

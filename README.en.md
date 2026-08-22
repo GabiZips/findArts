@@ -67,8 +67,10 @@ available.
 
 **Save to Gallery** publishes one copy under `Pictures/ArtFinder` through
 MediaStore, without broad storage permissions. ArtFinder's Gallery references
-that same copy. The native QR scanner processes codes on the device and ships
-its scanner model inside the APK.
+that same copy. Search supports 1–25 pages per source (default 5), content
+rating, age, score and AI filters. Very large searches require confirmation,
+and NSFW thumbnails stay blurred until tapped. PC pairing uses only the
+temporary full code copied into Android; the app does not request camera access.
 
 iOS is not part of this build and requires a separate Xcode-based package and
 signing process.
