@@ -39,7 +39,7 @@ class SearchOptionsTest {
         )
         val options = SearchOptions(
             includeSfw = true, includeSensitive = false, includeNsfw = false,
-            periodDays = 30, minScore = 5, hideAi = true,
+            periodDays = 30, minScore = 5,
         )
 
         assertEquals(listOf("small"), applySearchOptions(posts, options, now).map(ArtPost::id))

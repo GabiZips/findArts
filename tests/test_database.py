@@ -61,6 +61,36 @@ class DownloadDatabaseTests(unittest.TestCase):
                 row = database.get_download_by_file_path(private_file)
                 self.assertEqual(row["public_uri"], "")
 
+    def test_favorites_can_be_organized_without_duplicating_artwork(self):
+        with tempfile.TemporaryDirectory() as temp:
+            db_path = Path(temp) / "library.db"
+            with patch.object(database, "DB_PATH", db_path):
+                database._schema_ready = False
+                self.assertTrue(database.add_favorite("Pixiv", "42", url="https://example.com/42.jpg"))
+                references = database.create_collection("Referências")
+                colors = database.create_collection("Cores")
+                assigned = database.set_favorite_collections(
+                    "Pixiv", "42", [references["id"], colors["id"], 999999]
+                )
+
+                self.assertEqual(assigned, [references["id"], colors["id"]])
+                favorite = database.get_favorites()[0]
+                self.assertEqual(favorite["collection_ids"], assigned)
+                self.assertEqual(sum(item["item_count"] for item in database.get_collections()), 2)
+
+                self.assertTrue(database.delete_collection(references["id"]))
+                favorite = database.get_favorites()[0]
+                self.assertEqual(favorite["collection_ids"], [colors["id"]])
+
+    def test_collection_names_are_unique_ignoring_case(self):
+        with tempfile.TemporaryDirectory() as temp:
+            db_path = Path(temp) / "library.db"
+            with patch.object(database, "DB_PATH", db_path):
+                database._schema_ready = False
+                database.create_collection("Inspiração")
+                with self.assertRaises(sqlite3.IntegrityError):
+                    database.create_collection("inspiração")
+
 
 if __name__ == "__main__":
     unittest.main()

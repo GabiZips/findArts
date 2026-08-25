@@ -73,6 +73,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setBlurNsfw(enabled: Boolean) = viewModelScope.launch {
+        runCatching { container.settings.saveBlurNsfw(enabled) }
+            .onFailure { error -> searchState.update { state -> state.copy(message = error.message) } }
+    }
+
     fun search(optionsOverride: SearchOptions? = null) {
         if (searchJob?.isActive == true) return
         searchJob = viewModelScope.launch {
@@ -165,13 +170,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
     }
 
-    fun save(post: ArtPost) = viewModelScope.launch {
+    fun keep(post: ArtPost, collectionIds: Set<String> = emptySet()) = viewModelScope.launch {
         val uid = "${post.source.id}:${post.id}"
         searchState.value = searchState.value.copy(saving = searchState.value.saving + uid, message = null)
-        runCatching { container.gallery.save(post) }
-            .onSuccess { searchState.value = searchState.value.copy(message = app.getString(R.string.saved_gallery)) }
+        runCatching { container.gallery.keep(post, collectionIds) }
+            .onSuccess { searchState.value = searchState.value.copy(message = app.getString(R.string.kept_library)) }
             .onFailure { searchState.value = searchState.value.copy(message = it.message ?: app.getString(R.string.save_failed)) }
         searchState.value = searchState.value.copy(saving = searchState.value.saving - uid)
+    }
+
+    fun download(post: ArtPost) = viewModelScope.launch {
+        val uid = "${post.source.id}:${post.id}"
+        searchState.value = searchState.value.copy(saving = searchState.value.saving + uid, message = null)
+        runCatching { container.gallery.download(post) }
+            .onSuccess { searchState.value = searchState.value.copy(message = app.getString(R.string.downloaded_device)) }
+            .onFailure { searchState.value = searchState.value.copy(message = it.message ?: app.getString(R.string.save_failed)) }
+        searchState.value = searchState.value.copy(saving = searchState.value.saving - uid)
+    }
+
+    fun download(item: GalleryItem) = viewModelScope.launch {
+        searchState.update { it.copy(saving = it.saving + item.uid, message = null) }
+        runCatching { container.gallery.download(item) }
+            .onSuccess { searchState.update { state -> state.copy(message = app.getString(R.string.downloaded_device)) } }
+            .onFailure { searchState.value = searchState.value.copy(message = it.message ?: app.getString(R.string.save_failed)) }
+        searchState.update { it.copy(saving = it.saving - item.uid) }
+    }
+
+    fun setCollections(item: GalleryItem, collectionIds: Set<String>) = viewModelScope.launch {
+        runCatching { container.gallery.setCollections(item, collectionIds) }
+            .onFailure { searchState.value = searchState.value.copy(message = it.message) }
+    }
+
+    fun createCollection(name: String) = viewModelScope.launch {
+        runCatching { container.settings.createCollection(name) }
+            .onFailure { searchState.value = searchState.value.copy(message = it.message) }
+    }
+
+    fun renameCollection(id: String, name: String) = viewModelScope.launch {
+        runCatching { container.settings.renameCollection(id, name) }
+            .onFailure { searchState.value = searchState.value.copy(message = it.message) }
+    }
+
+    fun deleteCollection(id: String) = viewModelScope.launch {
+        container.settings.deleteCollection(id)
     }
 
     fun delete(item: GalleryItem) = viewModelScope.launch { container.gallery.delete(item) }

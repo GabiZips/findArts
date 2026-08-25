@@ -1,6 +1,7 @@
 """
-app.py — Shadow & Rouge Art Finder  (interface visual local)
-Servidor FastAPI que serve a GUI no navegador.
+ArtFinder local application composition.
+
+Servidor FastAPI privado usado pela janela desktop e pelos testes locais.
 
 Uso:
     python app.py
@@ -46,6 +47,8 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 from config import DATA_DIR, DOWNLOAD_DIR, RESOURCE_DIR, USER_CATEGORIES_PATH
+from artfinder.domain.content_policy import is_ai_generated, matched_ai_indicators
+from artfinder.api.library import router as library_router
 from utils.database import get_stats, known_uids, add_to_blacklist, add_blocked_artist, get_blocked_artists
 from utils.downloader import download_batch
 from utils.lan_security import (
@@ -363,6 +366,7 @@ def _save_user_cats(cats: dict) -> None:
             raise
 
 app = FastAPI(title="artFinder")
+app.include_router(library_router)
 
 # A pasta inteira de downloads não é montada como StaticFiles: isso publicava
 # artfinder.db, WAL e metadados JSON para qualquer pessoa na rede.
@@ -524,6 +528,19 @@ async def i18n_script():
     """Serve the shared browser/desktop/mobile translation runtime."""
     return FileResponse(
         Path(RESOURCE_DIR) / "templates" / "i18n.js",
+        media_type="application/javascript",
+    )
+
+
+@app.get("/ui/viewer.css", response_class=FileResponse)
+async def viewer_styles():
+    return FileResponse(Path(RESOURCE_DIR) / "templates" / "viewer.css", media_type="text/css")
+
+
+@app.get("/ui/viewer.js", response_class=FileResponse)
+async def viewer_script():
+    return FileResponse(
+        Path(RESOURCE_DIR) / "templates" / "viewer.js",
         media_type="application/javascript",
     )
 
@@ -1178,6 +1195,13 @@ async def add_to_favorites(body: dict):
     post_id = str(body.get("id") or body.get("post_id") or "")
     if not source or not post_id:
         return JSONResponse({"error": "source e id são obrigatórios"}, status_code=400)
+    raw_collection_ids = body.get("collection_ids", [])
+    if not isinstance(raw_collection_ids, list) or len(raw_collection_ids) > 100:
+        return JSONResponse({"error": "collection_ids inválido"}, status_code=400)
+    try:
+        collection_ids = [int(value) for value in raw_collection_ids]
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "collection_ids inválido"}, status_code=400)
     from utils.database import add_favorite
     inserted = add_favorite(
         source=source, post_id=post_id,
@@ -1186,6 +1210,9 @@ async def add_to_favorites(body: dict):
         preview_url=body.get("preview_url", ""),
         page_url=body.get("page_url", ""),
     )
+    if "collection_ids" in body:
+        from utils.database import set_favorite_collections
+        set_favorite_collections(source, post_id, collection_ids)
     # Auto-download: salva o arquivo no disco também, a menos que skip_download seja True
     skip_download = body.get("skip_download", False)
     dl_url   = body.get("url") or body.get("preview_url", "")
@@ -1683,16 +1710,9 @@ async def search_stream(body: dict, request: Request):
                     continue
 
                 # 0c) Filtro central de IA (segunda camada de defesa)
-                _AI_KW = {
-                    "ai_generated","ai-generated","ai_art","stable_diffusion",
-                    "novelai","nai_diffusion","midjourney","dall-e","dall_e",
-                    "image_generation","automated_art","diffusion_model",
-                    "generated_by_ai","aigc","aiart","stablediffusion",
-                    "artificialintelligence","ai generated"
-                }
-                post_tags = set((p.get("tags") or "").lower().split())
-                if post_tags & _AI_KW or p.get("is_ai"):
-                    print(f"  [AI-filter] Bloqueado: {p.get('source')}:{p.get('id')} (tags: {post_tags & _AI_KW or 'is_ai=True'})")
+                if is_ai_generated(p):
+                    indicators = matched_ai_indicators(p)
+                    print(f"  [AI-filter] Bloqueado: {p.get('source')}:{p.get('id')} (indicadores: {indicators})")
                     continue
 
                 uid = f"{p.get('source','?')}:{p.get('id','?')}"

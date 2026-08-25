@@ -101,7 +101,7 @@ internal fun applySearchOptions(
         }
         .filter { it.score >= options.minScore }
         .filter { cutoff == null || (it.postDate > 0 && it.postDate >= cutoff) }
-        .filterNot { options.hideAi && (it.isAi || containsAi(it.tags)) }
+        .filterNot { it.isAi || containsAi(it.tags) }
         .sortedByDescending(ArtPost::score)
         .toList()
 }

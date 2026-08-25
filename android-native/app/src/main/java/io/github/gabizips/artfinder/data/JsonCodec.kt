@@ -1,6 +1,7 @@
 package io.github.gabizips.artfinder.data
 
 import io.github.gabizips.artfinder.model.Category
+import io.github.gabizips.artfinder.model.ArtCollection
 import io.github.gabizips.artfinder.model.GalleryItem
 import org.json.JSONArray
 import org.json.JSONObject
@@ -62,10 +63,13 @@ internal object JsonCodec {
             put("source", item.source)
             put("source_id", item.sourceId)
             put("page_url", item.pageUrl)
+            put("preview_url", item.previewUrl)
+            put("original_url", item.originalUrl)
             put("artist", item.artist)
             put("category_key", item.categoryKey)
             put("saved_at", item.savedAt)
             put("rating", item.rating)
+            put("collection_ids", JSONArray(item.collectionIds.toList()))
         }) }
     }.toString()
 
@@ -75,15 +79,42 @@ internal object JsonCodec {
         return (0 until array.length()).mapNotNull { index ->
             val value = array.optJSONObject(index) ?: return@mapNotNull null
             val uri = value.optString("content_uri")
-            if (uri.isBlank()) return@mapNotNull null
+            val originalUrl = value.optString("original_url")
+            val previewUrl = value.optString("preview_url")
+            val uid = value.optString("uid")
+            if (uid.isBlank() || (uri.isBlank() && originalUrl.isBlank() && previewUrl.isBlank())) return@mapNotNull null
+            val collectionIds = value.optJSONArray("collection_ids")?.let { ids ->
+                (0 until ids.length()).mapNotNull { ids.optString(it).takeIf(String::isNotBlank) }.toSet()
+            }.orEmpty()
             GalleryItem(
-                uid = value.optString("uid"), contentUri = uri,
+                uid = uid, contentUri = uri,
                 source = value.optString("source"), sourceId = value.optString("source_id"),
-                pageUrl = value.optString("page_url"), artist = value.optString("artist"),
+                pageUrl = value.optString("page_url"), previewUrl = previewUrl, originalUrl = originalUrl,
+                artist = value.optString("artist"),
                 categoryKey = value.optString("category_key"), savedAt = value.optLong("saved_at"),
-                rating = value.optString("rating", "sfw"),
+                rating = value.optString("rating", "sfw"), collectionIds = collectionIds,
             )
         }
+    }
+
+    fun collectionsToJson(collections: List<ArtCollection>): String = JSONArray().apply {
+        collections.forEach { collection -> put(JSONObject().apply {
+            put("id", collection.id)
+            put("name", collection.name)
+            put("created_at", collection.createdAt)
+        }) }
+    }.toString()
+
+    fun collectionsFromJson(raw: String): List<ArtCollection> {
+        if (raw.isBlank()) return emptyList()
+        val array = JSONArray(raw)
+        return (0 until array.length()).mapNotNull { index ->
+            val value = array.optJSONObject(index) ?: return@mapNotNull null
+            val id = value.optString("id")
+            val name = value.optString("name").trim()
+            if (id.isBlank() || name.isBlank()) return@mapNotNull null
+            ArtCollection(id, name, value.optLong("created_at"))
+        }.distinctBy(ArtCollection::id)
     }
 
     fun stringMapToJson(values: Map<String, String>): String = JSONObject(values).toString()

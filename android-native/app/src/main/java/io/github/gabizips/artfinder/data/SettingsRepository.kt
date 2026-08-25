@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.gabizips.artfinder.model.Category
+import io.github.gabizips.artfinder.model.ArtCollection
+import io.github.gabizips.artfinder.model.DisplayPreferences
 import io.github.gabizips.artfinder.model.GalleryItem
 import io.github.gabizips.artfinder.model.SettingsSnapshot
 import io.github.gabizips.artfinder.model.SearchOptions
@@ -20,6 +22,7 @@ class SettingsRepository(private val context: Context) {
     private val categoriesKey = stringPreferencesKey("categories_v1")
     private val credentialsKey = stringPreferencesKey("encrypted_credentials_v1")
     private val galleryKey = stringPreferencesKey("gallery_v1")
+    private val collectionsKey = stringPreferencesKey("collections_v1")
     private val legacyMigrationKey = booleanPreferencesKey("legacy_python_migrated_v1")
     private val searchPagesKey = intPreferencesKey("search_pages_v1")
     private val searchSfwKey = booleanPreferencesKey("search_sfw_v1")
@@ -27,7 +30,7 @@ class SettingsRepository(private val context: Context) {
     private val searchNsfwKey = booleanPreferencesKey("search_nsfw_v1")
     private val searchPeriodKey = intPreferencesKey("search_period_days_v1")
     private val searchMinScoreKey = intPreferencesKey("search_min_score_v1")
-    private val searchHideAiKey = booleanPreferencesKey("search_hide_ai_v1")
+    private val blurNsfwKey = booleanPreferencesKey("display_blur_nsfw_v1")
     private val vault = CredentialVault()
 
     val snapshot: Flow<SettingsSnapshot> = context.artFinderDataStore.data.map { preferences ->
@@ -35,6 +38,7 @@ class SettingsRepository(private val context: Context) {
         SettingsSnapshot(
             categories = runCatching { JsonCodec.categoriesFromJson(preferences[categoriesKey].orEmpty()) }.getOrDefault(emptyList()),
             gallery = runCatching { JsonCodec.galleryFromJson(preferences[galleryKey].orEmpty()) }.getOrDefault(emptyList()),
+            collections = runCatching { JsonCodec.collectionsFromJson(preferences[collectionsKey].orEmpty()) }.getOrDefault(emptyList()),
             configuredCredentials = encrypted.filterValues { vault.decrypt(it)?.isNotBlank() == true }.keys,
             searchOptions = SearchOptions(
                 pages = (preferences[searchPagesKey] ?: 5).coerceIn(1, 25),
@@ -43,8 +47,8 @@ class SettingsRepository(private val context: Context) {
                 includeNsfw = preferences[searchNsfwKey] ?: false,
                 periodDays = preferences[searchPeriodKey] ?: 0,
                 minScore = (preferences[searchMinScoreKey] ?: 0).coerceAtLeast(0),
-                hideAi = preferences[searchHideAiKey] ?: true,
             ),
+            displayPreferences = DisplayPreferences(blurNsfw = preferences[blurNsfwKey] ?: true),
         )
     }
 
@@ -57,8 +61,11 @@ class SettingsRepository(private val context: Context) {
             preferences[searchNsfwKey] = options.includeNsfw
             preferences[searchPeriodKey] = options.periodDays.coerceAtLeast(0)
             preferences[searchMinScoreKey] = options.minScore.coerceAtLeast(0)
-            preferences[searchHideAiKey] = options.hideAi
         }
+    }
+
+    suspend fun saveBlurNsfw(enabled: Boolean) {
+        context.artFinderDataStore.edit { preferences -> preferences[blurNsfwKey] = enabled }
     }
 
     suspend fun credentials(): Map<String, String> {
@@ -119,6 +126,52 @@ class SettingsRepository(private val context: Context) {
         context.artFinderDataStore.edit { preferences ->
             val items = JsonCodec.galleryFromJson(preferences[galleryKey].orEmpty()).filterNot { it.uid == item.uid }
             preferences[galleryKey] = JsonCodec.galleryToJson(listOf(item) + items)
+        }
+    }
+
+    suspend fun galleryItem(uid: String): GalleryItem? {
+        val raw = context.artFinderDataStore.data.first()[galleryKey].orEmpty()
+        return JsonCodec.galleryFromJson(raw).firstOrNull { it.uid == uid }
+    }
+
+    suspend fun setGalleryCollections(uid: String, collectionIds: Set<String>) {
+        context.artFinderDataStore.edit { preferences ->
+            val validIds = JsonCodec.collectionsFromJson(preferences[collectionsKey].orEmpty()).mapTo(mutableSetOf()) { it.id }
+            val items = JsonCodec.galleryFromJson(preferences[galleryKey].orEmpty()).map { item ->
+                if (item.uid == uid) item.copy(collectionIds = collectionIds.intersect(validIds)) else item
+            }
+            preferences[galleryKey] = JsonCodec.galleryToJson(items)
+        }
+    }
+
+    suspend fun createCollection(name: String): ArtCollection {
+        val clean = name.trim().replace(Regex("\\s+"), " ").take(80)
+        require(clean.isNotBlank())
+        val collection = ArtCollection(java.util.UUID.randomUUID().toString(), clean, System.currentTimeMillis())
+        context.artFinderDataStore.edit { preferences ->
+            val existing = JsonCodec.collectionsFromJson(preferences[collectionsKey].orEmpty())
+            require(existing.none { it.name.equals(clean, ignoreCase = true) }) { "Já existe uma coleção com esse nome." }
+            preferences[collectionsKey] = JsonCodec.collectionsToJson(existing + collection)
+        }
+        return collection
+    }
+
+    suspend fun renameCollection(id: String, name: String) {
+        val clean = name.trim().replace(Regex("\\s+"), " ").take(80)
+        require(clean.isNotBlank())
+        context.artFinderDataStore.edit { preferences ->
+            val existing = JsonCodec.collectionsFromJson(preferences[collectionsKey].orEmpty())
+            require(existing.none { it.id != id && it.name.equals(clean, ignoreCase = true) }) { "Já existe uma coleção com esse nome." }
+            preferences[collectionsKey] = JsonCodec.collectionsToJson(existing.map { if (it.id == id) it.copy(name = clean) else it })
+        }
+    }
+
+    suspend fun deleteCollection(id: String) {
+        context.artFinderDataStore.edit { preferences ->
+            val collections = JsonCodec.collectionsFromJson(preferences[collectionsKey].orEmpty()).filterNot { it.id == id }
+            val items = JsonCodec.galleryFromJson(preferences[galleryKey].orEmpty()).map { it.copy(collectionIds = it.collectionIds - id) }
+            preferences[collectionsKey] = JsonCodec.collectionsToJson(collections)
+            preferences[galleryKey] = JsonCodec.galleryToJson(items)
         }
     }
 

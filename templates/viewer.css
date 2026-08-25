@@ -1,0 +1,105 @@
+.card.nsfw-blur:hover img,
+.gal-card.nsfw-blur:hover img {
+  filter: blur(25px);
+}
+
+.card.nsfw-blur.nsfw-revealed img,
+.gal-card.nsfw-blur.nsfw-revealed img,
+body.no-nsfw-blur .nsfw-blur img {
+  filter: none !important;
+}
+
+.nsfw-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .28);
+}
+
+.nsfw-reveal button {
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 999px;
+  background: rgba(20, 20, 25, .9);
+  color: #fff;
+  padding: 8px 13px;
+  font: 600 11px/1 Inter, sans-serif;
+  cursor: pointer;
+}
+
+.nsfw-revealed > .nsfw-reveal,
+body.no-nsfw-blur .nsfw-reveal {
+  display: none;
+}
+
+#lbMediaStage {
+  width: min(92vw, 1600px);
+  height: min(78vh, 1100px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+  cursor: default;
+}
+
+#lbMediaStage #lbImg {
+  max-width: 100%;
+  max-height: 100%;
+  transition: filter .18s;
+  transform-origin: center;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+#lbMediaStage #lbVideo {
+  transition: filter .18s;
+}
+
+#lightbox.nsfw-blur:not(.nsfw-revealed) #lbImg,
+#lightbox.nsfw-blur:not(.nsfw-revealed) #lbVideo {
+  filter: blur(32px);
+}
+
+#lbNsfwReveal {
+  display: none;
+  position: absolute;
+  z-index: 12;
+  border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: 999px;
+  background: rgba(20, 20, 25, .94);
+  color: #fff;
+  padding: 9px 15px;
+  font: 600 12px/1 Inter, sans-serif;
+  cursor: pointer;
+}
+
+#lightbox.nsfw-blur:not(.nsfw-revealed) #lbNsfwReveal {
+  display: block;
+}
+
+body.no-nsfw-blur #lightbox #lbNsfwReveal {
+  display: none;
+}
+
+body.no-nsfw-blur #lightbox #lbImg,
+body.no-nsfw-blur #lightbox #lbVideo {
+  filter: none !important;
+}
+
+.lb-zoom-label {
+  min-width: 38px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  #lbMediaStage {
+    width: 96vw;
+    height: 72vh;
+  }
+}

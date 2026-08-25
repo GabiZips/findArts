@@ -1,0 +1,1 @@
+"""ArtFinder application modules."""

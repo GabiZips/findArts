@@ -18,12 +18,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,12 +53,20 @@ private fun ArtFinderApp(viewModel: MainViewModel = viewModel()) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val search by viewModel.searchState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(search.message) {
+        search.message?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearMessages()
+        }
+    }
     val destinations = listOf(
         Destination(stringResource(R.string.search), Icons.Outlined.Search), Destination(stringResource(R.string.tags), Icons.Outlined.Tag),
         Destination(stringResource(R.string.gallery), Icons.Outlined.Collections), Destination(stringResource(R.string.settings), Icons.Outlined.Settings),
     )
     Scaffold(
         contentWindowInsets = WindowInsets.safeDrawing,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             NavigationBar {
                 destinations.forEachIndexed { index, destination ->
@@ -71,7 +83,10 @@ private fun ArtFinderApp(viewModel: MainViewModel = viewModel()) {
             when (selected) {
                 0 -> SearchScreen(settings, search, viewModel)
                 1 -> TagsScreen(settings.categories, viewModel)
-                2 -> GalleryScreen(settings.gallery, viewModel)
+                2 -> GalleryScreen(
+                    settings.gallery, settings.collections, settings.displayPreferences.blurNsfw,
+                    search.saving, viewModel,
+                )
                 else -> SettingsScreen(settings, viewModel)
             }
         }

@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal const val USER_AGENT = "ArtFinder-Android/0.6.0 (+https://github.com/GabiZips/findArts)"
+internal const val USER_AGENT = "ArtFinder-Android/0.7.0 (+https://github.com/GabiZips/findArts)"
 
 internal val AI_TAGS = setOf(
     "ai_generated", "ai-generated", "ai_art", "stable_diffusion", "novelai",

@@ -11,6 +11,23 @@
     <string name="cancel">Cancelar</string>
     <string name="save">Salvar</string>
     <string name="delete">Excluir</string>
+    <string name="close">Fechar</string>
+    <string name="zoom_in">Aumentar zoom</string>
+    <string name="zoom_out">Diminuir zoom</string>
+    <string name="confirm">Confirmar</string>
+    <string name="keep">Guardar</string>
+    <string name="download">Baixar</string>
+    <string name="kept_library">Arte guardada na biblioteca do ArtFinder.</string>
+    <string name="downloaded_device">Imagem baixada em Pictures/ArtFinder.</string>
+    <string name="choose_collections">Escolher coleções</string>
+    <string name="no_collections_hint">Nenhuma coleção criada. A arte ainda pode ser guardada na biblioteca geral.</string>
+    <string name="all_artworks">Todas</string>
+    <string name="new_collection">Nova coleção</string>
+    <string name="collection_name">Nome da coleção</string>
+    <string name="rename_collection">Renomear coleção</string>
+    <string name="delete_collection">Excluir coleção</string>
+    <string name="remote_only">Guardada</string>
+    <string name="downloaded">Baixada</string>
     <string name="no_categories">Nenhuma tag criada. Adicione uma em Tags ou importe do PC.</string>
     <string name="configured">Configurado</string>
     <string name="not_configured">Não configurado</string>
@@ -19,7 +36,6 @@
     <string name="results_placeholder">As artes encontradas aparecerão aqui.</string>
     <string name="unknown_artist">Artista não informado</string>
     <string name="open_source">Abrir fonte</string>
-    <string name="save_to_gallery">Salvar na galeria</string>
     <string name="tags_characters">Tags e personagens</string>
     <string name="source_specific_search">Cada fonte pode ter sua própria pesquisa.</string>
     <string name="new_tag">Nova</string>
@@ -35,8 +51,8 @@
     <string name="choose_group">Escolher grupo</string>
     <string name="source_tags">Tags específicas por fonte</string>
     <string name="separate_semicolon">Separe alternativas com ;</string>
-    <string name="gallery_path">Também disponível em Pictures/ArtFinder.</string>
-    <string name="no_saved_images">Nenhuma imagem salva.</string>
+    <string name="gallery_path">Guardados ficam no app; baixados também aparecem em Pictures/ArtFinder.</string>
+    <string name="no_saved_images">Nenhuma arte guardada nesta coleção.</string>
     <string name="local_data_only">Os dados ficam somente neste aparelho.</string>
     <string name="pair_instructions">Conecte os dois dispositivos à mesma rede. O código expira em cinco minutos e funciona uma vez.</string>
     <string name="merge_tags">Mesclar tags</string>
@@ -48,7 +64,6 @@
     <string name="protected_value">Já existe um valor protegido. Digite outro para substituir ou deixe vazio para remover.</string>
     <string name="new_value">Novo valor</string>
     <string name="remove">Remover</string>
-    <string name="saved_gallery">Imagem salva em Pictures/ArtFinder.</string>
     <string name="credential_saved">Credencial salva no dispositivo.</string>
     <plurals name="imported_tags">
         <item quantity="one">%d tag</item>
@@ -69,7 +84,7 @@
     <string name="pages_per_source">Páginas por fonte: %1$d</string>
     <string name="content_rating">Classificação do conteúdo</string>
     <string name="sensitive">Sensível</string>
-    <string name="nsfw_blur_notice">Conteúdo NSFW fica borrado até você tocar para revelar.</string>
+    <string name="nsfw_blur_notice">Conteúdo NSFW fica borrado até você usar o botão Mostrar imagem.</string>
     <string name="period">Período</string>
     <string name="period_all">Todos</string>
     <string name="period_7">7 dias</string>
@@ -78,8 +93,9 @@
     <string name="period_180">6 meses</string>
     <string name="period_365">1 ano</string>
     <string name="minimum_score">Score mínimo</string>
-    <string name="hide_ai">Ocultar arte de IA</string>
-    <string name="hide_ai_hint">Usa os metadados e tags fornecidos por cada fonte.</string>
+    <string name="blur_nsfw">Desfocar conteúdo NSFW</string>
+    <string name="show_nsfw">Mostrar imagem</string>
+    <string name="ai_filter_mandatory">Arte identificada como gerada por IA é sempre removida dos resultados.</string>
     <string name="any_resolution">Resolução: qualquer tamanho é aceito.</string>
     <string name="search_size_normal">Busca normal · até %1$d chamadas.</string>
     <string name="search_size_medium">Busca moderada · até %1$d chamadas; pode demorar.</string>
@@ -90,5 +106,4 @@
     <string name="continue_search">Continuar</string>
     <string name="search_progress_details">Fontes %1$d/%2$d · chamadas %3$d/%4$d estimadas</string>
     <string name="search_summary">%1$d artes · %2$d chamadas realizadas</string>
-    <string name="tap_reveal_nsfw">NSFW · toque para revelar</string>
 </resources>

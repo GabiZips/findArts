@@ -26,11 +26,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -73,6 +73,9 @@ import io.github.gabizips.artfinder.model.ArtSource
 import io.github.gabizips.artfinder.model.Category
 import io.github.gabizips.artfinder.model.SearchOptions
 import io.github.gabizips.artfinder.model.SettingsSnapshot
+import io.github.gabizips.artfinder.ui.component.ZoomableImageViewer
+import io.github.gabizips.artfinder.ui.component.CollectionPickerDialog
+import io.github.gabizips.artfinder.ui.originalModel
 import io.github.gabizips.artfinder.ui.previewModel
 import kotlin.math.roundToInt
 
@@ -81,6 +84,8 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
     var categoryExpanded by remember { mutableStateOf(false) }
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     var confirmLargeSearch by remember { mutableStateOf(false) }
+    var viewerPost by remember { mutableStateOf<ArtPost?>(null) }
+    var collectionPost by remember { mutableStateOf<ArtPost?>(null) }
     var draftOptions by remember { mutableStateOf(settings.searchOptions) }
     LaunchedEffect(settings.searchOptions) { draftOptions = settings.searchOptions }
     LaunchedEffect(settings.categories, state.selectedCategory) {
@@ -122,8 +127,10 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
             SearchOptionsCard(
                 expanded = optionsExpanded,
                 options = draftOptions,
+                blurNsfw = settings.displayPreferences.blurNsfw,
                 estimatedRequests = estimate,
                 onExpandedChange = { optionsExpanded = it },
+                onBlurNsfwChange = viewModel::setBlurNsfw,
                 onOptionsChange = { updated ->
                     draftOptions = updated
                     viewModel.updateSearchOptions(updated)
@@ -149,13 +156,6 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.search)) }
             }
-            state.message?.let {
-                Card(Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(it, Modifier.weight(1f)); TextButton(onClick = viewModel::clearMessages) { Text("OK") }
-                    }
-                }
-            }
             if (state.errors.isNotEmpty()) {
                 Text(state.errors.entries.joinToString("\n") { "${it.key.label}: ${it.value}" }, color = MaterialTheme.colorScheme.error)
             }
@@ -172,11 +172,44 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.results_placeholder)) }
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize(),
+                columns = GridCells.Adaptive(220.dp), modifier = Modifier.fillMaxSize(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) { items(state.posts, key = { "${it.source.id}:${it.id}" }) { post -> ArtCard(post, state, viewModel) } }
+            ) {
+                items(state.posts, key = { "${it.source.id}:${it.id}" }) { post ->
+                    ArtCard(
+                        post = post,
+                        state = state,
+                        blurNsfw = settings.displayPreferences.blurNsfw,
+                        viewModel = viewModel,
+                        onOpen = { viewerPost = post },
+                        onKeep = { collectionPost = post },
+                    )
+                }
+            }
         }
+    }
+
+    viewerPost?.let { post ->
+        ZoomableImageViewer(
+            model = post.originalModel(LocalContext.current),
+            contentDescription = post.tags,
+            initiallyBlurred = settings.displayPreferences.blurNsfw && post.rating.equals("nsfw", ignoreCase = true),
+            onDismiss = { viewerPost = null },
+        )
+    }
+
+    collectionPost?.let { post ->
+        val existing = settings.gallery.firstOrNull { it.uid == "${post.source.id}:${post.id}" }
+        CollectionPickerDialog(
+            collections = settings.collections,
+            initialSelection = existing?.collectionIds.orEmpty(),
+            onDismiss = { collectionPost = null },
+            onConfirm = { collectionIds ->
+                viewModel.keep(post, collectionIds)
+                collectionPost = null
+            },
+        )
     }
 
     if (confirmLargeSearch) {
@@ -196,8 +229,10 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
 private fun SearchOptionsCard(
     expanded: Boolean,
     options: SearchOptions,
+    blurNsfw: Boolean,
     estimatedRequests: Int,
     onExpandedChange: (Boolean) -> Unit,
+    onBlurNsfwChange: (Boolean) -> Unit,
     onOptionsChange: (SearchOptions) -> Unit,
 ) {
     ElevatedCard(Modifier.fillMaxWidth()) {
@@ -240,7 +275,13 @@ private fun SearchOptionsCard(
                             FilterChip(options.includeNsfw, { toggleRating(options, "nsfw", onOptionsChange) }, { Text("NSFW") })
                         }
                     }
-                    Text(stringResource(R.string.nsfw_blur_notice), style = MaterialTheme.typography.bodySmall)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.blur_nsfw), fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.nsfw_blur_notice), style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked = blurNsfw, onCheckedChange = onBlurNsfwChange)
+                    }
                     Text(stringResource(R.string.period), fontWeight = FontWeight.SemiBold)
                     val periods = listOf(0 to R.string.period_all, 7 to R.string.period_7, 30 to R.string.period_30, 90 to R.string.period_90, 180 to R.string.period_180, 365 to R.string.period_365)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -262,13 +303,7 @@ private fun SearchOptionsCard(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.hide_ai), fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.hide_ai_hint), style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(checked = options.hideAi, onCheckedChange = { onOptionsChange(options.copy(hideAi = it)) })
-                    }
+                    Text(stringResource(R.string.ai_filter_mandatory), style = MaterialTheme.typography.bodySmall)
                     Text(stringResource(R.string.any_resolution), style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -305,16 +340,22 @@ private fun SearchWarning(pages: Int, requests: Int) {
 }
 
 @Composable
-private fun ArtCard(post: ArtPost, state: SearchUiState, viewModel: MainViewModel) {
+private fun ArtCard(
+    post: ArtPost,
+    state: SearchUiState,
+    blurNsfw: Boolean,
+    viewModel: MainViewModel,
+    onOpen: () -> Unit,
+    onKeep: () -> Unit,
+) {
     val context = LocalContext.current
     val uid = "${post.source.id}:${post.id}"
     var nsfwRevealed by rememberSaveable(uid) { mutableStateOf(false) }
-    val hiddenNsfw = post.rating.equals("nsfw", ignoreCase = true) && !nsfwRevealed
+    val hiddenNsfw = blurNsfw && post.rating.equals("nsfw", ignoreCase = true) && !nsfwRevealed
     ElevatedCard(Modifier.fillMaxWidth()) {
         Box(
-            Modifier.fillMaxWidth().height(210.dp).clickable {
-                if (hiddenNsfw) nsfwRevealed = true
-                else if (post.pageUrl.isNotBlank()) context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(post.pageUrl)))
+            Modifier.fillMaxWidth().height(280.dp).clickable {
+                if (!hiddenNsfw) onOpen()
             },
         ) {
             AsyncImage(
@@ -324,7 +365,9 @@ private fun ArtCard(post: ArtPost, state: SearchUiState, viewModel: MainViewMode
             )
             if (hiddenNsfw) {
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.tap_reveal_nsfw), color = Color.White, fontWeight = FontWeight.Bold)
+                    Button(onClick = { nsfwRevealed = true }) {
+                        Text(stringResource(R.string.show_nsfw), color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -337,10 +380,20 @@ private fun ArtCard(post: ArtPost, state: SearchUiState, viewModel: MainViewMode
                 if (post.pageUrl.isNotBlank()) IconButton(onClick = {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(post.pageUrl)))
                 }) { Icon(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(R.string.open_source)) }
-                Spacer(Modifier.width(4.dp))
-                IconButton(onClick = { viewModel.save(post) }, enabled = uid !in state.saving) {
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onKeep, enabled = uid !in state.saving, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.BookmarkBorder, null)
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.keep))
+                }
+                Button(onClick = { viewModel.download(post) }, enabled = uid !in state.saving, modifier = Modifier.weight(1f)) {
                     if (uid in state.saving) CircularProgressIndicator(Modifier.width(20.dp))
-                    else Icon(Icons.Outlined.Download, stringResource(R.string.save_to_gallery))
+                    else {
+                        Icon(Icons.Outlined.Download, null)
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.download))
+                    }
                 }
             }
         }

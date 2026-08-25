@@ -75,6 +75,22 @@ CREATE INDEX IF NOT EXISTS idx_source_id ON downloads(source_id);
 CREATE INDEX IF NOT EXISTS idx_phash     ON downloads(phash);
 CREATE INDEX IF NOT EXISTS idx_fav_src   ON favorites(source, post_id);
 
+CREATE TABLE IF NOT EXISTS collections (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL COLLATE NOCASE UNIQUE,
+    created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS favorite_collections (
+    source        TEXT    NOT NULL,
+    post_id       TEXT    NOT NULL,
+    collection_id INTEGER NOT NULL,
+    PRIMARY KEY(source, post_id, collection_id),
+    FOREIGN KEY(source, post_id) REFERENCES favorites(source, post_id) ON DELETE CASCADE,
+    FOREIGN KEY(collection_id) REFERENCES collections(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_fav_col_collection ON favorite_collections(collection_id);
+
 CREATE TABLE IF NOT EXISTS blacklist (
     uid         TEXT    PRIMARY KEY,   -- "{source}:{post_id}"
     source      TEXT    NOT NULL,
@@ -122,6 +138,7 @@ def _connect() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     global _schema_ready
     conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA synchronous=NORMAL")
     if not _schema_ready:
         with _schema_lock:
@@ -647,6 +664,11 @@ def get_favorites() -> list[dict]:
                LEFT JOIN posts p ON p.uid = f.source || ':' || f.post_id
                ORDER BY f.added_at DESC"""
         ).fetchall()
+        membership: dict[tuple[str, str], list[int]] = {}
+        for row in conn.execute(
+            "SELECT source, post_id, collection_id FROM favorite_collections ORDER BY collection_id"
+        ).fetchall():
+            membership.setdefault((row["source"], row["post_id"]), []).append(row["collection_id"])
         return [
             {
                 "source":      r["source"],
@@ -661,9 +683,89 @@ def get_favorites() -> list[dict]:
                 "width":       r["width"] or 0,
                 "height":      r["height"] or 0,
                 "tags":        r["tags"] or "",
+                "collection_ids": membership.get((r["source"], r["post_id"]), []),
             }
             for r in rows
         ]
+    finally:
+        conn.close()
+
+
+def get_collections() -> list[dict]:
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            """SELECT c.id, c.name, c.created_at, COUNT(fc.post_id) AS item_count
+               FROM collections c
+               LEFT JOIN favorite_collections fc ON fc.collection_id = c.id
+               GROUP BY c.id
+               ORDER BY c.name COLLATE NOCASE"""
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def create_collection(name: str) -> dict:
+    clean = " ".join((name or "").split())[:80]
+    if not clean:
+        raise ValueError("Nome da coleção é obrigatório")
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "INSERT INTO collections(name, created_at) VALUES(?, ?)",
+            (clean, int(time.time())),
+        )
+        conn.commit()
+        return {"id": cur.lastrowid, "name": clean, "created_at": int(time.time()), "item_count": 0}
+    finally:
+        conn.close()
+
+
+def rename_collection(collection_id: int, name: str) -> bool:
+    clean = " ".join((name or "").split())[:80]
+    if not clean:
+        raise ValueError("Nome da coleção é obrigatório")
+    conn = _connect()
+    try:
+        cur = conn.execute("UPDATE collections SET name = ? WHERE id = ?", (clean, collection_id))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def delete_collection(collection_id: int) -> bool:
+    conn = _connect()
+    try:
+        cur = conn.execute("DELETE FROM collections WHERE id = ?", (collection_id,))
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def set_favorite_collections(source: str, post_id: str, collection_ids: list[int]) -> list[int]:
+    clean_ids = sorted({int(value) for value in collection_ids})[:100]
+    conn = _connect()
+    try:
+        existing = {
+            row[0]
+            for row in conn.execute(
+                f"SELECT id FROM collections WHERE id IN ({','.join('?' for _ in clean_ids)})",
+                clean_ids,
+            ).fetchall()
+        } if clean_ids else set()
+        conn.execute(
+            "DELETE FROM favorite_collections WHERE source = ? AND post_id = ?",
+            (source, str(post_id)),
+        )
+        conn.executemany(
+            "INSERT INTO favorite_collections(source, post_id, collection_id) VALUES(?, ?, ?)",
+            [(source, str(post_id), collection_id) for collection_id in sorted(existing)],
+        )
+        conn.commit()
+        return sorted(existing)
     finally:
         conn.close()
 

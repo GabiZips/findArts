@@ -472,6 +472,7 @@
     .lb-bar{flex-wrap:wrap;justify-content:center}
   }
 </style>
+<link rel="stylesheet" href="/ui/viewer.css">
 </head>
 <body>
 
@@ -499,7 +500,7 @@
       <option value="pt-BR">Português</option>
       <option value="en">English</option>
     </select>
-    <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--muted);margin-right:8px;" title="Ativa/Desativa o efeito de blur global em imagens NSFW"><input type="checkbox" id="globalBlurToggle" checked onchange="document.body.classList.toggle('no-nsfw-blur', !this.checked)" style="accent-color:var(--accent);cursor:pointer;margin:0"> Blur +18</label>
+    <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--muted);margin-right:8px;" title="Ativa/Desativa o efeito de blur global em imagens NSFW"><input type="checkbox" id="globalBlurToggle" checked onchange="setNsfwBlur(this.checked)" style="accent-color:var(--accent);cursor:pointer;margin:0"> Desfocar NSFW</label>
     <div class="stat-badge">Banco: <b id="totalDb">...</b> imgs · <b id="diskMb">...</b> MB</div>
   </div>
 </header>
@@ -668,6 +669,9 @@
             <option value="source">Por fonte</option>
             <option value="category">Por categoria</option>
           </select>
+          <select class="sort-select" id="saveCollectionSelect" title="Coleção usada ao guardar">
+            <option value="">Sem coleção</option>
+          </select>
           <button class="btn-export" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.3)" id="btnSave" onclick="doSave()" disabled title="Guardar URL sem baixar (aparece na Galeria do ArtFinder)">📌 Guardar</button>
           <button class="btn-dl" id="btnDownload" onclick="doDownload()" disabled>⬇ Baixar</button>
         </div>
@@ -746,6 +750,12 @@
         <option value="nao">Não gostei</option>
         <option value="none">Sem avaliação</option>
       </select>
+      <select class="sort-select" id="galCollectionFilter" onchange="onGalCollectionChange()" title="Filtrar por coleção">
+        <option value="">Coleções: todas</option>
+      </select>
+      <button class="btn-sm" onclick="createCollection()">＋ Coleção</button>
+      <button class="btn-sm" id="renameCollectionBtn" style="display:none" onclick="renameSelectedCollection()" title="Renomear coleção">✎</button>
+      <button class="btn-sm" id="deleteCollectionBtn" style="display:none" onclick="deleteSelectedCollection()" title="Excluir coleção">🗑</button>
       <div class="gal-filters" id="galFilterBar" style="flex:1;flex-wrap:wrap">
         <span class="gal-pill on" data-gf="all" onclick="setGalFilter(this,'all')">Todas</span>
       </div>
@@ -826,8 +836,11 @@
   <span class="lb-close" onclick="closeLb()">✕</span>
   <div class="lb-nav lb-prev" id="lbPrev" onclick="event.stopPropagation();lbStep(-1)" title="Anterior (←)">‹</div>
   <div class="lb-nav lb-next" id="lbNext" onclick="event.stopPropagation();lbStep(1)" title="Próxima (→)">›</div>
-  <img id="lbImg" src="" alt="" onclick="event.stopPropagation()">
-    <video id="lbVideo" controls loop autoplay style="display:none; max-width:90%; max-height:90vh; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,.8); z-index:10" onclick="event.stopPropagation()"></video>
+  <div id="lbMediaStage" onclick="event.stopPropagation()">
+    <img id="lbImg" src="" alt="" draggable="false">
+    <video id="lbVideo" controls loop autoplay style="display:none; max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,.8); z-index:10"></video>
+    <button id="lbNsfwReveal" onclick="revealLightboxNsfw()">Mostrar imagem</button>
+  </div>
   <div class="lb-bar" onclick="event.stopPropagation()" id="lbRateBar">
     <span class="lb-info" style="margin-right:2px">Triagem:</span>
     <button class="lb-rate" data-aval="usar"   onclick="lbRate('usar')"   title="tecla 1">1 · Usar</button>
@@ -836,6 +849,9 @@
     <button class="lb-rate" data-aval="nao"    onclick="lbRate('nao')"    title="tecla 4">4 · Não gostei</button>
   </div>
   <div class="lb-bar" onclick="event.stopPropagation()">
+    <button class="lb-btn" onclick="lbZoomBy(-.25)" title="Diminuir zoom">−</button>
+    <button class="lb-btn lb-zoom-label" id="lbZoomLabel" onclick="resetLbZoom()" title="Restaurar zoom">100%</button>
+    <button class="lb-btn" onclick="lbZoomBy(.25)" title="Aumentar zoom">+</button>
     <button id="lbSelBtn" class="lb-btn" onclick="lbToggleSel()" title="Selecionar (espaço)">☐ Selecionar</button>
     <a id="lbLink" class="lb-btn" href="#" target="_blank">↗ Ver original</a>
     <a id="lbSauce" class="lb-btn" href="#" target="_blank">🍜 SauceNAO</a>
@@ -1049,6 +1065,7 @@
 <div id="toast"></div>
 
 <script src="/ui/i18n.js"></script>
+<script src="/ui/viewer.js"></script>
 <script>
 // ══ KEYWORD MAPS ═══════════════════════════════════════════════════
 
@@ -1057,7 +1074,7 @@
 let allPosts=[],filteredPosts=[],pageSize=60;
 let searchAbortController=null;
 let selectedIds=new Set(),hideGalleryItems=true,downloadedIds=new Set(),favoriteUids=new Set();
-let galleryData=[],galFilter="all",minScore=0,activePeriodDays=0;
+let galleryData=[],collections=[],galFilter="all",minScore=0,activePeriodDays=0;
 let isMobileApp=false;
 let ratingsMap={};   // uid -> 'usar'|'talvez'|'depois'|'nao'
 const AVAL_LABEL={usar:"Usar",talvez:"Talvez",depois:"Rever depois",nao:"Não gostei"};
@@ -1143,6 +1160,7 @@ async function init(){
 
   // Categorias dinâmicas
   await loadCategories();
+  await loadCollections();
   loadHeaderStats();
 
   // Slider páginas
@@ -2038,6 +2056,7 @@ function renderPage(page){
     div.innerHTML=`
       <div class="card-check"></div>
       <img src="${prv}" loading="lazy" class="loading" onload="this.classList.remove('loading')" onerror="onImgError(this)">
+        ${isNsfw ? '<div class="nsfw-reveal"><button onclick="event.stopPropagation();revealNsfwCard(this)">Mostrar imagem</button></div>' : ''}
         ${isVid ? '<div class="vid-icon">▶</div>' : ''}
       <div class="card-actions">
         ${p.page_url?`<a class="card-btn" href="${p.page_url}" target="_blank" onclick="event.stopPropagation()" title="Ver no site">↗</a>`:""}
@@ -2209,6 +2228,9 @@ function openLb(idxOrUid){
   if(idx < 0) return;
   lbIdx=idx; lbMode="search";
   const p=filteredPosts[idx];if(!p)return;
+  const rating=(p.rating||"sfw").toLowerCase();
+  setLightboxNsfw(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(rating));
+  resetLbZoom();
   const originalUrl = p.url || p.preview_url || "";
     const isVid = originalUrl.toLowerCase().endsWith(".webm") || originalUrl.toLowerCase().endsWith(".mp4");
     if(isVid) {
@@ -2246,6 +2268,8 @@ function closeLb(){
   const vid = document.getElementById("lbVideo");
   vid.pause();
   vid.src = "";
+  setLightboxNsfw(false);
+  resetLbZoom();
 }
 
 // ══ MODO COMPARAÇÃO ═══════════════════════════════════════════════
@@ -2361,7 +2385,7 @@ async function doSave(){
   let ok = 0;
   for(const p of posts){
     try{
-      await fetch('/api/favorites',{
+      const response=await fetch('/api/favorites',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           source:p.source, id:String(p.id||p.post_id),
@@ -2370,9 +2394,11 @@ async function doSave(){
           category:p.category||'favoritos', score:p.score||0,
           width:p.width||0, height:p.height||0,
           tags:p.tags||'', rating:p.rating||'sfw',
+          collection_ids:getSaveCollectionIds(),
           skip_download: true
         })
       });
+      if(!response.ok)throw new Error((await response.json()).error||`HTTP ${response.status}`);
       ok++;
     }catch(e){}
   }
@@ -2384,7 +2410,7 @@ async function doSaveSingle(post){
   if(!post) return;
   toast(`Guardando arte...`);
   try{
-    await fetch('/api/favorites',{
+    const response=await fetch('/api/favorites',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         source:post.source, id:String(post.id||post.post_id),
@@ -2393,9 +2419,11 @@ async function doSaveSingle(post){
         category:post.category||'favoritos', score:post.score||0,
         width:post.width||0, height:post.height||0,
         tags:post.tags||'', rating:post.rating||'sfw',
+        collection_ids:getSaveCollectionIds(),
         skip_download: true
       })
     });
+    if(!response.ok)throw new Error((await response.json()).error||`HTTP ${response.status}`);
     toast("📌 Arte guardada na Galeria!", "success");
   }catch(e){
     toast("Erro ao guardar: " + e.message, "error");
@@ -2460,6 +2488,73 @@ function closeModal(){document.getElementById("dlModal").classList.remove("open"
 function setProgress(p,s){document.getElementById("dlProg").style.width=p+"%";document.getElementById("dlStatus").textContent=s}
 
 // ══ GALERIA ═══════════════════════════════════════════════════════
+function getSaveCollectionIds(){
+  const value=document.getElementById("saveCollectionSelect")?.value||"";
+  return value ? [Number(value)] : [];
+}
+
+async function loadCollections(){
+  try{
+    const data=await(await fetch("/api/collections")).json();
+    collections=data.collections||[];
+    const targets=[
+      [document.getElementById("saveCollectionSelect"),"Sem coleção"],
+      [document.getElementById("galCollectionFilter"),"Coleções: todas"],
+    ];
+    targets.forEach(([select,emptyLabel])=>{
+      if(!select)return;
+      const current=select.value;
+      select.innerHTML=`<option value="">${emptyLabel}</option>`+collections.map(c=>
+        `<option value="${c.id}">${esc(c.name)} (${c.item_count||0})</option>`).join("");
+      if([...select.options].some(o=>o.value===current))select.value=current;
+    });
+    onGalCollectionChange(false);
+  }catch(e){console.error("collections:",e)}
+}
+
+function onGalCollectionChange(shouldRender=true){
+  const hasSelection=!!document.getElementById("galCollectionFilter")?.value;
+  const rename=document.getElementById("renameCollectionBtn");
+  const remove=document.getElementById("deleteCollectionBtn");
+  if(rename)rename.style.display=hasSelection?"":"none";
+  if(remove)remove.style.display=hasSelection?"":"none";
+  if(shouldRender)renderGallery();
+}
+
+async function createCollection(){
+  const name=prompt(t("Nome da nova coleção:"));
+  if(!name?.trim())return;
+  const response=await fetch("/api/collections",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});
+  const data=await response.json();
+  if(!response.ok){toast(data.error||"Erro ao criar coleção","error");return}
+  await loadCollections();
+  document.getElementById("galCollectionFilter").value=String(data.collection.id);
+  onGalCollectionChange();
+}
+
+async function renameSelectedCollection(){
+  const select=document.getElementById("galCollectionFilter");
+  if(!select?.value){toast(t("Escolha uma coleção primeiro."),"error");return}
+  const current=collections.find(c=>String(c.id)===select.value);
+  const name=prompt(t("Novo nome da coleção:"),current?.name||"");
+  if(!name?.trim())return;
+  const response=await fetch(`/api/collections/${select.value}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});
+  const data=await response.json();
+  if(!response.ok){toast(data.error||"Erro ao renomear coleção","error");return}
+  await loadCollections();
+}
+
+async function deleteSelectedCollection(){
+  const select=document.getElementById("galCollectionFilter");
+  if(!select?.value){toast(t("Escolha uma coleção primeiro."),"error");return}
+  const current=collections.find(c=>String(c.id)===select.value);
+  if(!confirm(`${t("Excluir coleção")}: "${current?.name||""}"? ${t("As artes não serão apagadas.")}`))return;
+  await fetch(`/api/collections/${select.value}`,{method:"DELETE"});
+  select.value="";
+  await loadCollections();
+  await loadGallery();
+}
+
 function toggleGalRating(pill){
   const r = pill.dataset.galrating;
   if(galActiveRatings.has(r)) galActiveRatings.delete(r);
@@ -2480,6 +2575,7 @@ function galDebounce(){
 
 async function loadGallery(){
   try{
+    await loadCollections();
     // Baixados
     const dlData = await(await fetch("/api/gallery-items")).json().then(d=>d.items||[]);
     galleryData = dlData.map(i=>({...i, _type:"downloaded"}));
@@ -2487,6 +2583,11 @@ async function loadGallery(){
     // Favoritos
     const favsData = await(await fetch("/api/favorites")).json().then(d=>d.favorites||[]);
     allFavs = favsData;
+    const favByUid=new Map(favsData.map(f=>[`${f.source}:${f.post_id}`,f]));
+    galleryData.forEach(item=>{
+      const favorite=favByUid.get(item.uid);
+      if(favorite){item.collection_ids=favorite.collection_ids||[];item.favorite=true;}
+    });
     // Merge favoritos que ainda não estão nos downloads
     const dlUids = new Set(galleryData.map(i=>i.uid||`${i.source}:${i.rel_path}`));
     favsData.forEach(f=>{
@@ -2553,11 +2654,13 @@ function renderGallery(){
     const empty=document.getElementById("galleryEmpty");
     const query=(document.getElementById("galSearchInput")?.value||"").toLowerCase().trim();
     const minRes=parseInt(document.getElementById("galResFilter")?.value)||0;
+    const collectionId=Number(document.getElementById("galCollectionFilter")?.value||0);
 
     let items=[...galleryData];
 
     // Filtro: view (downloaded / favorites / rated)
     items=items.filter(i=>galActiveViews.has(i._type));
+    if(collectionId) items=items.filter(i=>(i.collection_ids||[]).map(Number).includes(collectionId));
 
     // Filtro: pilha de triagem
     const pile=document.getElementById("galAvalFilter")?.value||"";
@@ -2641,6 +2744,7 @@ function renderGallery(){
       const pid = it.post_id || it.uid?.split(':')[1] || '';
       return `<div class="gal-card${ratingCls}" data-uid="${realUid}" data-rel="${relEsc}" data-type="${it._type||''}" data-source="${it.source||''}" data-pid="${pid}" onclick="openGalLbIdx(${gi})" oncontextmenu="showCtxMenuGal(event, '${realUid}')">
         <img src="${img}" loading="lazy" ${isDownloaded?`onerror="this.onerror=null;this.src='${fullImg}'"`:'onerror="onImgError(this)"'}>
+          ${ratingCls ? '<div class="nsfw-reveal"><button onclick="event.stopPropagation();revealNsfwCard(this)">Mostrar imagem</button></div>' : ''}
           ${isVid ? '<div class="vid-icon">▶</div>' : ''}
         <div class="gal-actions">
           ${it.page_url?`<a class="card-btn" href="${pgUrl}" target="_blank" onclick="event.stopPropagation()">↗</a>`:""}
@@ -2671,7 +2775,7 @@ function openGalLbIdx(i){
   const isDl = it._type==="downloaded" && it.rel_path;
   const full = isDl ? `/api/file?rel_path=${encodeURIComponent(it.rel_path)}`
                     : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}`;
-  openGalLb(full, it.page_url||"", (it.source||"").toLowerCase(), it.score||0, it.orig_url||it.url||"");
+  openGalLb(full, it.page_url||"", (it.source||"").toLowerCase(), it.score||0, it.orig_url||it.url||"", it.rating||"sfw");
   // Habilita navegação e triagem (openGalLb esconde por padrão p/ compat)
   document.getElementById("lbPrev").classList.toggle("hidden", i<=0);
   document.getElementById("lbNext").classList.toggle("hidden", i>=galRendered.length-1);
@@ -2693,8 +2797,11 @@ async function unrateGal(source, postId, card){
   }catch(e){ toast("Erro: "+e.message,"error"); }
 }
 
-function openGalLb(src,pageUrl,source,score,origUrl){
+function openGalLb(src,pageUrl,source,score,origUrl,rating){
     lbMode="gallery";
+    const normalizedRating=(rating||"sfw").toLowerCase();
+    setLightboxNsfw(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(normalizedRating));
+    resetLbZoom();
     document.getElementById("lbPrev").classList.add("hidden");
     document.getElementById("lbNext").classList.add("hidden");
     document.getElementById("lbSelBtn").style.display="none";
@@ -2761,6 +2868,7 @@ async function toggleFavArt(post){
         height:post.height||0,
         tags:post.tags||'',
         rating:post.rating||'sfw',
+        collection_ids:getSaveCollectionIds(),
         skip_download: true
       })
     })).json();

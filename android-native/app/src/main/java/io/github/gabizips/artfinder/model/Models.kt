@@ -52,19 +52,31 @@ data class SearchOptions(
     val includeNsfw: Boolean = false,
     val periodDays: Int = 0,
     val minScore: Int = 0,
-    val hideAi: Boolean = true,
+)
+
+data class DisplayPreferences(
+    val blurNsfw: Boolean = true,
 )
 
 data class GalleryItem(
     val uid: String,
-    val contentUri: String,
+    val contentUri: String = "",
     val source: String,
     val sourceId: String,
     val pageUrl: String,
+    val previewUrl: String = "",
+    val originalUrl: String = "",
     val artist: String,
     val categoryKey: String,
     val savedAt: Long,
     val rating: String = "sfw",
+    val collectionIds: Set<String> = emptySet(),
+)
+
+data class ArtCollection(
+    val id: String,
+    val name: String,
+    val createdAt: Long,
 )
 
 data class SearchOutcome(
@@ -82,6 +94,8 @@ data class SearchProgress(
 data class SettingsSnapshot(
     val categories: List<Category> = emptyList(),
     val gallery: List<GalleryItem> = emptyList(),
+    val collections: List<ArtCollection> = emptyList(),
     val configuredCredentials: Set<String> = emptySet(),
     val searchOptions: SearchOptions = SearchOptions(),
+    val displayPreferences: DisplayPreferences = DisplayPreferences(),
 )

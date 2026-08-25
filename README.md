@@ -212,19 +212,34 @@ bluesky: "vex" "league of legends"
 O texto sem prefixo é a consulta-base dos boorus. Entradas `fonte: consulta`
 são overrides e têm prioridade sobre sugestões automáticas.
 
+## Biblioteca, coleções e conteúdo sensível
+
+- **Guardar** mantém a referência da arte na biblioteca do ArtFinder sem criar
+  uma cópia no dispositivo.
+- **Baixar** salva o arquivo no disco; no Android ele também aparece em
+  `Pictures/ArtFinder`.
+- Coleções organizam uma mesma arte em pastas sem duplicar a imagem.
+- O blur de NSFW começa ligado, fica salvo por dispositivo e cada imagem exige
+  o botão **Mostrar imagem** enquanto estiver protegida.
+- Arte identificada como gerada por IA é sempre removida dos resultados. Não há
+  opção para desligar essa política.
+- O visualizador interno aceita zoom e arrasto; o link da fonte continua sendo
+  uma ação separada.
+
 ## Estrutura principal
 
 ```text
 desktop.py              janela nativa e servidor privado
-app.py                  API FastAPI e interface local
+app.py                  composição da API FastAPI local
+artfinder/api/          rotas separadas por recurso
+artfinder/domain/       regras obrigatórias, como o bloqueio de IA
 config.py               configurações e diretórios de dados
 artfinder.spec          empacotamento desktop Windows/Linux
 android-native/         cliente Kotlin/Compose, testes e Gradle do Android
-mobile.py / main.py     bootstrap legado do antigo APK Python
-buildozer.spec          empacotamento Android legado, não publicado
 scripts/                inspeção de artefatos e controles de empacotamento
 templates/index.html    interface
 templates/i18n.js       tradução português/inglês
+templates/viewer.*      zoom e proteção visual NSFW do desktop
 sources/                conectores das plataformas
 filters/                filtros de arquivo e cor
 utils/database.py       banco SQLite
@@ -237,6 +252,8 @@ user_categories.json    categorias locais do usuário (ignorado pelo Git)
 
 As decisões e limitações da arquitetura multiplataforma estão registradas em
 [`docs/adr/0001-multiplatform-packaging.md`](docs/adr/0001-multiplatform-packaging.md).
+O modelo incremental de biblioteca, coleções e visualização está em
+[`docs/adr/0006-modular-monolith-and-library.md`](docs/adr/0006-modular-monolith-and-library.md).
 O acesso em rede e os canais de Release estão registrados em
 [`docs/adr/0002-local-access-and-release-channels.md`](docs/adr/0002-local-access-and-release-channels.md).
 A decisão da interface Android nativa está em

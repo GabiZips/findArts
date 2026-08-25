@@ -9,6 +9,7 @@ hiddenimports = (
     collect_submodules("sources")
     + collect_submodules("filters")
     + collect_submodules("utils")
+    + collect_submodules("artfinder")
 )
 
 a = Analysis(

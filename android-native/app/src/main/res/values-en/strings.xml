@@ -11,6 +11,23 @@
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="delete">Delete</string>
+    <string name="close">Close</string>
+    <string name="zoom_in">Zoom in</string>
+    <string name="zoom_out">Zoom out</string>
+    <string name="confirm">Confirm</string>
+    <string name="keep">Keep</string>
+    <string name="download">Download</string>
+    <string name="kept_library">Artwork kept in the ArtFinder library.</string>
+    <string name="downloaded_device">Image downloaded to Pictures/ArtFinder.</string>
+    <string name="choose_collections">Choose collections</string>
+    <string name="no_collections_hint">No collections yet. The artwork can still be kept in the main library.</string>
+    <string name="all_artworks">All</string>
+    <string name="new_collection">New collection</string>
+    <string name="collection_name">Collection name</string>
+    <string name="rename_collection">Rename collection</string>
+    <string name="delete_collection">Delete collection</string>
+    <string name="remote_only">Kept</string>
+    <string name="downloaded">Downloaded</string>
     <string name="no_categories">No tags yet. Add one in Tags or import them from your PC.</string>
     <string name="configured">Configured</string>
     <string name="not_configured">Not configured</string>
@@ -19,7 +36,6 @@
     <string name="results_placeholder">Search results will appear here.</string>
     <string name="unknown_artist">Unknown artist</string>
     <string name="open_source">Open source</string>
-    <string name="save_to_gallery">Save to gallery</string>
     <string name="tags_characters">Tags and characters</string>
     <string name="source_specific_search">Each source can use a different search query.</string>
     <string name="new_tag">New</string>
@@ -35,8 +51,8 @@
     <string name="choose_group">Choose group</string>
     <string name="source_tags">Source-specific tags</string>
     <string name="separate_semicolon">Separate alternatives with ;</string>
-    <string name="gallery_path">Also available in Pictures/ArtFinder.</string>
-    <string name="no_saved_images">No saved images.</string>
+    <string name="gallery_path">Kept items stay in the app; downloads also appear in Pictures/ArtFinder.</string>
+    <string name="no_saved_images">No artwork kept in this collection.</string>
     <string name="local_data_only">Your data stays only on this device.</string>
     <string name="pair_instructions">Connect both devices to the same network. The code expires in five minutes and works once.</string>
     <string name="merge_tags">Merge tags</string>
@@ -48,7 +64,6 @@
     <string name="protected_value">A protected value already exists. Enter another value to replace it or leave it empty to remove it.</string>
     <string name="new_value">New value</string>
     <string name="remove">Remove</string>
-    <string name="saved_gallery">Image saved to Pictures/ArtFinder.</string>
     <string name="credential_saved">Credential saved on this device.</string>
     <plurals name="imported_tags">
         <item quantity="one">%d tag</item>
@@ -69,7 +84,7 @@
     <string name="pages_per_source">Pages per source: %1$d</string>
     <string name="content_rating">Content rating</string>
     <string name="sensitive">Sensitive</string>
-    <string name="nsfw_blur_notice">NSFW content stays blurred until you tap to reveal it.</string>
+    <string name="nsfw_blur_notice">NSFW content stays blurred until you use the Show image button.</string>
     <string name="period">Period</string>
     <string name="period_all">All</string>
     <string name="period_7">7 days</string>
@@ -78,8 +93,9 @@
     <string name="period_180">6 months</string>
     <string name="period_365">1 year</string>
     <string name="minimum_score">Minimum score</string>
-    <string name="hide_ai">Hide AI artwork</string>
-    <string name="hide_ai_hint">Uses metadata and tags supplied by each source.</string>
+    <string name="blur_nsfw">Blur NSFW content</string>
+    <string name="show_nsfw">Show image</string>
+    <string name="ai_filter_mandatory">Artwork identified as AI-generated is always removed from results.</string>
     <string name="any_resolution">Resolution: artwork of any size is accepted.</string>
     <string name="search_size_normal">Normal search · up to %1$d requests.</string>
     <string name="search_size_medium">Moderate search · up to %1$d requests; it may take a while.</string>
@@ -90,5 +106,4 @@
     <string name="continue_search">Continue</string>
     <string name="search_progress_details">Sources %1$d/%2$d · requests %3$d/%4$d estimated</string>
     <string name="search_summary">%1$d artworks · %2$d requests made</string>
-    <string name="tap_reveal_nsfw">NSFW · tap to reveal</string>
 </resources>

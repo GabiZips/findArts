@@ -66,9 +66,24 @@ class AppRouteTests(unittest.TestCase):
         html = response.body.decode("utf-8")
         self.assertIn('id="languageSelect"', html)
         self.assertIn('src="/ui/i18n.js"', html)
+        self.assertIn('src="/ui/viewer.js"', html)
+        self.assertIn('href="/ui/viewer.css"', html)
 
         script = asyncio.run(app.i18n_script())
         self.assertEqual(Path(script.path).name, "i18n.js")
+        viewer_script = asyncio.run(app.viewer_script())
+        viewer_styles = asyncio.run(app.viewer_styles())
+        self.assertEqual(Path(viewer_script.path).name, "viewer.js")
+        self.assertEqual(Path(viewer_styles.path).name, "viewer.css")
+
+    def test_interface_has_persistent_nsfw_blur_and_zoom_controls(self):
+        html = asyncio.run(app.index()).body.decode("utf-8")
+        self.assertIn('onchange="setNsfwBlur(this.checked)"', html)
+        self.assertIn('id="lbNsfwReveal"', html)
+        self.assertIn('id="lbZoomLabel"', html)
+        script = Path("templates/viewer.js").read_text(encoding="utf-8")
+        self.assertIn('artfinder.blurNsfw', script)
+        self.assertIn('scale + delta', script)
 
     def test_interface_has_non_streaming_search_fallback(self):
         response = asyncio.run(app.index())

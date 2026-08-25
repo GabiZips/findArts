@@ -36,7 +36,7 @@ jobs:
           python -m pip install -r requirements-ci.txt
 
       - name: Compile Python sources
-        run: python -m compileall -q app.py config.py desktop.py mobile.py sources filters utils scripts tests
+        run: python -m compileall -q app.py config.py desktop.py artfinder sources filters utils scripts tests
 
       - name: Run correctness lint
         run: ruff check .

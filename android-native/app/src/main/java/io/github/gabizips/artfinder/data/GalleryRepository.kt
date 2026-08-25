@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import io.github.gabizips.artfinder.model.ArtPost
+import io.github.gabizips.artfinder.model.ArtSource
 import io.github.gabizips.artfinder.model.GalleryItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,10 +21,48 @@ class GalleryRepository(
     private val settings: SettingsRepository,
     private val client: OkHttpClient = OkHttpClient(),
 ) {
-    suspend fun save(post: ArtPost): GalleryItem = withContext(Dispatchers.IO) {
+    suspend fun keep(post: ArtPost, collectionIds: Set<String> = emptySet()): GalleryItem = withContext(Dispatchers.IO) {
+        val uid = "${post.source.id}:${post.id}"
+        val existing = settings.galleryItem(uid)
+        val item = existing?.copy(collectionIds = collectionIds) ?: GalleryItem(
+            uid = uid,
+            source = post.source.id,
+            sourceId = post.id,
+            pageUrl = post.pageUrl,
+            previewUrl = post.previewUrl,
+            originalUrl = post.url,
+            artist = post.artist,
+            categoryKey = post.categoryKey,
+            savedAt = System.currentTimeMillis(),
+            rating = post.rating,
+            collectionIds = collectionIds,
+        )
+        settings.addGalleryItem(item)
+        item
+    }
+
+    suspend fun download(item: GalleryItem): GalleryItem {
+        val source = ArtSource.fromId(item.source) ?: error("Fonte desconhecida: ${item.source}")
+        return download(
+            ArtPost(
+                id = item.sourceId,
+                source = source,
+                url = item.originalUrl.ifBlank { item.previewUrl },
+                previewUrl = item.previewUrl.ifBlank { item.originalUrl },
+                pageUrl = item.pageUrl,
+                artist = item.artist,
+                rating = item.rating,
+                categoryKey = item.categoryKey,
+            ),
+        )
+    }
+
+    suspend fun download(post: ArtPost): GalleryItem = withContext(Dispatchers.IO) {
+        val existing = settings.galleryItem("${post.source.id}:${post.id}")
+        if (!existing?.contentUri.isNullOrBlank()) return@withContext existing
         val request = Request.Builder().url(post.url).apply {
             if (post.source.id == "pixiv") header("Referer", "https://www.pixiv.net/")
-            header("User-Agent", "ArtFinder-Android/0.6.0")
+            header("User-Agent", "ArtFinder-Android/0.7.0")
         }.build()
         val downloaded = client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Falha ao baixar: HTTP ${response.code}")
@@ -69,18 +108,24 @@ class GalleryRepository(
         val item = GalleryItem(
             uid = "${post.source.id}:${post.id}", contentUri = uri.toString(),
             source = post.source.id, sourceId = post.id, pageUrl = post.pageUrl,
+            previewUrl = post.previewUrl, originalUrl = post.url,
             artist = post.artist, categoryKey = post.categoryKey, savedAt = System.currentTimeMillis(),
-            rating = post.rating,
+            rating = post.rating, collectionIds = existing?.collectionIds.orEmpty(),
         )
         settings.addGalleryItem(item)
         item
     }
 
     suspend fun delete(item: GalleryItem) = withContext(Dispatchers.IO) {
-        val uri = Uri.parse(item.contentUri)
-        runCatching { context.contentResolver.delete(uri, null, null) }
+        if (item.contentUri.isNotBlank()) {
+            val uri = Uri.parse(item.contentUri)
+            runCatching { context.contentResolver.delete(uri, null, null) }
+        }
         settings.removeGalleryItem(item.uid)
     }
+
+    suspend fun setCollections(item: GalleryItem, collectionIds: Set<String>) =
+        settings.setGalleryCollections(item.uid, collectionIds)
 
     private fun supportedMime(header: String, bytes: ByteArray): String {
         val detected = when {
