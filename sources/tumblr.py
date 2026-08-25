@@ -3,7 +3,7 @@
 Módulo de busca no Tumblr via API pública (v2).
 Requer TUMBLR_API_KEY em config.py.
 Para busca por POPULARIDADE, configure também as chaves OAuth
-rodando: python setup_tumblr_oauth.py
+rodando: python scripts/auth/setup_tumblr_oauth.py
 """
 
 import re

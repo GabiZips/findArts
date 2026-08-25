@@ -2,12 +2,11 @@ package io.github.gabizips.artfinder.ui.screen
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,26 +24,33 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.ImageSearch
+import androidx.compose.material.icons.outlined.Tag
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,14 +63,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import io.github.gabizips.artfinder.MainViewModel
 import io.github.gabizips.artfinder.R
 import io.github.gabizips.artfinder.SearchUiState
@@ -73,14 +76,23 @@ import io.github.gabizips.artfinder.model.ArtSource
 import io.github.gabizips.artfinder.model.Category
 import io.github.gabizips.artfinder.model.SearchOptions
 import io.github.gabizips.artfinder.model.SettingsSnapshot
-import io.github.gabizips.artfinder.ui.component.ZoomableImageViewer
+import io.github.gabizips.artfinder.ui.component.ArtworkPreview
 import io.github.gabizips.artfinder.ui.component.CollectionPickerDialog
+import io.github.gabizips.artfinder.ui.component.EmptyState
+import io.github.gabizips.artfinder.ui.component.ScreenHeader
+import io.github.gabizips.artfinder.ui.component.SectionHeader
+import io.github.gabizips.artfinder.ui.component.ZoomableImageViewer
 import io.github.gabizips.artfinder.ui.originalModel
 import io.github.gabizips.artfinder.ui.previewModel
 import kotlin.math.roundToInt
 
 @Composable
-fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: MainViewModel) {
+fun SearchScreen(
+    settings: SettingsSnapshot,
+    state: SearchUiState,
+    viewModel: MainViewModel,
+    onManageTags: () -> Unit,
+) {
     var categoryExpanded by remember { mutableStateOf(false) }
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     var confirmLargeSearch by remember { mutableStateOf(false) }
@@ -96,15 +108,26 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
     val startSearch = { viewModel.search(draftOptions) }
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.search_artworks), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            ScreenHeader(
+                title = stringResource(R.string.search_artworks),
+                description = stringResource(R.string.search_description),
+            )
             if (settings.categories.isEmpty()) {
-                Text(stringResource(R.string.no_categories))
+                EmptyState(
+                    icon = Icons.Outlined.Tag,
+                    title = stringResource(R.string.no_categories_title),
+                    description = stringResource(R.string.no_categories),
+                    actionLabel = stringResource(R.string.manage_tags),
+                    onAction = onManageTags,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             } else {
                 Box {
                     val selected = selectedCategory ?: settings.categories.first()
                     OutlinedButton(onClick = { categoryExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                         Text("${selected.emoji} ${selected.label} · ${selected.group}", modifier = Modifier.weight(1f))
+                        Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
                     }
                     DropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
                         settings.categories.forEach { category ->
@@ -114,67 +137,110 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
                         }
                     }
                 }
-            }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(ArtSource.entries) { source ->
-                    FilterChip(
-                        selected = source in state.selectedSources,
-                        onClick = { viewModel.toggleSource(source) },
-                        label = { Text(source.label) },
-                    )
-                }
-            }
-            SearchOptionsCard(
-                expanded = optionsExpanded,
-                options = draftOptions,
-                blurNsfw = settings.displayPreferences.blurNsfw,
-                estimatedRequests = estimate,
-                onExpandedChange = { optionsExpanded = it },
-                onBlurNsfwChange = viewModel::setBlurNsfw,
-                onOptionsChange = { updated ->
-                    draftOptions = updated
-                    viewModel.updateSearchOptions(updated)
-                },
-            )
-            if (state.loading) {
-                OutlinedButton(onClick = viewModel::cancelSearch, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.cancel_search))
-                }
-                Text(
-                    stringResource(
-                        R.string.search_progress_details,
-                        state.completedSources, state.totalSources, state.requestCount, state.estimatedRequests,
+                SectionHeader(
+                    title = stringResource(R.string.source_selection),
+                    supportingText = stringResource(
+                        R.string.selected_sources,
+                        state.selectedSources.size,
+                        ArtSource.entries.size,
                     ),
-                    style = MaterialTheme.typography.bodySmall,
                 )
-            } else {
-                Button(
-                    onClick = {
-                        if (draftOptions.pages >= 21) confirmLargeSearch = true else startSearch()
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(ArtSource.entries) { source ->
+                        val selected = source in state.selectedSources
+                        FilterChip(
+                            selected = selected,
+                            onClick = { viewModel.toggleSource(source) },
+                            label = { Text(source.label) },
+                            leadingIcon = if (selected) {
+                                { Icon(Icons.Outlined.Check, contentDescription = null) }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                }
+                SearchOptionsCard(
+                    expanded = optionsExpanded,
+                    options = draftOptions,
+                    blurNsfw = settings.displayPreferences.blurNsfw,
+                    estimatedRequests = estimate,
+                    onExpandedChange = { optionsExpanded = it },
+                    onBlurNsfwChange = viewModel::setBlurNsfw,
+                    onOptionsChange = { updated ->
+                        draftOptions = updated
+                        viewModel.updateSearchOptions(updated)
                     },
-                    enabled = settings.categories.isNotEmpty() && state.selectedSources.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text(stringResource(R.string.search)) }
-            }
-            if (state.errors.isNotEmpty()) {
-                Text(state.errors.entries.joinToString("\n") { "${it.key.label}: ${it.value}" }, color = MaterialTheme.colorScheme.error)
-            }
-            if (!state.loading && (state.requestCount > 0 || state.posts.isNotEmpty())) {
-                Text(
-                    stringResource(R.string.search_summary, state.posts.size, state.requestCount),
-                    style = MaterialTheme.typography.bodySmall,
                 )
+                if (state.loading) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                stringResource(
+                                    R.string.search_progress_details,
+                                    state.completedSources,
+                                    state.totalSources,
+                                    state.requestCount,
+                                    state.estimatedRequests,
+                                ),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            OutlinedButton(onClick = viewModel::cancelSearch, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.cancel_search))
+                            }
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            if (draftOptions.pages >= 21) confirmLargeSearch = true else startSearch()
+                        },
+                        enabled = state.selectedSources.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Outlined.ImageSearch, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.search))
+                    }
+                }
+                if (state.errors.isNotEmpty()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Text(
+                            state.errors.entries.joinToString("\n") { "${it.key.label}: ${it.value}" },
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
             }
         }
-        if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        HorizontalDivider()
-        if (!state.loading && state.posts.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.results_placeholder)) }
-        } else {
+        if (settings.categories.isNotEmpty() && state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (settings.categories.isNotEmpty()) HorizontalDivider()
+        if (settings.categories.isNotEmpty() && !state.loading && state.posts.isEmpty()) {
+            EmptyState(
+                icon = Icons.Outlined.ImageSearch,
+                title = stringResource(R.string.results_placeholder_title),
+                description = stringResource(R.string.results_placeholder),
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else if (state.posts.isNotEmpty()) {
+            SectionHeader(
+                title = stringResource(R.string.search_results),
+                supportingText = stringResource(R.string.search_summary, state.posts.size, state.requestCount),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(220.dp), modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(state.posts, key = { "${it.source.id}:${it.id}" }) { post ->
                     ArtCard(
@@ -226,6 +292,7 @@ fun SearchScreen(settings: SettingsSnapshot, state: SearchUiState, viewModel: Ma
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun SearchOptionsCard(
     expanded: Boolean,
     options: SearchOptions,
@@ -235,77 +302,84 @@ private fun SearchOptionsCard(
     onBlurNsfwChange: (Boolean) -> Unit,
     onOptionsChange: (SearchOptions) -> Unit,
 ) {
-    ElevatedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
-            Row(
-                Modifier.fillMaxWidth().clickable { onExpandedChange(!expanded) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.search_options), fontWeight = FontWeight.Bold)
-                    Text(
-                        stringResource(R.string.pages_and_requests, options.pages, estimatedRequests),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-                Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
+    OutlinedCard(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().clickable { onExpandedChange(true) }.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Outlined.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.search_options), fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.pages_and_requests, options.pages, estimatedRequests),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            AnimatedVisibility(expanded) {
-                Column(
-                    Modifier.padding(top = 10.dp).heightIn(max = 390.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Text(stringResource(R.string.pages_per_source, options.pages), fontWeight = FontWeight.SemiBold)
-                    Slider(
-                        value = options.pages.toFloat(),
-                        onValueChange = { onOptionsChange(options.copy(pages = it.roundToInt().coerceIn(1, 25))) },
-                        valueRange = 1f..25f,
-                        steps = 23,
-                    )
-                    SearchWarning(options.pages, estimatedRequests)
-                    Text(stringResource(R.string.content_rating), fontWeight = FontWeight.SemiBold)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        item {
-                            FilterChip(options.includeSfw, { toggleRating(options, "sfw", onOptionsChange) }, { Text("SFW") })
-                        }
-                        item {
-                            FilterChip(options.includeSensitive, { toggleRating(options, "sensitive", onOptionsChange) }, { Text(stringResource(R.string.sensitive)) })
-                        }
-                        item {
-                            FilterChip(options.includeNsfw, { toggleRating(options, "nsfw", onOptionsChange) }, { Text("NSFW") })
-                        }
+        }
+    }
+    if (expanded) {
+        ModalBottomSheet(onDismissRequest = { onExpandedChange(false) }) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 640.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(stringResource(R.string.search_options), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.pages_per_source, options.pages), fontWeight = FontWeight.SemiBold)
+                Slider(
+                    value = options.pages.toFloat(),
+                    onValueChange = { onOptionsChange(options.copy(pages = it.roundToInt().coerceIn(1, 25))) },
+                    valueRange = 1f..25f,
+                    steps = 23,
+                )
+                SearchWarning(options.pages, estimatedRequests)
+                Text(stringResource(R.string.content_rating), fontWeight = FontWeight.SemiBold)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        FilterChip(options.includeSfw, { toggleRating(options, "sfw", onOptionsChange) }, { Text("SFW") })
                     }
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.blur_nsfw), fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.nsfw_blur_notice), style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(checked = blurNsfw, onCheckedChange = onBlurNsfwChange)
+                    item {
+                        FilterChip(options.includeSensitive, { toggleRating(options, "sensitive", onOptionsChange) }, { Text(stringResource(R.string.sensitive)) })
                     }
-                    Text(stringResource(R.string.period), fontWeight = FontWeight.SemiBold)
-                    val periods = listOf(0 to R.string.period_all, 7 to R.string.period_7, 30 to R.string.period_30, 90 to R.string.period_90, 180 to R.string.period_180, 365 to R.string.period_365)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(periods) { (days, label) ->
-                            FilterChip(
-                                selected = options.periodDays == days,
-                                onClick = { onOptionsChange(options.copy(periodDays = days)) },
-                                label = { Text(stringResource(label)) },
-                            )
-                        }
+                    item {
+                        FilterChip(options.includeNsfw, { toggleRating(options, "nsfw", onOptionsChange) }, { Text("NSFW") })
                     }
-                    OutlinedTextField(
-                        value = options.minScore.takeIf { it > 0 }?.toString().orEmpty(),
-                        onValueChange = { value ->
-                            val clean = value.filter(Char::isDigit).take(7)
-                            onOptionsChange(options.copy(minScore = clean.toIntOrNull() ?: 0))
-                        },
-                        label = { Text(stringResource(R.string.minimum_score)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(stringResource(R.string.ai_filter_mandatory), style = MaterialTheme.typography.bodySmall)
-                    Text(stringResource(R.string.any_resolution), style = MaterialTheme.typography.bodySmall)
                 }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.blur_nsfw), fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.nsfw_blur_notice), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = blurNsfw, onCheckedChange = onBlurNsfwChange)
+                }
+                Text(stringResource(R.string.period), fontWeight = FontWeight.SemiBold)
+                val periods = listOf(0 to R.string.period_all, 7 to R.string.period_7, 30 to R.string.period_30, 90 to R.string.period_90, 180 to R.string.period_180, 365 to R.string.period_365)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(periods) { (days, label) ->
+                        FilterChip(
+                            selected = options.periodDays == days,
+                            onClick = { onOptionsChange(options.copy(periodDays = days)) },
+                            label = { Text(stringResource(label)) },
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = options.minScore.takeIf { it > 0 }?.toString().orEmpty(),
+                    onValueChange = { value ->
+                        val clean = value.filter(Char::isDigit).take(7)
+                        onOptionsChange(options.copy(minScore = clean.toIntOrNull() ?: 0))
+                    },
+                    label = { Text(stringResource(R.string.minimum_score)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(stringResource(R.string.ai_filter_mandatory), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.any_resolution), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -353,34 +427,33 @@ private fun ArtCard(
     var nsfwRevealed by rememberSaveable(uid) { mutableStateOf(false) }
     val hiddenNsfw = blurNsfw && post.rating.equals("nsfw", ignoreCase = true) && !nsfwRevealed
     ElevatedCard(Modifier.fillMaxWidth()) {
-        Box(
-            Modifier.fillMaxWidth().height(280.dp).clickable {
-                if (!hiddenNsfw) onOpen()
-            },
-        ) {
-            AsyncImage(
-                model = post.previewModel(context), contentDescription = post.tags,
-                modifier = Modifier.fillMaxSize().blur(if (hiddenNsfw) 24.dp else 0.dp),
-                contentScale = ContentScale.Crop,
-            )
-            if (hiddenNsfw) {
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)), contentAlignment = Alignment.Center) {
-                    Button(onClick = { nsfwRevealed = true }) {
-                        Text(stringResource(R.string.show_nsfw), color = Color.White, fontWeight = FontWeight.Bold)
-                    }
+        ArtworkPreview(
+            model = post.previewModel(context),
+            contentDescription = post.tags,
+            badge = post.source.label,
+            hidden = hiddenNsfw,
+            onReveal = { nsfwRevealed = true },
+            onOpen = onOpen,
+            modifier = Modifier.padding(6.dp),
+        )
+        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        post.artist.ifBlank { stringResource(R.string.unknown_artist) },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text("★ ${post.score} · ${post.width}×${post.height}", style = MaterialTheme.typography.bodySmall)
+                }
+                if (post.pageUrl.isNotBlank()) {
+                    IconButton(onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(post.pageUrl)))
+                    }) { Icon(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(R.string.open_source)) }
                 }
             }
-        }
-        Column(Modifier.padding(10.dp)) {
-            Text(post.source.label, fontWeight = FontWeight.Bold)
-            Text(post.artist.ifBlank { stringResource(R.string.unknown_artist) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("★ ${post.score} · ${post.width}×${post.height}", style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(4.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                if (post.pageUrl.isNotBlank()) IconButton(onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(post.pageUrl)))
-                }) { Icon(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(R.string.open_source)) }
-            }
+            Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onKeep, enabled = uid !in state.saving, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Outlined.BookmarkBorder, null)

@@ -17,10 +17,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +39,9 @@ import io.github.gabizips.artfinder.MainViewModel
 import io.github.gabizips.artfinder.R
 import io.github.gabizips.artfinder.model.ArtSource
 import io.github.gabizips.artfinder.model.SettingsSnapshot
+import io.github.gabizips.artfinder.ui.component.ScreenHeader
+import io.github.gabizips.artfinder.ui.component.SectionHeader
+import io.github.gabizips.artfinder.ui.component.StatusBadge
 
 @Composable
 fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
@@ -52,11 +57,13 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.local_data_only))
+            ScreenHeader(
+                title = stringResource(R.string.settings),
+                description = stringResource(R.string.settings_description),
+            )
         }
         item {
-            ElevatedCard(Modifier.fillMaxWidth()) {
+            OutlinedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(stringResource(R.string.pair_devices), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.pair_instructions))
@@ -76,21 +83,46 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
                     ) {
                         if (busy) CircularProgressIndicator(Modifier.height(20.dp)) else Text(stringResource(R.string.import_configuration))
                     }
-                    message?.let { Text(it, color = if (messageIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary) }
+                    message?.let {
+                        Surface(
+                            color = if (messageIsError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = if (messageIsError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Text(it, modifier = Modifier.padding(10.dp), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
             }
         }
-        item { Text(stringResource(R.string.sources_credentials), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+        item {
+            SectionHeader(
+                title = stringResource(R.string.sources_credentials),
+                supportingText = stringResource(R.string.configured_sources, settings.configuredCredentials.size),
+            )
+        }
         items(ArtSource.entries) { source ->
             ElevatedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp)) {
-                    Text(source.label, fontWeight = FontWeight.Bold)
-                    if (source.credentialKeys.isEmpty()) Text(stringResource(R.string.no_credentials_needed), style = MaterialTheme.typography.bodySmall)
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(source.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        if (source.credentialKeys.isEmpty()) {
+                            StatusBadge(stringResource(R.string.no_credentials_needed), positive = true)
+                        }
+                    }
                     source.credentialKeys.forEach { key ->
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(key, style = MaterialTheme.typography.bodySmall)
-                                Text(if (key in settings.configuredCredentials) stringResource(R.string.configured) else stringResource(R.string.not_configured))
+                                StatusBadge(
+                                    label = if (key in settings.configuredCredentials) {
+                                        stringResource(R.string.configured)
+                                    } else {
+                                        stringResource(R.string.not_configured)
+                                    },
+                                    positive = key in settings.configuredCredentials,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
                             }
                             TextButton(onClick = { editingCredential = key }) { Icon(Icons.Outlined.Key, null); Text(" ${stringResource(R.string.change)}") }
                         }
@@ -99,10 +131,10 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
             }
         }
         item {
-            Text(
-                stringResource(R.string.legal_notice),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.local_data_only), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.legal_notice), style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 

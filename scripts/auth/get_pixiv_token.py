@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
-"""
-get_pixiv_token.py — obtém o REFRESH TOKEN do Pixiv (necessário uma única vez).
+"""Obtain the Pixiv refresh token through gppt's browser OAuth flow.
 
-O Pixiv não permite mais login por usuário/senha na API, então usamos o fluxo
-OAuth pelo navegador. Rode:
+Run from the project root:
 
-    python get_pixiv_token.py
-
-Ele abre o Pixiv no navegador; faça login normalmente. O token aparece no
-terminal — copie e cole em PIXIV_REFRESH_TOKEN no arquivo .env.
-
-Requer a ferramenta 'gppt' (Get Pixiv Token):
-    python -m pip install gppt
+    python scripts/auth/get_pixiv_token.py
 """
 
 import asyncio
@@ -32,20 +24,18 @@ def main() -> None:
     print("(Na primeira vez o gppt baixa o Chromium do Playwright — pode demorar.)\n")
 
     try:
-        g = GetPixivToken(headless=False)
-        res = g.login()
-        # gppt >= 4 usa Playwright e login() é assíncrono; versões antigas
-        # (Selenium) retornam o dict diretamente.
-        if inspect.isawaitable(res):
-            res = asyncio.run(res)
-    except Exception as e:
-        print(f"\nFalhou o login automático: {e}\n")
+        client = GetPixivToken(headless=False)
+        result = client.login()
+        if inspect.isawaitable(result):
+            result = asyncio.run(result)
+    except Exception as error:
+        print(f"\nFalhou o login automático: {error}\n")
         print("Alternativa headless (sem abrir navegador):")
         print("    gppt login-headless -u SEU_LOGIN -p SUA_SENHA")
         print("\nOu veja o guia manual: https://github.com/eggplants/get-pixivpy-token")
         sys.exit(1)
 
-    token = res.get("refresh_token", "")
+    token = result.get("refresh_token", "")
     if not token:
         print("Não consegui extrair o refresh token da resposta.")
         sys.exit(1)

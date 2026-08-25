@@ -107,7 +107,7 @@ Linux dependency selects the PySide6 backend for pywebview.
 Copy `.env.example` to `.env` and configure only the sources you intend to use.
 Never commit or share this file.
 
-The same fields can be configured in **Stats > Sources and credentials**. The
+The same fields can be configured in **Settings > Sources and credentials**. The
 application reports only whether a value exists and never displays a saved
 password or token back to the interface.
 
@@ -115,7 +115,7 @@ password or token back to the interface.
 |---|---|
 | Danbooru | Optional `DANBOORU_LOGIN` and `DANBOORU_API_KEY` |
 | Gelbooru | `GELBOORU_USER_ID` and `GELBOORU_API_KEY` |
-| Pixiv | `PIXIV_REFRESH_TOKEN`, generated with `get_pixiv_token.py` |
+| Pixiv | `PIXIV_REFRESH_TOKEN`, generated with `scripts/auth/get_pixiv_token.py` |
 | Tumblr | `TUMBLR_API_KEY`; full OAuth improves search |
 | DeviantArt | `DEVIANTART_CLIENT_ID` and `DEVIANTART_CLIENT_SECRET` |
 | Bluesky | `BSKY_HANDLE` and an app password in `BSKY_PASSWORD` |
@@ -135,8 +135,9 @@ bluesky: "vex" "league of legends"
 Unprefixed text is the booru query. `source: query` overrides take precedence
 over automatic suggestions.
 
-The native Android architecture decision is documented in
-[`docs/adr/0003-mobile-implementation-strategy.md`](docs/adr/0003-mobile-implementation-strategy.md).
+Technical documentation has its own [index](docs/README.md), including the
+architecture decisions, the [native Android client](android-native/README.md)
+and the [contribution guide](CONTRIBUTING.md).
 
 ## Legal and content notice
 

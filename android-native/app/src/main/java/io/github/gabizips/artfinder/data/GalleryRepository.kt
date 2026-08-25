@@ -62,7 +62,7 @@ class GalleryRepository(
         if (!existing?.contentUri.isNullOrBlank()) return@withContext existing
         val request = Request.Builder().url(post.url).apply {
             if (post.source.id == "pixiv") header("Referer", "https://www.pixiv.net/")
-            header("User-Agent", "ArtFinder-Android/0.7.0")
+            header("User-Agent", "ArtFinder-Android/0.8.0")
         }.build()
         val downloaded = client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Falha ao baixar: HTTP ${response.code}")

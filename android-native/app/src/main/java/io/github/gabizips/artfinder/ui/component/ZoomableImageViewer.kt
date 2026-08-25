@@ -3,11 +3,15 @@ package io.github.gabizips.artfinder.ui.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Remove
@@ -29,6 +33,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -76,6 +81,15 @@ fun ZoomableImageViewer(
                             translationX = offset.x,
                             translationY = offset.y,
                         )
+                        .pointerInput(revealed) {
+                            if (revealed) {
+                                detectTapGestures(
+                                    onDoubleTap = {
+                                        if (scale > 1f) reset() else scale = 2.5f
+                                    },
+                                )
+                            }
+                        }
                         .transformable(transformState)
                         .blur(if (revealed) 0.dp else 28.dp),
                 )
@@ -87,21 +101,30 @@ fun ZoomableImageViewer(
                         Button(onClick = { revealed = true }) { Text(stringResource(R.string.show_nsfw)) }
                     }
                 }
-                IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
-                    Icon(Icons.Outlined.Close, stringResource(R.string.close), tint = Color.White)
-                }
-                Row(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = {
-                        scale = (scale - .5f).coerceAtLeast(1f)
-                        if (scale == 1f) offset = Offset.Zero
-                    }) { Icon(Icons.Outlined.Remove, stringResource(R.string.zoom_out), tint = Color.White) }
-                    Button(onClick = { reset() }) { Text("${(scale * 100).toInt()}%") }
-                    IconButton(onClick = { scale = (scale + .5f).coerceAtMost(6f) }) {
-                        Icon(Icons.Outlined.Add, stringResource(R.string.zoom_in), tint = Color.White)
+                Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                        Icon(Icons.Outlined.Close, stringResource(R.string.close), tint = Color.White)
+                    }
+                    Surface(
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
+                        color = Color.Black.copy(alpha = .72f),
+                        contentColor = Color.White,
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            IconButton(onClick = {
+                                scale = (scale - .5f).coerceAtLeast(1f)
+                                if (scale == 1f) offset = Offset.Zero
+                            }) { Icon(Icons.Outlined.Remove, stringResource(R.string.zoom_out)) }
+                            Button(onClick = { reset() }) { Text("${(scale * 100).toInt()}%") }
+                            IconButton(onClick = { scale = (scale + .5f).coerceAtMost(6f) }) {
+                                Icon(Icons.Outlined.Add, stringResource(R.string.zoom_in))
+                            }
+                        }
                     }
                 }
             }

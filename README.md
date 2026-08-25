@@ -178,14 +178,14 @@ usar. No executável, coloque esse arquivo em
 `%LOCALAPPDATA%\ArtFinder\.env`.
 
 Também é possível configurar esses campos pela interface em
-**Stats > Fontes e credenciais**. O aplicativo informa apenas se um valor está
+**Configurações > Fontes e credenciais**. O aplicativo informa apenas se um valor está
 configurado e nunca exibe uma senha ou token salvo de volta na tela.
 
 | Fonte | Configuração |
 |---|---|
 | Danbooru | `DANBOORU_LOGIN` e `DANBOORU_API_KEY` (opcionais) |
 | Gelbooru | `GELBOORU_USER_ID` e `GELBOORU_API_KEY` |
-| Pixiv | `PIXIV_REFRESH_TOKEN`; gere com `get_pixiv_token.py` |
+| Pixiv | `PIXIV_REFRESH_TOKEN`; gere com `scripts/auth/get_pixiv_token.py` |
 | Tumblr | `TUMBLR_API_KEY`; OAuth completo melhora a busca |
 | DeviantArt | `DEVIANTART_CLIENT_ID` e `DEVIANTART_CLIENT_SECRET` |
 | Bluesky | `BSKY_HANDLE` e uma app password em `BSKY_PASSWORD` |
@@ -236,7 +236,8 @@ artfinder/domain/       regras obrigatórias, como o bloqueio de IA
 config.py               configurações e diretórios de dados
 artfinder.spec          empacotamento desktop Windows/Linux
 android-native/         cliente Kotlin/Compose, testes e Gradle do Android
-scripts/                inspeção de artefatos e controles de empacotamento
+docs/                   índice, guias e decisões de arquitetura
+scripts/auth/            autenticação opcional de Pixiv e Tumblr
 templates/index.html    interface
 templates/i18n.js       tradução português/inglês
 templates/viewer.*      zoom e proteção visual NSFW do desktop
@@ -250,14 +251,9 @@ defaults/categories.json configuração inicial vazia
 user_categories.json    categorias locais do usuário (ignorado pelo Git)
 ```
 
-As decisões e limitações da arquitetura multiplataforma estão registradas em
-[`docs/adr/0001-multiplatform-packaging.md`](docs/adr/0001-multiplatform-packaging.md).
-O modelo incremental de biblioteca, coleções e visualização está em
-[`docs/adr/0006-modular-monolith-and-library.md`](docs/adr/0006-modular-monolith-and-library.md).
-O acesso em rede e os canais de Release estão registrados em
-[`docs/adr/0002-local-access-and-release-channels.md`](docs/adr/0002-local-access-and-release-channels.md).
-A decisão da interface Android nativa está em
-[`docs/adr/0003-mobile-implementation-strategy.md`](docs/adr/0003-mobile-implementation-strategy.md).
+A documentação técnica possui um [índice próprio](docs/README.md), incluindo as
+decisões de arquitetura, o [cliente Android](android-native/README.md) e o guia
+de [contribuição](CONTRIBUTING.md).
 
 ## Licença e segurança
 

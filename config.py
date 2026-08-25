@@ -116,7 +116,7 @@ DANBOORU_LOGIN   = os.getenv("DANBOORU_LOGIN",   "")
 DANBOORU_API_KEY = os.getenv("DANBOORU_API_KEY", "")
 
 # Tumblr — registrar em: https://www.tumblr.com/oauth/apps
-# Para busca por POPULARIDADE (artes mais curtidas) rode: python setup_tumblr_oauth.py
+# Para busca por POPULARIDADE rode: python scripts/auth/setup_tumblr_oauth.py
 TUMBLR_API_KEY            = os.getenv("TUMBLR_API_KEY",             "")
 TUMBLR_CONSUMER_SECRET    = os.getenv("TUMBLR_CONSUMER_SECRET",     "")  # OAuth
 TUMBLR_OAUTH_TOKEN        = os.getenv("TUMBLR_OAUTH_TOKEN",         "")  # OAuth
@@ -135,7 +135,7 @@ TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN", "")
 DEVIANTART_CLIENT_ID     = os.getenv("DEVIANTART_CLIENT_ID",     "")
 DEVIANTART_CLIENT_SECRET = os.getenv("DEVIANTART_CLIENT_SECRET", "")
 
-# Pixiv — precisa de um refresh token (gere com: python get_pixiv_token.py)
+# Pixiv — precisa de um refresh token (gere com: python scripts/auth/get_pixiv_token.py)
 PIXIV_REFRESH_TOKEN = os.getenv("PIXIV_REFRESH_TOKEN", "")
 
 

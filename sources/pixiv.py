@@ -5,7 +5,7 @@ Módulo de busca no Pixiv via pixivpy3 (API oficial do app móvel).
 Autenticação: o Pixiv não permite mais login por senha na API. Você precisa
 de um REFRESH TOKEN (obtido uma vez, dura bastante). Gere com:
 
-    python get_pixiv_token.py
+    python scripts/auth/get_pixiv_token.py
 
 e cole o valor em PIXIV_REFRESH_TOKEN no .env.
 
