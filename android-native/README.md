@@ -32,6 +32,10 @@ inspeção do pacote acontecem no workflow protegido do GitHub. Consulte
 ## Regras da interface
 
 - A navegação principal tem Pesquisa, Tags, Galeria e Configurações.
+- A busca recolhe os controles depois de pesquisar e mantém um atalho compacto
+  para editá-los.
+- O visualizador ocupa a tela, navega por gesto lateral e mantém zoom por pinça
+  ou toque duplo; um toque simples oculta os controles.
 - Conteúdo NSFW respeita a preferência global de blur e exige revelação por arte.
 - O filtro de arte marcada como gerada por IA é obrigatório.
 - Guardar adiciona à biblioteca; Baixar publica uma cópia em

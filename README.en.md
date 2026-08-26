@@ -71,6 +71,9 @@ that same copy. Search supports 1–25 pages per source (default 5), content
 rating, age, score and AI filters. Very large searches require confirmation,
 and NSFW thumbnails stay blurred until tapped. PC pairing uses only the
 temporary full code copied into Android; the app does not request camera access.
+Search controls collapse after a query so artwork gets most of the screen. In
+the full-screen viewer, swipe between results, tap to hide the controls, and
+pinch or double-tap to zoom.
 
 iOS is not part of this build and requires a separate Xcode-based package and
 signing process.

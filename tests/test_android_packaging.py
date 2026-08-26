@@ -85,3 +85,19 @@ class AndroidPackagingTests(unittest.TestCase):
         self.assertIn("secrets: inherit", workflow)
         self.assertIn("ArtFinder-Android-native", workflow)
         self.assertIn("ArtFinder-Android-10-16.apk", workflow)
+
+    def test_android_results_prioritize_artwork_and_support_swipe_viewing(self):
+        ui_root = (
+            self.project / "android-native" / "app" / "src" / "main" / "java"
+            / "io" / "github" / "gabizips" / "artfinder" / "ui"
+        )
+        search = (ui_root / "screen" / "SearchScreen.kt").read_text(encoding="utf-8")
+        gallery = (ui_root / "screen" / "GalleryScreen.kt").read_text(encoding="utf-8")
+        viewer = (ui_root / "component" / "ZoomableImageViewer.kt").read_text(encoding="utf-8")
+
+        self.assertIn("controlsExpanded = false", search)
+        self.assertIn("CompactSearchBar", search)
+        self.assertIn("HorizontalPager", viewer)
+        self.assertIn("userScrollEnabled = images.size > 1", viewer)
+        self.assertIn("images = viewerImages", search)
+        self.assertIn("images = viewerImages", gallery)

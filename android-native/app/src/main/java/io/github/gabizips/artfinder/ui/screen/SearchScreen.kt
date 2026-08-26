@@ -2,6 +2,12 @@ package io.github.gabizips.artfinder.ui.screen
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -27,7 +34,9 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material.icons.outlined.Tune
@@ -39,7 +48,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -62,6 +70,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -79,8 +89,8 @@ import io.github.gabizips.artfinder.model.SettingsSnapshot
 import io.github.gabizips.artfinder.ui.component.ArtworkPreview
 import io.github.gabizips.artfinder.ui.component.CollectionPickerDialog
 import io.github.gabizips.artfinder.ui.component.EmptyState
-import io.github.gabizips.artfinder.ui.component.ScreenHeader
 import io.github.gabizips.artfinder.ui.component.SectionHeader
+import io.github.gabizips.artfinder.ui.component.ViewerImage
 import io.github.gabizips.artfinder.ui.component.ZoomableImageViewer
 import io.github.gabizips.artfinder.ui.originalModel
 import io.github.gabizips.artfinder.ui.previewModel
@@ -95,24 +105,49 @@ fun SearchScreen(
 ) {
     var categoryExpanded by remember { mutableStateOf(false) }
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
+    var controlsExpanded by rememberSaveable { mutableStateOf(state.posts.isEmpty()) }
     var confirmLargeSearch by remember { mutableStateOf(false) }
-    var viewerPost by remember { mutableStateOf<ArtPost?>(null) }
+    var viewerUid by rememberSaveable { mutableStateOf<String?>(null) }
     var collectionPost by remember { mutableStateOf<ArtPost?>(null) }
     var draftOptions by remember { mutableStateOf(settings.searchOptions) }
+    val context = LocalContext.current
+    val unknownArtist = stringResource(R.string.unknown_artist)
     LaunchedEffect(settings.searchOptions) { draftOptions = settings.searchOptions }
+    LaunchedEffect(state.posts.size) {
+        if (state.posts.isNotEmpty()) controlsExpanded = false
+    }
     LaunchedEffect(settings.categories, state.selectedCategory) {
         if (state.selectedCategory == null && settings.categories.isNotEmpty()) viewModel.selectCategory(settings.categories.first().key)
     }
     val selectedCategory = settings.categories.firstOrNull { it.key == state.selectedCategory } ?: settings.categories.firstOrNull()
     val estimate = viewModel.estimateRequests(selectedCategory, state.selectedSources, draftOptions.pages)
-    val startSearch = { viewModel.search(draftOptions) }
+    val startSearch = {
+        controlsExpanded = false
+        viewModel.search(draftOptions)
+    }
 
-    Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            ScreenHeader(
-                title = stringResource(R.string.search_artworks),
-                description = stringResource(R.string.search_description),
-            )
+    Box(
+        Modifier.fillMaxSize().background(
+            Brush.verticalGradient(
+                listOf(
+                    MaterialTheme.colorScheme.primary.copy(alpha = .08f),
+                    MaterialTheme.colorScheme.background,
+                    MaterialTheme.colorScheme.background,
+                ),
+            ),
+        ),
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            AnimatedVisibility(
+                visible = controlsExpanded || (state.posts.isEmpty() && !state.loading),
+                enter = fadeIn(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SearchHero(
+                        canCollapse = state.posts.isNotEmpty(),
+                        onCollapse = { controlsExpanded = false },
+                    )
             if (settings.categories.isEmpty()) {
                 EmptyState(
                     icon = Icons.Outlined.Tag,
@@ -123,6 +158,14 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .18f)),
+                    shadowElevation = 2.dp,
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box {
                     val selected = selectedCategory ?: settings.categories.first()
                     OutlinedButton(onClick = { categoryExpanded = true }, modifier = Modifier.fillMaxWidth()) {
@@ -195,17 +238,12 @@ fun SearchScreen(
                         }
                     }
                 } else {
-                    Button(
+                    GradientSearchButton(
                         onClick = {
                             if (draftOptions.pages >= 21) confirmLargeSearch = true else startSearch()
                         },
                         enabled = state.selectedSources.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Outlined.ImageSearch, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.search))
-                    }
+                    )
                 }
                 if (state.errors.isNotEmpty()) {
                     Surface(
@@ -220,27 +258,32 @@ fun SearchScreen(
                         )
                     }
                 }
+                    }
+                }
             }
-        }
-        if (settings.categories.isNotEmpty() && state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (settings.categories.isNotEmpty()) HorizontalDivider()
+                }
+            }
+            if (settings.categories.isNotEmpty() && !controlsExpanded && (state.loading || state.posts.isNotEmpty())) {
+                CompactSearchBar(
+                    selectedCategory = selectedCategory,
+                    state = state,
+                    onEdit = { controlsExpanded = true },
+                    onCancel = viewModel::cancelSearch,
+                )
+            }
+            if (settings.categories.isNotEmpty() && state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (settings.categories.isNotEmpty() && !state.loading && state.posts.isEmpty()) {
             EmptyState(
                 icon = Icons.Outlined.ImageSearch,
                 title = stringResource(R.string.results_placeholder_title),
                 description = stringResource(R.string.results_placeholder),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
             )
         } else if (state.posts.isNotEmpty()) {
-            SectionHeader(
-                title = stringResource(R.string.search_results),
-                supportingText = stringResource(R.string.search_summary, state.posts.size, state.requestCount),
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            )
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(220.dp), modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
+                columns = GridCells.Adaptive(220.dp), modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(state.posts, key = { "${it.source.id}:${it.id}" }) { post ->
                     ArtCard(
@@ -248,21 +291,36 @@ fun SearchScreen(
                         state = state,
                         blurNsfw = settings.displayPreferences.blurNsfw,
                         viewModel = viewModel,
-                        onOpen = { viewerPost = post },
+                        onOpen = { viewerUid = "${post.source.id}:${post.id}" },
                         onKeep = { collectionPost = post },
                     )
                 }
             }
+            }
         }
     }
 
-    viewerPost?.let { post ->
-        ZoomableImageViewer(
-            model = post.originalModel(LocalContext.current),
-            contentDescription = post.tags,
-            initiallyBlurred = settings.displayPreferences.blurNsfw && post.rating.equals("nsfw", ignoreCase = true),
-            onDismiss = { viewerPost = null },
-        )
+    viewerUid?.let { uid ->
+        val viewerImages = state.posts.map { post ->
+            ViewerImage(
+                key = "${post.source.id}:${post.id}",
+                model = post.originalModel(context),
+                contentDescription = post.tags,
+                title = post.artist.ifBlank { unknownArtist },
+                subtitle = "${post.source.label} · ${post.width}×${post.height}",
+                initiallyBlurred = settings.displayPreferences.blurNsfw && post.rating.equals("nsfw", ignoreCase = true),
+            )
+        }
+        val initialIndex = viewerImages.indexOfFirst { it.key == uid }
+        if (initialIndex >= 0) {
+            ZoomableImageViewer(
+                images = viewerImages,
+                initialIndex = initialIndex,
+                onDismiss = { viewerUid = null },
+            )
+        } else {
+            LaunchedEffect(uid) { viewerUid = null }
+        }
     }
 
     collectionPost?.let { post ->
@@ -288,6 +346,128 @@ fun SearchScreen(
             },
             dismissButton = { TextButton(onClick = { confirmLargeSearch = false }) { Text(stringResource(R.string.cancel)) } },
         )
+    }
+}
+
+@Composable
+private fun SearchHero(canCollapse: Boolean, onCollapse: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(MaterialTheme.shapes.large)
+                .background(
+                    Brush.linearGradient(
+                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary),
+                    ),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.ImageSearch, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.app_name).uppercase(),
+                color = MaterialTheme.colorScheme.secondary,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(stringResource(R.string.search_artworks), style = MaterialTheme.typography.headlineSmall)
+        }
+        if (canCollapse) {
+            IconButton(onClick = onCollapse) {
+                Icon(Icons.Outlined.ExpandLess, stringResource(R.string.hide_search))
+            }
+        }
+    }
+}
+
+@Composable
+private fun GradientSearchButton(enabled: Boolean, onClick: () -> Unit) {
+    val colors = if (enabled) {
+        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+    } else {
+        listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant)
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(MaterialTheme.shapes.large)
+            .background(Brush.horizontalGradient(colors))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Icon(Icons.Outlined.ImageSearch, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
+            Text(
+                stringResource(R.string.search),
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactSearchBar(
+    selectedCategory: Category?,
+    state: SearchUiState,
+    onEdit: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = .96f),
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .2f)),
+        shadowElevation = 2.dp,
+    ) {
+        Row(
+            Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(selectedCategory?.emoji ?: "🎨", style = MaterialTheme.typography.titleLarge)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    selectedCategory?.label ?: stringResource(R.string.search_results),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (state.loading) {
+                        stringResource(
+                            R.string.search_progress_details,
+                            state.completedSources,
+                            state.totalSources,
+                            state.requestCount,
+                            state.estimatedRequests,
+                        )
+                    } else {
+                        stringResource(R.string.search_summary, state.posts.size, state.requestCount)
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (state.loading) {
+                IconButton(onClick = onCancel) {
+                    Icon(Icons.Outlined.Close, stringResource(R.string.cancel_search))
+                }
+            }
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Outlined.Tune, stringResource(R.string.edit_search))
+            }
+        }
     }
 }
 

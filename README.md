@@ -130,6 +130,9 @@ Na busca, é possível escolher de 1 a 25 páginas por fonte, com padrão de 5,
 filtrar por SFW/Sensível/NSFW, período, score e arte de IA. Buscas grandes
 mostram o custo estimado e pedem confirmação entre 21 e 25 páginas. Conteúdo
 NSFW fica borrado até ser revelado com um toque; qualquer resolução é aceita.
+Depois da busca, os controles se recolhem para priorizar as imagens. Ao abrir
+uma arte, deslize para os lados para navegar pelos resultados; toque para
+ocultar os controles e use pinça ou toque duplo para ampliar.
 
 ### Parear o PC com o celular
 

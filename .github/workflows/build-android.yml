@@ -80,7 +80,7 @@ jobs:
           build_tools="$ANDROID_HOME/build-tools/36.0.0"
           badging="$($build_tools/aapt dump badging "$apk")"
           printf '%s\n' "$badging"
-          grep -q "package: name='io.github.gabizips.artfinder' versionCode='80000' versionName='0.8.0'" <<< "$badging"
+          grep -q "package: name='io.github.gabizips.artfinder' versionCode='90000' versionName='0.9.0'" <<< "$badging"
           grep -q "sdkVersion:'29'" <<< "$badging"
           grep -q "targetSdkVersion:'36'" <<< "$badging"
           listing="$(unzip -Z1 "$apk")"

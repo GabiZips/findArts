@@ -54,6 +54,7 @@ import io.github.gabizips.artfinder.ui.component.CollectionPickerDialog
 import io.github.gabizips.artfinder.ui.component.EmptyState
 import io.github.gabizips.artfinder.ui.component.ScreenHeader
 import io.github.gabizips.artfinder.ui.component.StatusBadge
+import io.github.gabizips.artfinder.ui.component.ViewerImage
 import io.github.gabizips.artfinder.ui.component.ZoomableImageViewer
 import io.github.gabizips.artfinder.ui.imageModel
 import io.github.gabizips.artfinder.ui.originalModel
@@ -165,13 +166,27 @@ fun GalleryScreen(
         }
     }
 
-    items.firstOrNull { it.uid == viewerUid }?.let { item ->
-        ZoomableImageViewer(
-            model = item.originalModel(context),
-            contentDescription = item.artist,
-            initiallyBlurred = blurNsfw && item.rating.equals("nsfw", ignoreCase = true),
-            onDismiss = { viewerUid = null },
-        )
+    viewerUid?.let { uid ->
+        val viewerImages = visibleItems.map { item ->
+            ViewerImage(
+                key = item.uid,
+                model = item.originalModel(context),
+                contentDescription = item.artist,
+                title = item.artist.ifBlank { item.source.replaceFirstChar(Char::uppercase) },
+                subtitle = item.source.replaceFirstChar(Char::uppercase),
+                initiallyBlurred = blurNsfw && item.rating.equals("nsfw", ignoreCase = true),
+            )
+        }
+        val initialIndex = viewerImages.indexOfFirst { it.key == uid }
+        if (initialIndex >= 0) {
+            ZoomableImageViewer(
+                images = viewerImages,
+                initialIndex = initialIndex,
+                onDismiss = { viewerUid = null },
+            )
+        } else {
+            LaunchedEffect(uid) { viewerUid = null }
+        }
     }
     items.firstOrNull { it.uid == pickerUid }?.let { item ->
         CollectionPickerDialog(

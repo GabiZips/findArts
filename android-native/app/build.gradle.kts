@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.gabizips.artfinder"
         minSdk = 29
         targetSdk = 36
-        versionCode = 80000
-        versionName = "0.8.0"
+        versionCode = 90000
+        versionName = "0.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

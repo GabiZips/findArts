@@ -14,6 +14,8 @@
     <string name="close">Fechar</string>
     <string name="zoom_in">Aumentar zoom</string>
     <string name="zoom_out">Diminuir zoom</string>
+    <string name="viewer_position">%1$d de %2$d</string>
+    <string name="swipe_for_next">Deslize para ver a próxima arte</string>
     <string name="confirm">Confirmar</string>
     <string name="keep">Guardar</string>
     <string name="download">Baixar</string>
@@ -36,6 +38,8 @@
     <string name="source_selection">Fontes</string>
     <string name="selected_sources">%1$d de %2$d selecionadas</string>
     <string name="search_results">Resultados</string>
+    <string name="edit_search">Editar busca</string>
+    <string name="hide_search">Ocultar busca</string>
     <string name="manage_tags">Gerenciar tags</string>
     <string name="no_categories_title">Crie sua primeira tag</string>
     <string name="choose_tag_source">Escolha uma tag e pelo menos uma fonte.</string>
