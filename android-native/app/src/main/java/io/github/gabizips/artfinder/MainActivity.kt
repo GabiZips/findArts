@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +31,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -119,11 +119,22 @@ private fun ArtFinderNavigationBar(
     selected: Int,
     onSelected: (Int) -> Unit,
 ) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shadowElevation = 12.dp) {
-        Column {
-            HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = .22f))
+    Box(
+        Modifier.fillMaxWidth().background(
+            Brush.verticalGradient(
+                listOf(androidx.compose.ui.graphics.Color.Transparent, MaterialTheme.colorScheme.background.copy(alpha = .96f)),
+            ),
+        ),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = .97f),
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .8f)),
+            shadowElevation = 16.dp,
+        ) {
             Row(
-                Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 6.dp, vertical = 7.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 5.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 destinations.forEachIndexed { index, destination ->
@@ -131,23 +142,23 @@ private fun ArtFinderNavigationBar(
                     Column(
                         Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .clickable { onSelected(index) }
-                            .padding(vertical = 3.dp),
+                            .padding(vertical = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Box(
                             Modifier
-                                .width(58.dp)
-                                .height(36.dp)
-                                .clip(RoundedCornerShape(18.dp))
+                                .width(if (active) 62.dp else 48.dp)
+                                .height(35.dp)
+                                .clip(RoundedCornerShape(19.dp))
                                 .background(
                                     if (active) {
                                         Brush.horizontalGradient(
                                             listOf(
-                                                MaterialTheme.colorScheme.primary.copy(alpha = .9f),
-                                                MaterialTheme.colorScheme.tertiary.copy(alpha = .78f),
+                                                MaterialTheme.colorScheme.primary,
+                                                MaterialTheme.colorScheme.tertiary.copy(alpha = .9f),
                                             ),
                                         )
                                     } else {
@@ -166,7 +177,7 @@ private fun ArtFinderNavigationBar(
                             destination.label,
                             color = if (active) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )

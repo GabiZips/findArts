@@ -18,9 +18,6 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +40,10 @@ import io.github.gabizips.artfinder.MainViewModel
 import io.github.gabizips.artfinder.R
 import io.github.gabizips.artfinder.model.Category
 import io.github.gabizips.artfinder.ui.component.CategoryEditorDialog
+import io.github.gabizips.artfinder.ui.component.ArtFinderBackdrop
+import io.github.gabizips.artfinder.ui.component.ArtFinderIconTile
+import io.github.gabizips.artfinder.ui.component.ArtFinderPanel
+import io.github.gabizips.artfinder.ui.component.ArtFinderPill
 import io.github.gabizips.artfinder.ui.component.EmptyState
 import io.github.gabizips.artfinder.ui.component.ScreenHeader
 
@@ -80,16 +81,19 @@ fun TagsScreen(categories: List<Category>, viewModel: MainViewModel) {
         filterCategories(categories, query, selectedGroup)
     }
 
+    ArtFinderBackdrop {
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ScreenHeader(
                 title = stringResource(R.string.tags_characters),
                 description = stringResource(R.string.source_specific_search),
                 action = {
-                    Button(onClick = { creating = true }) {
-                        Icon(Icons.Outlined.Add, contentDescription = null)
-                        Text(" ${stringResource(R.string.new_tag)}")
-                    }
+                    ArtFinderPill(
+                        label = stringResource(R.string.new_tag),
+                        selected = true,
+                        onClick = { creating = true },
+                        icon = Icons.Outlined.Add,
+                    )
                 },
             )
             OutlinedTextField(
@@ -111,17 +115,17 @@ fun TagsScreen(categories: List<Category>, viewModel: MainViewModel) {
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
-                    FilterChip(
+                    ArtFinderPill(
                         selected = selectedGroup == null,
                         onClick = { selectedGroup = null },
-                        label = { Text(stringResource(R.string.all_groups)) },
+                        label = stringResource(R.string.all_groups),
                     )
                 }
                 items(groups, key = { it }) { group ->
-                    FilterChip(
+                    ArtFinderPill(
                         selected = selectedGroup == group,
                         onClick = { selectedGroup = group },
-                        label = { Text(group) },
+                        label = group,
                     )
                 }
             }
@@ -156,14 +160,14 @@ fun TagsScreen(categories: List<Category>, viewModel: MainViewModel) {
                         )
                     }
                     items(values, key = Category::key) { category ->
-                        ElevatedCard(Modifier.fillMaxWidth()) {
+                        ArtFinderPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
                             Row(
-                                Modifier.padding(start = 14.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+                                Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(category.emoji, style = MaterialTheme.typography.headlineSmall)
+                                ArtFinderIconTile(emoji = category.emoji, compact = true)
                                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                                    Text(category.label, fontWeight = FontWeight.Bold)
+                                    Text(category.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                     Text(
                                         category.tags,
                                         maxLines = 2,
@@ -192,6 +196,7 @@ fun TagsScreen(categories: List<Category>, viewModel: MainViewModel) {
                 }
             }
         }
+    }
     }
 
     if (creating || editing != null) {

@@ -12,14 +12,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
@@ -42,6 +38,11 @@ import io.github.gabizips.artfinder.model.SettingsSnapshot
 import io.github.gabizips.artfinder.ui.component.ScreenHeader
 import io.github.gabizips.artfinder.ui.component.SectionHeader
 import io.github.gabizips.artfinder.ui.component.StatusBadge
+import io.github.gabizips.artfinder.ui.component.ArtFinderBackdrop
+import io.github.gabizips.artfinder.ui.component.ArtFinderIconTile
+import io.github.gabizips.artfinder.ui.component.ArtFinderPanel
+import io.github.gabizips.artfinder.ui.component.ArtFinderPrimaryButton
+import io.github.gabizips.artfinder.ui.component.ArtFinderPill
 
 @Composable
 fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
@@ -52,6 +53,7 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
     var replace by remember { mutableStateOf(false) }
     var editingCredential by remember { mutableStateOf<String?>(null) }
 
+    ArtFinderBackdrop {
     LazyColumn(
         modifier = Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -63,26 +65,42 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
             )
         }
         item {
-            OutlinedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(stringResource(R.string.pair_devices), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            ArtFinderPanel(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ArtFinderIconTile(icon = Icons.Outlined.Key, compact = true)
+                        Text(stringResource(R.string.pair_devices), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    }
                     Text(stringResource(R.string.pair_instructions))
                     OutlinedTextField(
                         value = code, onValueChange = { code = it.take(12_000) },
                         label = { Text(stringResource(R.string.paste_code)) }, minLines = 3,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = !replace, onClick = { replace = false }); Text(stringResource(R.string.merge_tags))
-                        RadioButton(selected = replace, onClick = { replace = true }); Text(stringResource(R.string.replace_tags))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        ArtFinderPill(
+                            label = stringResource(R.string.merge_tags),
+                            selected = !replace,
+                            onClick = { replace = false },
+                            modifier = Modifier.weight(1f),
+                        )
+                        ArtFinderPill(
+                            label = stringResource(R.string.replace_tags),
+                            selected = replace,
+                            onClick = { replace = true },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
-                    Button(
+                    ArtFinderPrimaryButton(
+                        label = stringResource(R.string.import_configuration),
+                        icon = Icons.Outlined.Key,
                         onClick = { viewModel.importPairing(code, replace) },
                         enabled = code.startsWith("artfinder-pair:v1:") && !busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        if (busy) CircularProgressIndicator(Modifier.height(20.dp)) else Text(stringResource(R.string.import_configuration))
-                    }
+                    )
+                    if (busy) CircularProgressIndicator(Modifier.height(20.dp).align(Alignment.CenterHorizontally))
                     message?.let {
                         Surface(
                             color = if (messageIsError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
@@ -102,10 +120,16 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
             )
         }
         items(ArtSource.entries) { source ->
-            ElevatedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ArtFinderPanel(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(source.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        ArtFinderIconTile(emoji = source.label.take(1), compact = true)
+                        Text(
+                            source.label,
+                            modifier = Modifier.weight(1f).padding(start = 12.dp),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
                         if (source.credentialKeys.isEmpty()) {
                             StatusBadge(stringResource(R.string.no_credentials_needed), positive = true)
                         }
@@ -131,11 +155,12 @@ fun SettingsScreen(settings: SettingsSnapshot, viewModel: MainViewModel) {
             }
         }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            ArtFinderPanel(Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.local_data_only), style = MaterialTheme.typography.labelLarge)
                 Text(stringResource(R.string.legal_notice), style = MaterialTheme.typography.bodySmall)
             }
         }
+    }
     }
 
     editingCredential?.let { key ->

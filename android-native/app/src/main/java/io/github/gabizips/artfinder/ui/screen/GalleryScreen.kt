@@ -2,13 +2,20 @@ package io.github.gabizips.artfinder.ui.screen
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,8 +31,6 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,16 +45,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import io.github.gabizips.artfinder.MainViewModel
 import io.github.gabizips.artfinder.R
 import io.github.gabizips.artfinder.model.ArtCollection
 import io.github.gabizips.artfinder.model.GalleryItem
 import io.github.gabizips.artfinder.ui.component.ArtworkPreview
+import io.github.gabizips.artfinder.ui.component.ArtFinderBackdrop
+import io.github.gabizips.artfinder.ui.component.ArtFinderPanel
+import io.github.gabizips.artfinder.ui.component.ArtFinderPill
 import io.github.gabizips.artfinder.ui.component.CollectionPickerDialog
 import io.github.gabizips.artfinder.ui.component.EmptyState
 import io.github.gabizips.artfinder.ui.component.ScreenHeader
@@ -84,15 +97,19 @@ fun GalleryScreen(
         selectedCollectionId?.let { id -> items.filter { id in it.collectionIds } } ?: items
     }
 
+    ArtFinderBackdrop {
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ScreenHeader(
                 title = stringResource(R.string.gallery),
                 description = stringResource(R.string.gallery_path),
                 action = {
-                    IconButton(onClick = { creatingCollection = true }) {
-                        Icon(Icons.Outlined.Add, stringResource(R.string.new_collection))
-                    }
+                    ArtFinderPill(
+                        label = stringResource(R.string.new_collection),
+                        selected = true,
+                        onClick = { creatingCollection = true },
+                        icon = Icons.Outlined.Add,
+                    )
                 },
             )
             Text(
@@ -102,17 +119,22 @@ fun GalleryScreen(
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
-                    FilterChip(
+                    CollectionTile(
+                        name = stringResource(R.string.all_artworks),
+                        artwork = items.firstOrNull(),
+                        count = items.size,
                         selected = selectedCollectionId == null,
                         onClick = { selectedCollectionId = null },
-                        label = { Text(stringResource(R.string.all_artworks)) },
                     )
                 }
                 items(collections, key = ArtCollection::id) { collection ->
-                    FilterChip(
+                    val collectionItems = items.filter { collection.id in it.collectionIds }
+                    CollectionTile(
+                        name = collection.name,
+                        artwork = collectionItems.maxByOrNull(GalleryItem::savedAt),
+                        count = collectionItems.size,
                         selected = selectedCollectionId == collection.id,
                         onClick = { selectedCollectionId = collection.id },
-                        label = { Text(collection.name) },
                     )
                 }
             }
@@ -164,6 +186,7 @@ fun GalleryScreen(
                 }
             }
         }
+    }
     }
 
     viewerUid?.let { uid ->
@@ -251,6 +274,71 @@ fun GalleryScreen(
 }
 
 @Composable
+private fun CollectionTile(
+    name: String,
+    artwork: GalleryItem?,
+    count: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    androidx.compose.material3.Surface(
+        modifier = Modifier.width(152.dp).height(96.dp).clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outlineVariant,
+        ),
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            if (artwork != null) {
+                AsyncImage(
+                    model = artwork.imageModel(context),
+                    contentDescription = name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.linearGradient(
+                            listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.surfaceContainerHighest),
+                        ),
+                    ),
+                )
+            }
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .82f))),
+                ),
+            )
+            androidx.compose.material3.Surface(
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                color = Color.Black.copy(alpha = .48f),
+                contentColor = Color.White,
+                shape = androidx.compose.foundation.shape.CircleShape,
+            ) {
+                Icon(
+                    Icons.Outlined.Folder,
+                    contentDescription = null,
+                    modifier = Modifier.padding(6.dp).size(16.dp),
+                )
+            }
+            Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
+                Text(name, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    stringResource(R.string.gallery_count, count),
+                    color = Color.White.copy(alpha = .74f),
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun GalleryCard(
     item: GalleryItem,
     blurNsfw: Boolean,
@@ -263,7 +351,7 @@ private fun GalleryCard(
     val context = LocalContext.current
     var nsfwRevealed by rememberSaveable(item.uid) { mutableStateOf(false) }
     val hiddenNsfw = blurNsfw && item.rating.equals("nsfw", ignoreCase = true) && !nsfwRevealed
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    ArtFinderPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(6.dp)) {
         ArtworkPreview(
             model = item.imageModel(context),
             contentDescription = item.artist,
@@ -271,9 +359,9 @@ private fun GalleryCard(
             hidden = hiddenNsfw,
             onReveal = { nsfwRevealed = true },
             onOpen = onOpen,
-            modifier = Modifier.padding(6.dp),
+            modifier = Modifier,
         )
-        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp)) {
+        Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text(
                     item.artist.ifBlank { item.source },

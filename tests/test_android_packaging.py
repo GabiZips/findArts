@@ -101,3 +101,31 @@ class AndroidPackagingTests(unittest.TestCase):
         self.assertIn("userScrollEnabled = images.size > 1", viewer)
         self.assertIn("images = viewerImages", search)
         self.assertIn("images = viewerImages", gallery)
+
+    def test_android_has_a_shared_branded_visual_system(self):
+        android = self.project / "android-native"
+        ui_root = (
+            android / "app" / "src" / "main" / "java"
+            / "io" / "github" / "gabizips" / "artfinder" / "ui"
+        )
+        design = (ui_root / "component" / "ArtFinderDesign.kt").read_text(encoding="utf-8")
+        typography = (ui_root / "theme" / "Type.kt").read_text(encoding="utf-8")
+
+        for component in (
+            "ArtFinderBackdrop",
+            "ArtFinderPanel",
+            "ArtFinderPrimaryButton",
+            "ArtFinderSecondaryButton",
+            "ArtFinderPill",
+        ):
+            self.assertIn(f"fun {component}", design)
+
+        self.assertIn("R.font.manrope_variable", typography)
+        build = (android / "app" / "build.gradle.kts").read_text(encoding="utf-8")
+        self.assertIn('assets.directories.add("../licenses")', build)
+        self.assertTrue((android / "app" / "src" / "main" / "res" / "font" / "manrope_variable.ttf").is_file())
+        self.assertTrue((android / "licenses" / "MANROPE-OFL.txt").is_file())
+
+        for screen in ("SearchScreen.kt", "TagsScreen.kt", "GalleryScreen.kt", "SettingsScreen.kt"):
+            source = (ui_root / "screen" / screen).read_text(encoding="utf-8")
+            self.assertIn("ArtFinderBackdrop", source)

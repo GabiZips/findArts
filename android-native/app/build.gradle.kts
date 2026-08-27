@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.gabizips.artfinder"
         minSdk = 29
         targetSdk = 36
-        versionCode = 90000
-        versionName = "0.9.0"
+        versionCode = 100000
+        versionName = "0.10.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -38,6 +38,8 @@ android {
         compose = true
         buildConfig = true
     }
+
+    sourceSets.getByName("main").assets.directories.add("../licenses")
 
     packaging.resources.excludes += setOf(
         "/META-INF/{AL2.0,LGPL2.1}",

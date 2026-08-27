@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -41,35 +42,44 @@ fun ScreenHeader(
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall)
-            Text(
-                description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ArtFinderEyebrow(stringResource(R.string.app_name))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            action?.invoke()
         }
-        action?.invoke()
     }
 }
 
 @Composable
 fun SectionHeader(
     title: String,
-    supportingText: String? = null,
     modifier: Modifier = Modifier,
+    supportingText: String? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                Modifier.size(width = 4.dp, height = 18.dp).clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondary),
+            )
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
         supportingText?.let {
             Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -85,38 +95,39 @@ fun EmptyState(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
-    Column(
-        modifier = modifier.padding(horizontal = 32.dp, vertical = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-            Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(34.dp),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+    Box(modifier.padding(horizontal = 20.dp, vertical = 20.dp), contentAlignment = Alignment.Center) {
+        ArtFinderPanel(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
+                ArtFinderIconTile(icon = icon)
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (actionLabel != null && onAction != null) {
+                    Button(onClick = onAction, modifier = Modifier.padding(top = 4.dp)) { Text(actionLabel) }
+                }
             }
-        }
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Text(
-            description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (actionLabel != null && onAction != null) {
-            Button(onClick = onAction, modifier = Modifier.padding(top = 4.dp)) { Text(actionLabel) }
         }
     }
 }
 
 @Composable
 fun StatusBadge(label: String, positive: Boolean, modifier: Modifier = Modifier) {
-    val container = if (positive) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
-    val content = if (positive) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    Surface(modifier = modifier, color = container, contentColor = content, shape = CircleShape) {
+    val container = if (positive) MaterialTheme.colorScheme.secondary.copy(alpha = .14f) else MaterialTheme.colorScheme.surfaceContainerHighest
+    val content = if (positive) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(
+        modifier = modifier,
+        color = container,
+        contentColor = content,
+        shape = CircleShape,
+        border = androidx.compose.foundation.BorderStroke(1.dp, content.copy(alpha = .24f)),
+    ) {
         Text(
             label,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -149,6 +160,13 @@ fun ArtworkPreview(
             contentDescription = contentDescription,
             modifier = Modifier.fillMaxSize().blur(if (hidden) 28.dp else 0.dp),
             contentScale = ContentScale.Crop,
+        )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = .3f)),
+                ),
+            ),
         )
         Surface(
             modifier = Modifier.align(Alignment.TopStart).padding(10.dp),

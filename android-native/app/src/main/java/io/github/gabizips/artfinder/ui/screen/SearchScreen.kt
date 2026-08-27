@@ -41,19 +41,15 @@ import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -87,6 +83,10 @@ import io.github.gabizips.artfinder.model.Category
 import io.github.gabizips.artfinder.model.SearchOptions
 import io.github.gabizips.artfinder.model.SettingsSnapshot
 import io.github.gabizips.artfinder.ui.component.ArtworkPreview
+import io.github.gabizips.artfinder.ui.component.ArtFinderPanel
+import io.github.gabizips.artfinder.ui.component.ArtFinderPill
+import io.github.gabizips.artfinder.ui.component.ArtFinderBackdrop
+import io.github.gabizips.artfinder.ui.component.ArtFinderSecondaryButton
 import io.github.gabizips.artfinder.ui.component.CollectionPickerDialog
 import io.github.gabizips.artfinder.ui.component.EmptyState
 import io.github.gabizips.artfinder.ui.component.SectionHeader
@@ -126,17 +126,7 @@ fun SearchScreen(
         viewModel.search(draftOptions)
     }
 
-    Box(
-        Modifier.fillMaxSize().background(
-            Brush.verticalGradient(
-                listOf(
-                    MaterialTheme.colorScheme.primary.copy(alpha = .08f),
-                    MaterialTheme.colorScheme.background,
-                    MaterialTheme.colorScheme.background,
-                ),
-            ),
-        ),
-    ) {
+    ArtFinderBackdrop {
         Column(Modifier.fillMaxSize()) {
             AnimatedVisibility(
                 visible = controlsExpanded || (state.posts.isEmpty() && !state.loading),
@@ -168,9 +158,23 @@ fun SearchScreen(
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box {
                     val selected = selectedCategory ?: settings.categories.first()
-                    OutlinedButton(onClick = { categoryExpanded = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("${selected.emoji} ${selected.label} · ${selected.group}", modifier = Modifier.weight(1f))
-                        Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable { categoryExpanded = true },
+                        shape = MaterialTheme.shapes.large,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(selected.emoji, style = MaterialTheme.typography.titleLarge)
+                            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                                Text(selected.label, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(selected.group, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Icon(Icons.Outlined.ArrowDropDown, contentDescription = null)
+                        }
                     }
                     DropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
                         settings.categories.forEach { category ->
@@ -191,15 +195,11 @@ fun SearchScreen(
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(ArtSource.entries) { source ->
                         val selected = source in state.selectedSources
-                        FilterChip(
+                        ArtFinderPill(
                             selected = selected,
                             onClick = { viewModel.toggleSource(source) },
-                            label = { Text(source.label) },
-                            leadingIcon = if (selected) {
-                                { Icon(Icons.Outlined.Check, contentDescription = null) }
-                            } else {
-                                null
-                            },
+                            label = source.label,
+                            icon = if (selected) Icons.Outlined.Check else null,
                         )
                     }
                 }
@@ -482,7 +482,7 @@ private fun SearchOptionsCard(
     onBlurNsfwChange: (Boolean) -> Unit,
     onOptionsChange: (SearchOptions) -> Unit,
 ) {
-    OutlinedCard(Modifier.fillMaxWidth()) {
+    ArtFinderPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
         Row(
             Modifier.fillMaxWidth().clickable { onExpandedChange(true) }.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -521,13 +521,17 @@ private fun SearchOptionsCard(
                 Text(stringResource(R.string.content_rating), fontWeight = FontWeight.SemiBold)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     item {
-                        FilterChip(options.includeSfw, { toggleRating(options, "sfw", onOptionsChange) }, { Text("SFW") })
+                        ArtFinderPill("SFW", options.includeSfw, { toggleRating(options, "sfw", onOptionsChange) })
                     }
                     item {
-                        FilterChip(options.includeSensitive, { toggleRating(options, "sensitive", onOptionsChange) }, { Text(stringResource(R.string.sensitive)) })
+                        ArtFinderPill(
+                            stringResource(R.string.sensitive),
+                            options.includeSensitive,
+                            { toggleRating(options, "sensitive", onOptionsChange) },
+                        )
                     }
                     item {
-                        FilterChip(options.includeNsfw, { toggleRating(options, "nsfw", onOptionsChange) }, { Text("NSFW") })
+                        ArtFinderPill("NSFW", options.includeNsfw, { toggleRating(options, "nsfw", onOptionsChange) })
                     }
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -541,10 +545,10 @@ private fun SearchOptionsCard(
                 val periods = listOf(0 to R.string.period_all, 7 to R.string.period_7, 30 to R.string.period_30, 90 to R.string.period_90, 180 to R.string.period_180, 365 to R.string.period_365)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(periods) { (days, label) ->
-                        FilterChip(
+                        ArtFinderPill(
                             selected = options.periodDays == days,
                             onClick = { onOptionsChange(options.copy(periodDays = days)) },
-                            label = { Text(stringResource(label)) },
+                            label = stringResource(label),
                         )
                     }
                 }
@@ -606,7 +610,7 @@ private fun ArtCard(
     val uid = "${post.source.id}:${post.id}"
     var nsfwRevealed by rememberSaveable(uid) { mutableStateOf(false) }
     val hiddenNsfw = blurNsfw && post.rating.equals("nsfw", ignoreCase = true) && !nsfwRevealed
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    ArtFinderPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(6.dp)) {
         ArtworkPreview(
             model = post.previewModel(context),
             contentDescription = post.tags,
@@ -614,9 +618,9 @@ private fun ArtCard(
             hidden = hiddenNsfw,
             onReveal = { nsfwRevealed = true },
             onOpen = onOpen,
-            modifier = Modifier.padding(6.dp),
+            modifier = Modifier,
         )
-        Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp)) {
+        Column(Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -635,19 +639,20 @@ private fun ArtCard(
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onKeep, enabled = uid !in state.saving, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Outlined.BookmarkBorder, null)
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.keep))
-                }
-                Button(onClick = { viewModel.download(post) }, enabled = uid !in state.saving, modifier = Modifier.weight(1f)) {
-                    if (uid in state.saving) CircularProgressIndicator(Modifier.width(20.dp))
-                    else {
-                        Icon(Icons.Outlined.Download, null)
-                        Spacer(Modifier.width(4.dp))
-                        Text(stringResource(R.string.download))
-                    }
-                }
+                ArtFinderSecondaryButton(
+                    label = stringResource(R.string.keep),
+                    icon = Icons.Outlined.BookmarkBorder,
+                    onClick = onKeep,
+                    enabled = uid !in state.saving,
+                    modifier = Modifier.weight(1f),
+                )
+                ArtFinderSecondaryButton(
+                    label = if (uid in state.saving) "…" else stringResource(R.string.download),
+                    icon = Icons.Outlined.Download,
+                    onClick = { viewModel.download(post) },
+                    enabled = uid !in state.saving,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
