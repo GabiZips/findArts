@@ -172,24 +172,17 @@
   .grid-area{flex:1;overflow-y:auto;padding:10px 12px}
   .grid{display:flex;gap:12px;align-items:flex-start}
   .card{border-radius:12px;overflow:hidden;background:var(--surface2);border:2px solid transparent;cursor:pointer;transition:transform .22s cubic-bezier(.34,1.4,.64,1),box-shadow .22s,border-color .18s;position:relative;box-shadow:var(--shadow-sm);user-select:none}
-  /* hover neutro (branco suave) — roxo é SÓ de selecionado, pra não confundir */
-  .card:hover{border-color:rgba(255,255,255,.28);transform:translateY(-4px);box-shadow:0 14px 32px rgba(0,0,0,.5)}
-  .card.selected,.card.selected:hover{border-color:var(--sel-b);background:var(--sel);box-shadow:var(--shadow-glow)}
+  /* Artwork hover feedback does not change privacy or collection state. */
+  .card:hover{border-color:rgba(255,255,255,.28);box-shadow:0 14px 32px rgba(0,0,0,.5)}
   .card:not(.already-dl){animation:cardIn .32s ease both}
   .card.already-dl{opacity:.5}
   @keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){.card,.gal-card,.stat-card,.modal{animation:none!important}}
   .card img{width:100%;display:block;min-height:40px;background:var(--surface);transition:opacity .25s,transform .3s ease}
-  .card:hover img{transform:scale(1.03)}
   .card img.loading{opacity:.2}
   .card img.img-failed,.gal-card img.img-failed{min-height:120px;object-fit:contain;background:var(--surface2);opacity:.8}
-  .card-check{position:absolute;top:6px;left:6px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;transition:all .15s;backdrop-filter:blur(4px);opacity:0}
-  .card:hover .card-check,.card.selected .card-check{opacity:1}
-  .card.selected .card-check{background:var(--accent);border-color:var(--accent);box-shadow:0 0 10px rgba(139,92,246,.7)}
-  .card-check::after{content:'';display:none}
-  .card.selected .card-check::after{display:block;content:'✓';color:#fff;font-size:10px;font-weight:700}
   .card-meta{position:absolute;bottom:0;left:0;right:0;padding:20px 6px 6px;background:linear-gradient(transparent,rgba(0,0,0,.55) 45%,rgba(0,0,0,.92));display:flex;flex-wrap:wrap;gap:3px;align-items:flex-end;opacity:0;transform:translateY(4px);transition:opacity .18s,transform .18s}
-  .card:hover .card-meta,.card.selected .card-meta{opacity:1;transform:translateY(0)}
+  .card:hover .card-meta{opacity:1;transform:translateY(0)}
   .badge{padding:2px 6px;border-radius:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;box-shadow:0 1px 4px rgba(0,0,0,.35)}
   .badge-source-danbooru{background:#f97316;color:#fff}
   .badge-source-gelbooru{background:#0ea5e9;color:#fff}
@@ -236,8 +229,6 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   /* ── GALERIA ── */
   .gal-toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:7px 14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-  .gal-card.sel{outline:3px solid var(--accent);outline-offset:-3px}
-  .gal-card.sel::after{content:'✓';position:absolute;top:6px;left:6px;width:20px;height:20px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;z-index:2}
   .dup-group{border:1px solid var(--border);border-radius:8px;padding:10px;margin:10px 14px;background:var(--surface2)}
   .dup-group h4{margin:0 0 8px;font-size:12px;color:var(--muted)}
   .dup-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -252,15 +243,12 @@
   @media(max-width:1400px){.gallery-grid{columns:4}}
   @media(max-width:900px){.gallery-grid{columns:3}}
   .gal-card{break-inside:avoid;margin-bottom:12px;border-radius:12px;overflow:hidden;background:var(--surface2);position:relative;cursor:pointer;transition:transform .22s cubic-bezier(.34,1.4,.64,1),box-shadow .22s;box-shadow:var(--shadow-sm)}
-  .gal-card:hover{transform:translateY(-4px);box-shadow:0 14px 32px rgba(0,0,0,.5),0 0 20px rgba(139,92,246,.25)}
+  .gal-card:hover{box-shadow:0 14px 32px rgba(0,0,0,.5),0 0 20px rgba(139,92,246,.25)}
   .gal-card img{width:100%;display:block;transition:transform .3s ease}
-  .gal-card:hover img{transform:scale(1.03)}
   .gal-card-meta{position:absolute;bottom:0;left:0;right:0;padding:12px 5px 5px;background:linear-gradient(transparent,rgba(0,0,0,.88));opacity:0;transition:opacity .12s;display:flex;gap:2px;flex-wrap:wrap}
   .gal-card:hover .gal-card-meta{opacity:1}
   .gal-actions{position:absolute;top:4px;right:4px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
   .gal-card:hover .gal-actions{opacity:1}
-  .gal-card.selected{border:2px solid var(--accent);opacity:0.9;}
-  .gal-card.selected::after{content:'✓';position:absolute;top:8px;left:8px;background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;z-index:10;box-shadow:0 0 4px rgba(0,0,0,0.5)}
   .vid-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.6);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;pointer-events:none;z-index:5;text-shadow:0 0 5px black;backdrop-filter:blur(3px)}
   .gal-card.nsfw-blur img{filter:blur(25px);transition:filter .2s}
   .gal-card.nsfw-blur:hover img{filter:blur(0)}
@@ -653,15 +641,11 @@
       <div class="toolbar">
         <div class="toolbar-left">
           <button class="btn-sm" onclick="toggleSidebar()" aria-label="Mostrar ou esconder o painel de busca" title="Mostrar/esconder painel lateral"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>Painel</button>
-          <button class="btn-sm" onclick="selectAll()">Sel. Tudo</button>
-          <button class="btn-sm" onclick="selectNone()">Desmarcar</button>
           <button class="btn-sm on" id="btnHideDl" onclick="toggleHideDl()">👁️ Ocultar da galeria</button>
-          <span class="select-count"><b id="selCount">0</b> sel. / <b id="totalCount">0</b></span>
+          <span class="select-count" aria-live="polite"><b id="totalCount">0</b></span>
           <span id="pageInfo" style="font-size:10px;color:var(--muted);display:none">pág <b id="curPage">1</b>/<b id="totalPages">1</b></span>
         </div>
         <div class="toolbar-right">
-          <button class="btn-export" id="btnCompare" onclick="openCompare()" disabled title="Selecione 2 a 4 imagens para comparar lado a lado">⧉ Comparar</button>
-          <button class="btn-export" onclick="exportURLs()" title="Exportar URLs selecionadas como .txt">📋 Exportar URLs</button>
           <select class="sort-select" id="sortSelect" onchange="applyFilterAndSort()">
             <option value="score_desc">Score ↓</option>
             <option value="score_asc">Score ↑</option>
@@ -672,8 +656,6 @@
           <select class="sort-select" id="saveCollectionSelect" title="Coleção usada ao guardar">
             <option value="">Sem coleção</option>
           </select>
-          <button class="btn-export" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.3)" id="btnSave" onclick="doSave()" disabled title="Guardar URL sem baixar (aparece na Galeria do ArtFinder)">📌 Guardar</button>
-          <button class="btn-dl" id="btnDownload" onclick="doDownload()" disabled>⬇ Baixar</button>
         </div>
       </div>
 
@@ -714,18 +696,7 @@
         <option value="3840">4K+</option>
       </select>
       <button class="btn-sm" onclick="loadGallery()">🔄 Atualizar</button>
-      <button class="btn-sm" id="galSelectBtn" onclick="toggleGalSelectMode()">☑️ Selecionar</button>
       <button class="btn-sm" onclick="showDuplicates()">🧬 Duplicatas</button>
-    </div>
-    <!-- Barra de ações em lote (escondida até entrar no modo seleção) -->
-    <div id="galSelBar" style="display:none;align-items:center;gap:8px;padding:6px 14px;background:rgba(124,58,237,.12);border-bottom:1px solid var(--border);flex-shrink:0">
-      <span style="font-size:12px"><b id="galSelCount">0</b> selecionada(s)</span>
-      <button class="btn-sm" onclick="galSelectAllVisible()">Selecionar tudo</button>
-      <button class="btn-sm" onclick="galClearSelection()">Limpar</button>
-      <span style="flex:1"></span>
-      <button class="btn-sm" id="galExportBtn" style="display:none;background:rgba(34,197,94,.25)" onclick="bulkExportSelected()">📱 Salvar no celular</button>
-      <button class="btn-sm" style="background:rgba(239,68,68,.25)" onclick="bulkHideSelected()">🚫 Ocultar</button>
-      <button class="btn-sm" style="background:rgba(239,68,68,.55)" onclick="bulkDeleteSelected()">🗑 Apagar do dispositivo</button>
     </div>
     <!-- Rating + View pills -->
     <div style="display:flex;gap:6px;align-items:center;padding:5px 14px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap">
@@ -838,8 +809,8 @@
   <div class="lb-nav lb-next" id="lbNext" onclick="event.stopPropagation();lbStep(1)" title="Próxima (→)">›</div>
   <div id="lbMediaStage" onclick="event.stopPropagation()">
     <img id="lbImg" src="" alt="" draggable="false">
-    <video id="lbVideo" controls loop autoplay style="display:none; max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,.8); z-index:10"></video>
-    <button id="lbNsfwReveal" onclick="revealLightboxNsfw()">Mostrar imagem</button>
+    <video id="lbVideo" controls loop preload="none" style="display:none; max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,.8); z-index:10"></video>
+    <button type="button" id="lbNsfwReveal" onclick="event.stopPropagation();revealLightboxNsfw()"><span>Mostrar imagem</span></button>
   </div>
   <div class="lb-bar" onclick="event.stopPropagation()" id="lbRateBar">
     <span class="lb-info" style="margin-right:2px">Triagem:</span>
@@ -850,19 +821,15 @@
   </div>
   <div class="lb-bar" onclick="event.stopPropagation()">
     <button class="lb-btn" onclick="lbZoomBy(-.25)" title="Diminuir zoom">−</button>
+    <button class="lb-btn" id="lbNsfwHide" onclick="hideLightboxNsfw()">Ocultar imagem</button>
     <button class="lb-btn lb-zoom-label" id="lbZoomLabel" onclick="resetLbZoom()" title="Restaurar zoom">100%</button>
     <button class="lb-btn" onclick="lbZoomBy(.25)" title="Aumentar zoom">+</button>
-    <button id="lbSelBtn" class="lb-btn" onclick="lbToggleSel()" title="Selecionar (espaço)">☐ Selecionar</button>
+    <button class="lb-btn" onclick="saveCurrentArtwork()">📌 Adicionar à coleção</button>
+    <button class="lb-btn" onclick="downloadCurrentArtwork()">⬇ Baixar no dispositivo</button>
     <a id="lbLink" class="lb-btn" href="#" target="_blank">↗ Ver original</a>
     <a id="lbSauce" class="lb-btn" href="#" target="_blank">🍜 SauceNAO</a>
     <span id="lbInfo" class="lb-info"></span>
   </div>
-</div>
-
-<!-- MODO COMPARAÇÃO -->
-<div id="compareOverlay" onclick="closeCompare()">
-  <span class="lb-close" onclick="closeCompare()">✕</span>
-  <div id="compareGrid" onclick="event.stopPropagation()"></div>
 </div>
 
 <!-- MODAL DE DOWNLOAD -->
@@ -901,6 +868,9 @@
         Os valores ficam somente neste dispositivo. Por segurança, credenciais salvas nunca são exibidas de volta; deixe um campo vazio para manter o valor atual.
       </div>
       <div id="credentialGroups" style="display:flex;flex-direction:column;gap:10px"></div>
+      <button class="btn-hdr" style="min-height:44px" id="migrateCredentialsButton" onclick="migrateCredentialSettings()">Copiar credenciais antigas para o cofre</button>
+      <button class="btn-hdr" style="min-height:44px" id="cleanupCredentialsButton" onclick="cleanupLegacyCredentials()">Limpar credenciais antigas ja migradas</button>
+      <p class="cm-form-hint">O arquivo .env antigo sera preservado. Novas credenciais sao salvas no cofre do sistema.</p>
       <div style="display:flex;justify-content:flex-end;gap:8px;align-items:center">
         <button class="btn-hdr" onclick="closeCredentialSettings()">Cancelar</button>
         <button class="cm-save-btn" id="saveCredentialsButton" onclick="saveCredentialSettings()">Salvar credenciais</button>
@@ -1048,8 +1018,7 @@
 
 <!-- CONTEXT MENU (sem IDs duplicados) -->
 <div id="ctxMenu">
-  <div class="ctx-item" id="ctxSelect">✓ Selecionar / Desmarcar</div>
-  <div class="ctx-item" id="ctxSaveArt" style="color:#c084fc">📌 Guardar (só URL)</div>
+  <div class="ctx-item" id="ctxSaveArt" style="color:#c084fc">📌 Adicionar à coleção</div>
   <div class="ctx-item" id="ctxFavArt">⬇️ Baixar</div>
   <div class="ctx-item" id="ctxFavArtist" style="display:none">⭐ Favoritar Artista</div>
   <div class="ctx-item" id="ctxArtist">🎨 Buscar este artista</div>
@@ -1073,7 +1042,7 @@
 // ══ STATE ══════════════════════════════════════════════════════════
 let allPosts=[],filteredPosts=[],pageSize=60;
 let searchAbortController=null;
-let selectedIds=new Set(),hideGalleryItems=true,downloadedIds=new Set(),favoriteUids=new Set();
+let hideGalleryItems=true,downloadedIds=new Set(),favoriteUids=new Set();
 let galleryData=[],collections=[],galFilter="all",minScore=0,activePeriodDays=0;
 let isMobileApp=false;
 let ratingsMap={};   // uid -> 'usar'|'talvez'|'depois'|'nao'
@@ -1083,6 +1052,90 @@ let galRendered=[], galLbIdx=-1;   // lista renderizada da galeria + posição n
 // Escape de HTML para dados vindos de APIs externas (nomes de artista, tags).
 // Sem isso, um nome malicioso poderia injetar script na página (XSS).
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+// SECURITY HELPERS: keep external values in data/HTML, never JavaScript source.
+function safeExternalUrl(value){
+  if(typeof value!=="string" || !/^https?:\/\//i.test(value.trim())) return "";
+  try{const url=new URL(value.trim());return ["http:","https:"].includes(url.protocol)?url.href:"";}catch(_){return "";}
+}
+function externalLink(url,label,title=""){
+  const href=safeExternalUrl(url);
+  return href?`<a class="card-btn" href="${esc(href)}" target="_blank" rel="noopener noreferrer" data-ui-action="link" title="${esc(title)}">${esc(label)}</a>`:"";
+}
+function artistBadge(artist){
+  return artist?`<button type="button" class="art-artist" data-ui-action="artist" data-artist="${esc(artist)}" title="${esc(artist)}">${esc(artist)}</button>`:"";
+}
+function artworkMoreActions(pageUrl,imageUrl,extraActions=""){
+  return `<details class="art-menu" onclick="event.stopPropagation()">
+    <summary aria-label="Mais opções" title="Mais opções">⋯</summary>
+    <div class="art-menu-panel">
+      ${externalLink(pageUrl,"Ver na fonte")}
+      ${externalLink("https://saucenao.com/search.php?url="+encodeURIComponent(imageUrl||""),"Buscar no SauceNAO")}
+      ${extraActions}
+    </div>
+  </details>`;
+}
+function tagSuggestionsHtml(tags){
+  return tags.map(tag=>`<div class="tag-sug-item" data-val="${esc(tag.value)}"><span>${esc(tag.value)}</span><span class="tag-sug-count">${esc((tag.post_count||0).toLocaleString())}</span></div>`).join("");
+}
+function findArtwork(uid){
+  const result=allPosts.find(p=>`${p.source}:${p.id||p.post_id}`===uid);
+  if(result)return result;
+  const item=galRendered.find(p=>(p.uid||`${p.source}:${p.post_id||p.source_id}`)===uid);
+  return item?{...item,id:item.post_id||item.source_id,url:item.orig_url||item.url}:null;
+}
+function bindSecurityActions(root){
+  root.querySelectorAll("[data-ui-action]").forEach(el=>el.addEventListener("click",event=>{
+    event.stopPropagation();
+    el.closest?.("details.art-menu")?.removeAttribute("open");
+    const card=el.closest(".gal-card");
+    switch(el.dataset.uiAction){
+      case "link": return;
+      case "artist": searchArtist(el.dataset.artist); break;
+      case "open": openLb(el.dataset.uid); break;
+      case "group": event.preventDefault(); toggleSelectGroup(el.dataset.group,el); break;
+      case "filter": setGalFilter(el,el.dataset.gf); break;
+      case "save-art": doSaveSingle(findArtwork(el.dataset.uid)); break;
+      case "download-art": {const post=findArtwork(el.dataset.uid);if(post)doDownload([post]);break;}
+      case "delete": deleteGalImage(card.dataset.rel,card); break;
+      case "unrate": unrateGal(card.dataset.source,card.dataset.pid,card); break;
+      case "unfavorite": removeFavGrid(card.dataset.source,card.dataset.pid,card); break;
+      case "export": exportGalImage(card.dataset.rel,el); break;
+      case "duplicate": dupDelete(el.dataset.rel,el); break;
+    }
+  }));
+}
+function galleryCardHtml(it,index,mobile=false){
+  const downloaded=it._type==="downloaded" && it.rel_path;
+  const img=downloaded ? `/api/thumb?rel_path=${encodeURIComponent(it.rel_path)}` : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}`;
+  const full=downloaded ? `/api/file?rel_path=${encodeURIComponent(it.rel_path)}` : "";
+  const uid=it.uid||`${it.source}:${it.post_id||it.source_id}`;
+  const pid=it.post_id||it.uid?.split(":")[1]||"";
+  const hidden=["questionable","q","explicit","e","nsfw","sensitive","s"].includes(String(it.rating||"sfw").toLowerCase());
+  const sourceClass=String(it.source||"").toLowerCase().replace(/[^a-z0-9_-]/g,"");
+  const ratingClass=String(it.aval||"").replace(/[^a-z0-9_-]/g,"");
+  const action=downloaded ? "delete" : it._type==="rated" ? "unrate" : "unfavorite";
+  return `<div class="gal-card${hidden?" nsfw-blur":""}" data-uid="${esc(uid)}" data-rel="${esc(it.rel_path||"")}" data-type="${esc(it._type||"")}" data-source="${esc(it.source||"")}" data-pid="${esc(pid)}" data-index="${Number(index)}" onclick="openGalLbIdx(Number(this.dataset.index))" oncontextmenu="showCtxMenuGal(event,this.dataset.uid)">
+    <img src="${esc(img)}" data-fallback="${esc(full)}" loading="lazy" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback=''}else{onImgError(this)}">
+    ${hidden?artworkPrivacyControls():""}
+    ${/\.(webm|mp4)$/i.test(it.orig_url||it.url||"")?'<div class="vid-icon">▶</div>':""}
+    <div class="gal-actions">
+      ${!downloaded&&it._type!=="favorite"?`<button type="button" class="card-btn art-primary art-save" data-ui-action="save-art" data-uid="${esc(uid)}" title="Adicionar à coleção">Guardar</button>`:'<span class="art-saved-label">Guardado</span>'}
+      ${!downloaded?`<button type="button" class="card-btn art-primary" data-ui-action="download-art" data-uid="${esc(uid)}" title="Baixar no dispositivo">Baixar</button>`:(mobile&&!it.public_uri?'<button type="button" class="card-btn art-primary" data-ui-action="export">Salvar no celular</button>':'<span class="art-saved-label">Baixada</span>')}
+      ${artworkMoreActions(it.page_url,it.orig_url||it.url||img,`<button type="button" class="card-btn art-danger" data-ui-action="${action}">${downloaded?"Apagar do dispositivo":it._type==="rated"?"Remover avaliação":"Remover dos guardados"}</button>`)}
+    </div>
+    <div class="art-credit">${artistBadge(it.artist)||'<span class="art-unknown">Artista desconhecido</span>'}</div>
+    <div class="gal-card-meta">
+      ${it.aval?`<span class="badge badge-aval-${ratingClass}">${esc(AVAL_LABEL[it.aval]||"")}</span>`:""}
+      <span class="badge badge-source-${sourceClass}">${esc(it.source)}</span>
+      ${Number(it.width)>=1280?`<span class="badge badge-res">${Number(it.width)>=3840?"4K":Number(it.width)>=1920?"FHD":"HD"}</span>`:""}
+      ${it._type==="favorite"&&!downloaded?'<span class="badge">📌 Guardado</span>':""}
+      ${it.score?`<span class="badge badge-score">⭐${esc(it.score)}</span>`:""}
+    </div></div>`;
+}
+function artworkPrivacyControls() {
+  return '<button type="button" class="nsfw-reveal" onclick="event.stopPropagation();revealNsfwCard(this)"><span>Mostrar imagem</span></button><button type="button" class="nsfw-hide" onclick="event.stopPropagation();hideNsfwCard(this)">Ocultar imagem</button>';
+}
+// END SECURITY HELPERS
 let sidebarCollapsed=false;
 let ctxPost=null;
 let userCats={};
@@ -1147,10 +1200,6 @@ async function init(){
     const health=await(await fetch("/api/health")).json();
     isMobileApp=!!health.mobile;
     if(isMobileApp){
-      const dl=document.getElementById("btnDownload");
-      if(dl){dl.textContent="⬇ Salvar no celular";dl.title="Baixar no ArtFinder e salvar em Pictures/ArtFinder";}
-      const bulk=document.getElementById("galExportBtn");
-      if(bulk) bulk.style.display="";
       document.getElementById("ctxFavArt").textContent=downloadActionLabel();
     }
   }catch(_e){}
@@ -1186,7 +1235,7 @@ async function init(){
 }
 
 function downloadActionLabel(){
-  return isMobileApp ? "📱 Salvar no celular" : "⬇️ Baixar";
+  return isMobileApp ? "📱 Salvar no celular" : "⬇ Baixar no dispositivo";
 }
 
 // Fecha o drawer do painel se estiver aberto (usado no mobile).
@@ -1237,7 +1286,7 @@ function _groupOpen(g){ try{return JSON.parse(localStorage.getItem('groupOpen')|
 function _setGroupOpen(g,open){ let s={}; try{s=JSON.parse(localStorage.getItem('groupOpen')||'{}');}catch(e){} s[g]=!!open; localStorage.setItem('groupOpen',JSON.stringify(s)); }
 
 function renderCatSidebar(){
-  const groups={}; const artistKeys=[];
+  const groups=Object.create(null); const artistKeys=[];
   Object.entries(userCats).forEach(([k,c])=>{
     if((c.group||"")==="Artistas"){ artistKeys.push(k); return; }
     const g=c.group||"Outros";
@@ -1249,14 +1298,15 @@ function renderCatSidebar(){
   if(area){
     const groupEntries=Object.entries(groups);
     area.innerHTML=groupEntries.length?groupEntries.map(([g,keys])=>`
-      <details class="cat-group-details" data-group="${g}" ${_groupOpen(g)?'open':''}>
+      <details class="cat-group-details" data-group="${esc(g)}" ${_groupOpen(g)?'open':''}>
         <summary class="cat-group-header">
-          <span>${g} <span style="opacity:.5;font-weight:400">${keys.length}</span></span>
-          <a class="sel-all-group" href="#" onclick="event.preventDefault();event.stopPropagation();toggleSelectGroup('${g}',this)" data-all="0">Sel.</a>
+          <span>${esc(g)} <span style="opacity:.5;font-weight:400">${keys.length}</span></span>
+          <a class="sel-all-group" href="#" data-ui-action="group" data-group="${esc(g)}" data-all="0">Sel.</a>
         </summary>
-        <div class="check-group" data-group="${g}">${keys.map(k=>catCheckHtml(k,userCats[k])).join("")}</div>
+        <div class="check-group" data-group="${esc(g)}">${keys.map(k=>catCheckHtml(k,userCats[k])).join("")}</div>
       </details>
     `).join(""):`<div style="font-size:11px;color:var(--muted);padding:8px 6px;line-height:1.45">Nenhuma categoria ainda.<br><button class="btn-hdr" style="margin-top:7px" onclick="openCatManager()">Adicionar personagem ou tag</button></div>`;
+    bindSecurityActions(area);
     area.querySelectorAll('details.cat-group-details > summary').forEach(s=>{
       s.addEventListener('click',()=>{ const d=s.parentElement; setTimeout(()=>_setGroupOpen(d.dataset.group, d.open),0); });
     });
@@ -1283,9 +1333,9 @@ function renderCatSidebar(){
 function catCheckHtml(key,cat){
   const isChecked = cat.favorite && cat.group !== "Artistas";
   return `<label class="check-item">
-    <input type="checkbox" name="cat" value="${key}" ${isChecked?"checked":""}>
-    <span class="cat-dot" style="background:${cat.color||"#6366f1"}"></span>
-    <span style="flex:1">${cat.label}</span>
+    <input type="checkbox" name="cat" value="${esc(key)}" ${isChecked?"checked":""}>
+    <span class="cat-dot" style="background:${cmSafeColor(cat.color)}"></span>
+    <span style="flex:1">${esc(cat.label)}</span>
   </label>`;
 }
 
@@ -1305,7 +1355,7 @@ function filterArtists(query){
   });
 }
 function toggleSelectGroup(group, btn){
-  const g = document.querySelector(`.check-group[data-group="${group}"]`);
+  const g = [...document.querySelectorAll('.check-group')].find(el=>el.dataset.group===group);
   if(!g) return;
   const inputs = g.querySelectorAll("input");
   const allChecked = [...inputs].every(c=>c.checked);
@@ -1343,6 +1393,7 @@ async function openCredentialSettings(){
     const response=await fetch("/api/settings/credentials");
     const data=await response.json();
     if(!response.ok) throw new Error(data.error||"Erro");
+    if(data.storage_error) toast(t("Cofre indisponivel na inicializacao. Reinicie o app apos desbloquear o cofre."),"error");
     container.innerHTML=(data.groups||[]).map(group=>{
       const configured=(group.fields||[]).filter(field=>field.configured).length;
       const fields=(group.fields||[]).map(field=>`
@@ -1366,6 +1417,31 @@ async function openCredentialSettings(){
 }
 
 function closeCredentialSettings(){document.getElementById("credentialModal").classList.remove("open")}
+
+async function migrateCredentialSettings(){
+  if(!confirm(t("Copiar credenciais antigas para o cofre sem apagar o arquivo .env?"))) return;
+  const button=document.getElementById("migrateCredentialsButton");
+  button.disabled=true;
+  try{
+    const response=await fetch("/api/settings/credentials/migrate",{method:"POST"});
+    if(!response.ok) throw new Error(t("Nao foi possivel migrar para o cofre do sistema."));
+    toast(t("Copia verificada. O arquivo .env antigo foi preservado."),"success");
+  }catch(error){toast(error.message,"error");}
+  finally{button.disabled=false;}
+}
+
+async function cleanupLegacyCredentials(){
+  if(!confirm(t("Remover do .env somente credenciais verificadas no cofre? Outros dados e backups antigos serao preservados."))) return;
+  const button=document.getElementById("cleanupCredentialsButton");
+  button.disabled=true;
+  try{
+    const response=await fetch("/api/settings/credentials/cleanup-legacy",{method:"POST"});
+    if(!response.ok) throw new Error(t("Nao foi possivel limpar as credenciais antigas."));
+    const result=await response.json();
+    toast(`${result.removed} ${t("campos removidos; campos preservados:")} ${result.remaining}`,"info");
+  }catch(error){toast(error.message,"error");}
+  finally{button.disabled=false;}
+}
 
 async function saveCredentialSettings(){
   const button=document.getElementById("saveCredentialsButton");
@@ -1782,7 +1858,7 @@ async function doSearch(){
   setSearchProg(0,"Iniciando...");
   showEmpty(skeletonGridHtml(18));
   document.getElementById("gridWrap").style.display="none";
-  allPosts=[];selectedIds.clear();updateCounts();
+  allPosts=[];
 
   try{
     const [dl, favs, rt]=await Promise.all([
@@ -1965,12 +2041,6 @@ function getFilteredPosts(){
 
 function applyFilterAndSort(keepPage=false){
   filteredPosts=getFilteredPosts();
-  // Remove da seleção itens que saíram do filtro — sem isso o contador
-  // mostrava "N selecionadas" invisíveis, impossíveis de desmarcar.
-  const visiveis=new Set(filteredPosts.map(p=>`${p.source}:${p.id||p.post_id}`));
-  for(const uid of [...selectedIds]){
-    if(!visiveis.has(uid)) selectedIds.delete(uid);
-  }
   renderPage(keepPage ? currentPage : 1);
 }
 
@@ -2029,7 +2099,6 @@ function renderPage(page){
   let colIdx=0;
   slice.forEach((p, i) => {
     const uid=`${p.source}:${p.id}`;
-    const sel=selectedIds.has(uid);
     const src=(p.source||"").toLowerCase().replace(".","");
     const prv=`/api/proxy-image?url=${encodeURIComponent(p.preview_url||p.url)}`;
     const rl={sfw:"SFW",sensitive:"Sens.",nsfw:"NSFW"}[p.rating]||"SFW";
@@ -2039,40 +2108,43 @@ function renderPage(page){
     const resBadge=w>=3840?`<span class="badge badge-res badge-4k">4K</span>`
       :w>=1920?`<span class="badge badge-res">FHD</span>`
       :w>=1280?`<span class="badge badge-res" style="opacity:.7">HD</span>`:"";
-    const artistHtml=p.artist?`<span class="badge" style="background:rgba(255,255,255,.1);color:#cbd5e1;cursor:pointer" onclick="event.stopPropagation();searchArtist(decodeURIComponent('${encodeURIComponent(p.artist)}'))">🎨 ${esc(p.artist)}</span>`:"";
+    const artistHtml=artistBadge(p.artist);
     let pr=(p.rating||"sfw").toLowerCase();
     const isNsfw = (["questionable","q","explicit","e","nsfw","sensitive","s"].includes(pr)) ? " nsfw-blur" : "";
     const isVid = (p.url||"").toLowerCase().endsWith(".webm") || (p.url||"").toLowerCase().endsWith(".mp4");
 
     const div=document.createElement("div");
-    div.className=`card${sel?" selected":""}${isNsfw}`;
+    div.className=`card${isNsfw}`;
     div.dataset.uid=uid; div.dataset.rating=p.rating||"sfw";
-    div.title="clique: selecionar · duplo clique: ampliar";
-    div.onclick=()=>toggleCard(div);
-    // Duplo clique amplia. Os 2 cliques simples que o precedem se anulam
-    // (seleciona + desseleciona), então a seleção não muda.
-    div.ondblclick=(e)=>{e.preventDefault();openLb(uid);};
+    div.title=t("Clique para abrir");
+    div.tabIndex=0;
+    div.onclick=()=>openLb(uid);
+    div.onkeydown=(e)=>{
+      if(e.target!==div)return;
+      if(e.key==='Enter'){e.preventDefault();openLb(uid);}
+    };
     div.oncontextmenu=(e)=>{e.preventDefault();showCtxMenu(e,uid,div);};
     div.innerHTML=`
-      <div class="card-check"></div>
       <img src="${prv}" loading="lazy" class="loading" onload="this.classList.remove('loading')" onerror="onImgError(this)">
-        ${isNsfw ? '<div class="nsfw-reveal"><button onclick="event.stopPropagation();revealNsfwCard(this)">Mostrar imagem</button></div>' : ''}
+        ${isNsfw ? artworkPrivacyControls() : ''}
         ${isVid ? '<div class="vid-icon">▶</div>' : ''}
       <div class="card-actions">
-        ${p.page_url?`<a class="card-btn" href="${p.page_url}" target="_blank" onclick="event.stopPropagation()" title="Ver no site">↗</a>`:""}
-        <button class="card-btn" onclick="event.stopPropagation();openLb('${uid}')" title="Ampliar">⤢</button>
-        <a class="card-btn" href="https://saucenao.com/search.php?url=${encodeURIComponent(p.url)}" target="_blank" onclick="event.stopPropagation()" title="SauceNAO">🍜</a>
+        <button type="button" class="card-btn art-primary art-save" data-ui-action="save-art" data-uid="${esc(uid)}" title="Adicionar à coleção">Guardar</button>
+        <button type="button" class="card-btn art-primary" data-ui-action="download-art" data-uid="${esc(uid)}" title="Baixar no dispositivo">Baixar</button>
+        ${artworkMoreActions(p.page_url,p.url)}
       </div>
+      <div class="art-credit">${artistHtml||'<span class="art-unknown">Artista desconhecido</span>'}</div>
       <div class="card-meta">
-        ${ratingsMap[uid]?`<span class="badge badge-aval-${ratingsMap[uid]}">${AVAL_LABEL[ratingsMap[uid]]}</span>`:""}
-        <span class="badge badge-source-${src}">${p.source}</span>
-        <span class="badge badge-${p.rating||"sfw"}">${rl}</span>
+        ${ratingsMap[uid]?`<span class="badge badge-aval-${esc(ratingsMap[uid])}">${esc(AVAL_LABEL[ratingsMap[uid]])}</span>`:""}
+        <span class="badge badge-source-${esc(src)}">${esc(p.source)}</span>
+        <span class="badge badge-${esc(p.rating||"sfw")}">${rl}</span>
         ${resBadge}
-        ${p.score?`<span class="badge badge-score">⭐${p.score}</span>`:""}
-        ${artistHtml}
+        ${p.score?`<span class="badge badge-score">⭐${esc(p.score)}</span>`:""}
         ${dl?`<span class="badge" style="background:rgba(34,197,94,.22);color:#86efac">✓</span>`:""}
         ${fav?`<span class="badge" style="background:rgba(217,70,239,.22);color:#f0abfc">📌</span>`:""}
       </div>`;
+    bindSecurityActions(div);
+    syncNsfwCards(div);
     cols[colIdx].appendChild(div);
     colIdx=(colIdx+1)%cols.length;
   });
@@ -2156,22 +2228,12 @@ function lbCurUid(){
   const p=filteredPosts[lbIdx];
   return p ? `${p.source}:${p.id||p.post_id}` : null;
 }
-function lbToggleSel(){
-  if(lbMode!=="search") return;
-  const uid=lbCurUid(); if(!uid) return;
-  const card=document.querySelector(`.card[data-uid="${(window.CSS&&CSS.escape)?CSS.escape(uid):uid}"]`);
-  if(card){ toggleCard(card); }
-  else { selectedIds.has(uid)?selectedIds.delete(uid):selectedIds.add(uid); updateCounts(); }
-  updateLbSelBtn();
+function currentArtwork(){
+  if(lbMode==="gallery"){const item=galRendered[galLbIdx];return item?findArtwork(item.uid||`${item.source}:${item.post_id||item.source_id}`):null;}
+  return filteredPosts[lbIdx]||null;
 }
-function updateLbSelBtn(){
-  const btn=document.getElementById("lbSelBtn"); if(!btn) return;
-  const uid=lbCurUid();
-  const on=uid&&selectedIds.has(uid);
-  btn.textContent=on?"✓ Selecionada":"☐ Selecionar";
-  btn.style.borderColor=on?"var(--accent)":"";
-  btn.style.background=on?"rgba(139,92,246,.3)":"";
-}
+function saveCurrentArtwork(){const post=currentArtwork();if(post)doSaveSingle(post);}
+function downloadCurrentArtwork(){const post=currentArtwork();if(post)doDownload([post]);}
 
 function updateLbRateBtns(){
   const uid=lbCurUid();
@@ -2229,7 +2291,7 @@ function openLb(idxOrUid){
   lbIdx=idx; lbMode="search";
   const p=filteredPosts[idx];if(!p)return;
   const rating=(p.rating||"sfw").toLowerCase();
-  setLightboxNsfw(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(rating));
+  setLightboxNsfw(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(rating), `${p.source}:${p.id||p.post_id}`);
   resetLbZoom();
   const originalUrl = p.url || p.preview_url || "";
     const isVid = originalUrl.toLowerCase().endsWith(".webm") || originalUrl.toLowerCase().endsWith(".mp4");
@@ -2244,15 +2306,13 @@ function openLb(idxOrUid){
       document.getElementById("lbImg").style.display = "block";
       document.getElementById("lbImg").src = `/api/proxy-image?url=${encodeURIComponent(originalUrl)}`;
     }
-  document.getElementById("lbLink").href=p.page_url||p.url;
-  document.getElementById("lbLink").style.display=p.page_url?"":"none";
+  document.getElementById("lbLink").href=safeExternalUrl(p.page_url)||"#";
+  document.getElementById("lbLink").style.display=safeExternalUrl(p.page_url)?"":"none";
   document.getElementById("lbSauce").href=`https://saucenao.com/search.php?url=${encodeURIComponent(p.url)}`;
   document.getElementById("lbInfo").textContent=`${idx+1}/${filteredPosts.length} · ${p.source} · ${p.width||"?"}×${p.height||"?"} · score: ${p.score||0}`;
-  document.getElementById("lbSelBtn").style.display="";
   document.getElementById("lbRateBar").style.display="";
   document.getElementById("lbPrev").classList.toggle("hidden", idx<=0);
   document.getElementById("lbNext").classList.toggle("hidden", idx>=filteredPosts.length-1);
-  updateLbSelBtn();
   updateLbRateBtns();
   document.getElementById("lightbox").classList.add("open");
   // pré-carrega a próxima imagem para navegação instantânea
@@ -2272,83 +2332,24 @@ function closeLb(){
   resetLbZoom();
 }
 
-// ══ MODO COMPARAÇÃO ═══════════════════════════════════════════════
-function openCompare(){
-  const posts=filteredPosts.filter(p=>selectedIds.has(`${p.source}:${p.id||p.post_id}`)).slice(0,4);
-  if(posts.length<2){ toast("Selecione 2 a 4 imagens para comparar.","error"); return; }
-  const grid=document.getElementById("compareGrid");
-  grid.innerHTML=posts.map(p=>{
-    const uid=`${p.source}:${p.id||p.post_id}`;
-    const src=`/api/proxy-image?url=${encodeURIComponent(p.url||p.preview_url||"")}`;
-    const cur=ratingsMap[uid];
-    const rateBtns=["usar","talvez","depois","nao"].map(a=>
-      `<button class="lb-rate${cur===a?" active":""}" data-cmp-uid="${uid}" data-aval="${a}"
-        onclick="cmpRate('${uid}','${a}',this)">${AVAL_LABEL[a]}</button>`).join("");
-    return `<div class="cmp-item">
-      <img src="${src}" onerror="onImgError(this)">
-      <div class="cmp-cap">
-        <span>${esc(p.source)}</span><span>·</span>
-        <span>${p.width||"?"}×${p.height||"?"}</span><span>·</span>
-        <span>score ${p.score||0}</span>
-        ${p.artist?`<span>· ${esc(p.artist)}</span>`:""}
-      </div>
-      <div class="cmp-rates">${rateBtns}</div>
-    </div>`;
-  }).join("");
-  document.getElementById("compareOverlay").classList.add("open");
-}
-
-function closeCompare(){
-  document.getElementById("compareOverlay").classList.remove("open");
-  applyFilterAndSort(true);   // reflete avaliações feitas na comparação
-}
-
-function cmpRate(uid, aval, btn){
-  const removing = ratingsMap[uid]===aval;
-  if(removing) delete ratingsMap[uid];
-  else ratingsMap[uid]=aval;
-  const p=filteredPosts.find(x=>`${x.source}:${x.id||x.post_id}`===uid) || {};
-  fetch("/api/ratings",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({...p, source:uid.split(":")[0], id:uid.split(":").slice(1).join(":"), aval:removing?"":aval})})
-    .catch(()=>toast("Erro ao salvar avaliação","error"));
-  // Atualiza só os botões desta imagem
-  document.querySelectorAll(`#compareGrid .lb-rate[data-cmp-uid="${(window.CSS&&CSS.escape)?CSS.escape(uid):uid}"]`)
-    .forEach(b=>b.classList.toggle("active", b.dataset.aval===(removing?null:aval)));
-  toast(removing?"Avaliação removida":`${AVAL_LABEL[aval]} ✓`,"info");
-}
-
 // ══ KEYBOARD SHORTCUTS ════════════════════════════════════════════
 function onKeyDown(e){
-  const cmp=document.getElementById("compareOverlay");
-  if(cmp&&cmp.classList.contains("open")){
-    if(e.key==="Escape") closeCompare();
-    return;
-  }
   const lb=document.getElementById("lightbox");
   if(lb.classList.contains("open")){
-    if(e.key==="Escape") closeLb();
-    if(e.key==="ArrowRight") lbStep(1);
-    if(e.key==="ArrowLeft")  lbStep(-1);
-    if(lbMode==="search" && e.key===" "){e.preventDefault();lbToggleSel();}
+    if(e.key==="Escape"){closeLb();return;}
+    if(["INPUT","TEXTAREA","SELECT","BUTTON"].includes(e.target.tagName)||e.target.isContentEditable)return;
+    if(e.key==="ArrowRight"){e.preventDefault();lbStep(1);}
+    if(e.key==="ArrowLeft"){e.preventDefault();lbStep(-1);}
     const aval={"1":"usar","2":"talvez","3":"depois","4":"nao"}[e.key];
     if(aval){e.preventDefault();lbRate(aval);}
     return;
   }
-  if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA") return;
-  if(e.key===" "){e.preventDefault();const hov=document.querySelector(".card:hover");if(hov)toggleCard(hov);}
+  if(["INPUT","TEXTAREA","SELECT","BUTTON"].includes(e.target.tagName)||e.target.isContentEditable) return;
 }
 
-// ══ SELECTION ══════════════════════════════════════════════════════
-function toggleCard(el){const uid=el.dataset.uid;if(selectedIds.has(uid)){selectedIds.delete(uid);el.classList.remove("selected")}else{selectedIds.add(uid);el.classList.add("selected")}updateCounts()}
-function selectAll(){filteredPosts.forEach(p=>selectedIds.add(`${p.source}:${p.id}`));document.querySelectorAll(".card").forEach(c=>c.classList.add("selected"));updateCounts()}
-function selectNone(){selectedIds.clear();document.querySelectorAll(".card").forEach(c=>c.classList.remove("selected"));updateCounts()}
+// Artwork actions are individual; counts describe visible results.
 function updateCounts(){
-  const size = selectedIds.size;
-  document.getElementById("selCount").textContent=size;
-  document.getElementById("btnDownload").disabled = size===0;
-  if(document.getElementById("btnSave")) document.getElementById("btnSave").disabled = size===0;
-  const bc=document.getElementById("btnCompare");
-  if(bc) bc.disabled = !(size>=2 && size<=4);
+  document.getElementById("totalCount").textContent=filteredPosts.length;
 }
   function showEmpty(html){const el=document.getElementById("emptyState");el.innerHTML=html;el.style.display="flex"}
   // Cartões-fantasma com alturas variadas para dar sensação de carregamento (masonry).
@@ -2366,44 +2367,6 @@ function toggleHideDl(){
   btn.classList.toggle("on",hideGalleryItems);
   btn.textContent=hideGalleryItems?"👁️ Ocultar da galeria":"👁️ Mostrar todas";
   applyFilterAndSort();
-}
-
-// ══ EXPORT URLs ════════════════════════════════════════════════════
-function exportURLs(){
-  const posts=allPosts.filter(p=>selectedIds.has(`${p.source}:${p.id}`));
-  if(!posts.length){toast("Selecione imagens primeiro.","error");return}
-  const txt=posts.map(p=>`${p.url}\t${p.source}\t${p.score||0}\t${p.page_url||""}`).join("\n");
-  const blob=new Blob([txt],{type:"text/plain"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="artfinder_urls.txt";a.click();
-  toast(`${posts.length} URLs exportadas.`,"success");
-}
-
-async function doSave(){
-  const posts=allPosts.filter(p=>selectedIds.has(`${p.source}:${p.id}`));
-  if(!posts.length)return;
-  toast(`Guardando ${posts.length} arte(s)...`);
-  let ok = 0;
-  for(const p of posts){
-    try{
-      const response=await fetch('/api/favorites',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          source:p.source, id:String(p.id||p.post_id),
-          artist:p.artist||'', url:p.url||'',
-          preview_url:p.preview_url||'', page_url:p.page_url||'',
-          category:p.category||'favoritos', score:p.score||0,
-          width:p.width||0, height:p.height||0,
-          tags:p.tags||'', rating:p.rating||'sfw',
-          collection_ids:getSaveCollectionIds(),
-          skip_download: true
-        })
-      });
-      if(!response.ok)throw new Error((await response.json()).error||`HTTP ${response.status}`);
-      ok++;
-    }catch(e){}
-  }
-  toast(`${ok} arte(s) guardada(s) na Galeria!`,"success");
-  selectNone();
 }
 
 async function doSaveSingle(post){
@@ -2432,7 +2395,7 @@ async function doSaveSingle(post){
 
 // ══ DOWNLOAD (SSE streaming) ══════════════════════════════════════
 async function doDownload(postArray = null){
-  const posts = postArray || allPosts.filter(p=>selectedIds.has(`${p.source}:${p.id}`));
+  const posts = postArray || [];
   if(!posts.length)return;
   openModal(posts.length);
   try{
@@ -2483,7 +2446,7 @@ async function doDownload(postArray = null){
     toast("Erro no download.","error");
   }
 }
-function openModal(c){document.getElementById("dlModal").classList.add("open");document.getElementById("dlSub").textContent=`${c} selecionada(s)`;document.getElementById("dlStatus").textContent="Iniciando...";document.getElementById("btnCloseMod").classList.remove("show");setProgress(0,"Conectando...")}
+function openModal(c){document.getElementById("dlModal").classList.add("open");document.getElementById("dlSub").textContent=`${c} imagem(ns)`;document.getElementById("dlStatus").textContent="Iniciando...";document.getElementById("btnCloseMod").classList.remove("show");setProgress(0,"Conectando...")}
 function closeModal(){document.getElementById("dlModal").classList.remove("open")}
 function setProgress(p,s){document.getElementById("dlProg").style.width=p+"%";document.getElementById("dlStatus").textContent=s}
 
@@ -2505,7 +2468,7 @@ async function loadCollections(){
       if(!select)return;
       const current=select.value;
       select.innerHTML=`<option value="">${emptyLabel}</option>`+collections.map(c=>
-        `<option value="${c.id}">${esc(c.name)} (${c.item_count||0})</option>`).join("");
+        `<option value="${esc(c.id)}">${esc(c.name)} (${esc(c.item_count||0)})</option>`).join("");
       if([...select.options].some(o=>o.value===current))select.value=current;
     });
     onGalCollectionChange(false);
@@ -2629,9 +2592,10 @@ async function loadGallery(){
     }))].filter(Boolean);
     const bar=document.getElementById("galFilterBar");
     if(bar) {
-      bar.innerHTML=`<span class="gal-pill on" data-gf="all" onclick="setGalFilter(this,'all')">Todas</span>`
-        +sources.map(s=>`<span class="gal-pill" data-gf="src:${s}" onclick="setGalFilter(this,'src:${s}')">  ${s}</span>`).join("")
-        +cats.map(c=>`<span class="gal-pill" data-gf="cat:${c}" onclick="setGalFilter(this,'cat:${c}')">  ${c.replace(/_/g," ")}</span>`).join("");
+      bar.innerHTML=`<span class="gal-pill on" data-gf="all" data-ui-action="filter">Todas</span>`
+        +sources.map(s=>`<span class="gal-pill" data-gf="src:${esc(s)}" data-ui-action="filter">  ${esc(s)}</span>`).join("")
+        +cats.map(c=>`<span class="gal-pill" data-gf="cat:${esc(c)}" data-ui-action="filter">  ${esc(c.replace(/_/g," "))}</span>`).join("");
+      bindSecurityActions(bar);
     }
     galFilter="all";
     renderGallery();
@@ -2699,70 +2663,13 @@ function renderGallery(){
     const countEl = document.getElementById("galleryCount");
     if(countEl) countEl.textContent=items.length;
 
-    function getCardActionsHtml(idx, it, isDownloaded){
-  let html=`<div class="card-actions">`;
-  if(!isDownloaded){
-    html+=`<button class="card-btn" onclick="event.stopPropagation();doDownload([filteredPosts[${idx}]])" title="Baixar">⬇</button>`;
-  }else{
-    html+=`<span class="card-btn" style="background:var(--green);cursor:default" title="Já baixado">✔️</span>`;
-  }
-  const favCls=it.favorite?" fav-on":"";
-  html+=`<button class="card-btn fav-btn${favCls}" onclick="event.stopPropagation();toggleFavArt(filteredPosts[${idx}])" title="Guardar (só URL)">📌</button>`;
-  if(it.page_url) html+=`<a class="card-btn" href="${it.page_url}" target="_blank" onclick="event.stopPropagation()">↗</a>`;
-  html+=`<button class="card-btn" onclick="event.stopPropagation();window.open('https://saucenao.com/search.php?url=${encodeURIComponent(it.url)}','_blank')" title="SauceNAO">🍜</button>`;
-  html+=`</div>`;
-  return html;
-}  if(!items.length){grid.style.display="none";empty.style.display="flex";empty.textContent="Nenhuma imagem encontrada.";return}
+    if(!items.length){grid.style.display="none";empty.style.display="flex";empty.textContent="Nenhuma imagem encontrada.";return}
     empty.style.display="none";grid.style.display="block";
 
     galRendered=items;   // lista atual para navegação no lightbox
-    grid.innerHTML=items.map((it,gi)=>{
-      const src=(it.source||"").toLowerCase().replace(".","");
-      const isDownloaded = it._type==="downloaded" && it.rel_path;
-      const img = isDownloaded
-        ? `/api/thumb?rel_path=${encodeURIComponent(it.rel_path)}`
-        : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}` ;
-  const fullImg = isDownloaded ? `/api/file?rel_path=${encodeURIComponent(it.rel_path)}` : img;
-      const relEsc=(it.rel_path||"").replace(/'/g,"\\'");
-      const pgUrl=(it.page_url||'').replace(/'/g,"\\'");
-      const w=it.width||0, h=it.height||0;
-      const resBadge=w>=3840?'<span class="badge badge-res badge-4k">4K</span>'
-        :w>=1920?'<span class="badge badge-res">FHD</span>'
-        :w>=1280?'<span class="badge badge-res" style="opacity:.7">HD</span>':'';
-      const checkVid = it.orig_url || it.url || img; const isVid = checkVid.toLowerCase().endsWith(".webm") || checkVid.toLowerCase().endsWith(".mp4");
-        let r=(it.rating||"sfw").toLowerCase();
-      const ratingCls=(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(r)) ? " nsfw-blur" : "";
-      const typeBadge=it._type==="favorite"&&!isDownloaded?'<span class="badge" style="background:rgba(236,72,153,.25);color:#f9a8d4">📌 Guardado</span>':'';
-
-      const deleteBtn = isDownloaded
-        ? `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();deleteGalImage('${relEsc}',this.closest('.gal-card'))" title="Apagar do dispositivo">🗑</button>`
-        : it._type==="rated"
-        ? `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();unrateGal('${it.source}','${it.post_id||it.uid?.split(':')[1]}',this.closest('.gal-card'))" title="Remover avaliação">✕</button>`
-        : `<button class="card-btn" style="background:rgba(239,68,68,.6)" onclick="event.stopPropagation();removeFavGrid('${it.source}','${it.post_id||it.uid?.split(':')[1]}',this.closest('.gal-card'))" title="Remover dos guardados">💔</button>`;
-
-      const realUid = it.uid || `${it.source}:${it.post_id||it.source_id}`;
-      const pid = it.post_id || it.uid?.split(':')[1] || '';
-      return `<div class="gal-card${ratingCls}" data-uid="${realUid}" data-rel="${relEsc}" data-type="${it._type||''}" data-source="${it.source||''}" data-pid="${pid}" onclick="openGalLbIdx(${gi})" oncontextmenu="showCtxMenuGal(event, '${realUid}')">
-        <img src="${img}" loading="lazy" ${isDownloaded?`onerror="this.onerror=null;this.src='${fullImg}'"`:'onerror="onImgError(this)"'}>
-          ${ratingCls ? '<div class="nsfw-reveal"><button onclick="event.stopPropagation();revealNsfwCard(this)">Mostrar imagem</button></div>' : ''}
-          ${isVid ? '<div class="vid-icon">▶</div>' : ''}
-        <div class="gal-actions">
-          ${it.page_url?`<a class="card-btn" href="${pgUrl}" target="_blank" onclick="event.stopPropagation()">↗</a>`:""}
-          <a class="card-btn" href="https://saucenao.com/search.php?url=${encodeURIComponent(img)}" target="_blank" onclick="event.stopPropagation()">🍜</a>
-          ${isDownloaded&&isMobileApp?(it.public_uri
-            ? '<span class="card-btn" style="background:rgba(34,197,94,.75);cursor:default" title="Salva na Galeria do celular">📱</span>'
-            : `<button class="card-btn" style="background:rgba(34,197,94,.45)" onclick="event.stopPropagation();exportGalImage('${relEsc}',this)" title="Salvar na Galeria do celular">📱</button>`):''}
-          ${deleteBtn}
-        </div>
-        <div class="gal-card-meta">
-          ${it.aval?`<span class="badge badge-aval-${it.aval}">${AVAL_LABEL[it.aval]}</span>`:""}
-          <span class="badge badge-source-${src}">${it.source}</span>
-          ${resBadge}
-          ${typeBadge}
-          ${it.score?`<span class="badge badge-score">⭐${it.score}</span>`:""}
-          ${it.artist?`<span class="badge" style="background:rgba(255,255,255,.08);color:#cbd5e1">🎨 ${esc(it.artist)}</span>`:""}
-        </div></div>`;
-    }).join("");
+    grid.innerHTML=items.map((it,gi)=>galleryCardHtml(it,gi,isMobileApp)).join("");
+    bindSecurityActions(grid);
+    syncNsfwCards(grid);
   } catch(e) {
     console.error("Erro no renderGallery:", e);
     toast("Erro visualizando galeria: " + e.message, "error");
@@ -2775,7 +2682,7 @@ function openGalLbIdx(i){
   const isDl = it._type==="downloaded" && it.rel_path;
   const full = isDl ? `/api/file?rel_path=${encodeURIComponent(it.rel_path)}`
                     : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}`;
-  openGalLb(full, it.page_url||"", (it.source||"").toLowerCase(), it.score||0, it.orig_url||it.url||"", it.rating||"sfw");
+  openGalLb(full, it.page_url||"", (it.source||"").toLowerCase(), it.score||0, it.orig_url||it.url||"", it.rating||"sfw", it.uid||`${it.source}:${it.post_id||it.source_id}`);
   // Habilita navegação e triagem (openGalLb esconde por padrão p/ compat)
   document.getElementById("lbPrev").classList.toggle("hidden", i<=0);
   document.getElementById("lbNext").classList.toggle("hidden", i>=galRendered.length-1);
@@ -2797,14 +2704,13 @@ async function unrateGal(source, postId, card){
   }catch(e){ toast("Erro: "+e.message,"error"); }
 }
 
-function openGalLb(src,pageUrl,source,score,origUrl,rating){
+function openGalLb(src,pageUrl,source,score,origUrl,rating,uid=""){
     lbMode="gallery";
     const normalizedRating=(rating||"sfw").toLowerCase();
-    setLightboxNsfw(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(normalizedRating));
+    setLightboxNsfw(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(normalizedRating), uid);
     resetLbZoom();
     document.getElementById("lbPrev").classList.add("hidden");
     document.getElementById("lbNext").classList.add("hidden");
-    document.getElementById("lbSelBtn").style.display="none";
     document.getElementById("lbRateBar").style.display="none";
     let checkUrl = origUrl || src;
     const isVid = checkUrl.toLowerCase().endsWith(".webm") || checkUrl.toLowerCase().endsWith(".mp4");
@@ -2819,7 +2725,7 @@ function openGalLb(src,pageUrl,source,score,origUrl,rating){
       document.getElementById("lbImg").style.display = "block";
       document.getElementById("lbImg").src = src;
     }
-  document.getElementById("lbLink").href=pageUrl||src;
+  document.getElementById("lbLink").href=safeExternalUrl(pageUrl)||"#";
   document.getElementById("lbLink").style.display=pageUrl?"":"none";
   document.getElementById("lbSauce").href=`https://saucenao.com/search.php?url=${encodeURIComponent(src)}`;
   document.getElementById("lbInfo").textContent=`${source} · score: ${score}`;
@@ -2979,127 +2885,6 @@ async function exportGalImage(relPath,btn){
   }
 }
 
-// ══ SELEÇÃO EM LOTE NA GALERIA ════════════════════════════════════
-let galSelectMode=false;
-const galSelected=new Set();
-let galSelWired=false;
-
-function toggleGalSelectMode(){
-  galSelectMode=!galSelectMode;
-  const btn=document.getElementById("galSelectBtn");
-  const bar=document.getElementById("galSelBar");
-  if(galSelectMode){
-    if(btn) btn.style.background="var(--accent)";
-    if(bar) bar.style.display="flex";
-    wireGalSelection();
-  }else{
-    if(btn) btn.style.background="";
-    if(bar) bar.style.display="none";
-    galClearSelection();
-  }
-}
-
-function wireGalSelection(){
-  if(galSelWired) return;
-  const grid=document.getElementById("galleryGrid");
-  if(!grid) return;
-  // capture:true -> roda ANTES do onclick do card (openGalLb) e cancela ele
-  grid.addEventListener("click",(e)=>{
-    if(!galSelectMode) return;
-    const card=e.target.closest(".gal-card");
-    if(!card) return;
-    e.stopPropagation(); e.preventDefault();
-    const uid=card.dataset.uid;
-    if(galSelected.has(uid)){ galSelected.delete(uid); card.classList.remove("sel"); }
-    else { galSelected.add(uid); card.classList.add("sel"); }
-    updateGalSelCount();
-  },true);
-  galSelWired=true;
-}
-
-function updateGalSelCount(){
-  const el=document.getElementById("galSelCount");
-  if(el) el.textContent=galSelected.size;
-}
-
-function galClearSelection(){
-  galSelected.clear();
-  document.querySelectorAll(".gal-card.sel").forEach(c=>c.classList.remove("sel"));
-  updateGalSelCount();
-}
-
-function galSelectAllVisible(){
-  document.querySelectorAll("#galleryGrid .gal-card").forEach(c=>{
-    galSelected.add(c.dataset.uid); c.classList.add("sel");
-  });
-  updateGalSelCount();
-}
-
-function _selectedGalCards(){ return [...document.querySelectorAll(".gal-card.sel")]; }
-
-async function bulkHideSelected(){
-  const cards=_selectedGalCards();
-  if(!cards.length){ toast("Nada selecionado.","info"); return; }
-  const uids=cards.map(c=>c.dataset.uid);
-  confirmAction("Ocultar selecionadas", `Ocultar ${uids.length} arte(s) permanentemente? Não aparecerão mais nas buscas nem na galeria.`, null, async ()=>{
-    try{
-      await fetch("/api/blacklist",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({uids})});
-      const set=new Set(uids);
-      cards.forEach(c=>c.remove());
-      galleryData=galleryData.filter(it=>!set.has(it.uid||`${it.source}:${it.post_id||it.source_id}`));
-      galClearSelection();
-      const gc=document.getElementById("galleryCount"); if(gc) gc.textContent=galleryData.length;
-      toast(`${uids.length} arte(s) ocultada(s).`,"success");
-    }catch(e){ toast("Erro: "+e.message,"error"); }
-  });
-}
-
-async function bulkDeleteSelected(){
-  const cards=_selectedGalCards();
-  if(!cards.length){ toast("Nada selecionado.","info"); return; }
-  const downloaded=cards.filter(c=>c.dataset.type==="downloaded" && c.dataset.rel);
-  const ignored=cards.length-downloaded.length;
-  if(!downloaded.length){ toast("As selecionadas são 'só-URL' — use Ocultar.","info"); return; }
-  confirmAction("Apagar do dispositivo", `Apagar ${downloaded.length} arquivo(s) do dispositivo definitivamente?`+(ignored?` (${ignored} guardada(s) só-URL serão ignoradas)`:""), null, async ()=>{
-    let ok=0;
-    for(const c of downloaded){
-      try{
-        const r=await fetch("/api/delete-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:c.dataset.rel})});
-        const d=await r.json();
-        if(!d.error){ c.remove(); ok++; const rel=c.dataset.rel; galleryData=galleryData.filter(it=>it.rel_path!==rel); }
-      }catch(e){}
-    }
-    galClearSelection();
-    const gc=document.getElementById("galleryCount"); if(gc) gc.textContent=galleryData.length;
-    loadHeaderStats();
-    toast(`${ok} arquivo(s) apagado(s).`,"success");
-  });
-}
-
-async function bulkExportSelected(){
-  if(!isMobileApp) return;
-  const cards=_selectedGalCards().filter(c=>c.dataset.type==="downloaded"&&c.dataset.rel);
-  const pending=cards.filter(c=>{
-    const item=galleryData.find(it=>it.rel_path===c.dataset.rel);
-    return item&&!item.public_uri;
-  });
-  if(!pending.length){toast("As imagens selecionadas já estão na Galeria do celular.","info");return;}
-  let ok=0;
-  for(const card of pending){
-    try{
-      const r=await fetch("/api/export-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rel_path:card.dataset.rel})});
-      const d=await r.json();
-      if(r.ok&&!d.error){
-        const item=galleryData.find(it=>it.rel_path===card.dataset.rel);
-        if(item)item.public_uri=d.public_uri||item.public_uri||"exported";
-        ok++;
-      }
-    }catch(_e){}
-  }
-  renderGallery();
-  toast(`${ok} imagem(ns) salva(s) em Pictures/ArtFinder.`,ok?"success":"error");
-}
-
 // ══ DUPLICATAS ════════════════════════════════════════════════════
 async function showDuplicates(){
   const grid=document.getElementById("galleryGrid");
@@ -3122,16 +2907,17 @@ async function showDuplicates(){
         const keep=mi===0?" keep":"";
         const relEsc=(m.rel_path||"").replace(/'/g,"\\'");
         html+=`<div class="dup-item${keep}">
-          <span class="dup-badge">${m.width}×${m.height}${mi===0?' ★':''}</span>
+          <span class="dup-badge">${esc(m.width)}×${esc(m.height)}${mi===0?' ★':''}</span>
           <img src="/api/file?rel_path=${encodeURIComponent(m.rel_path)}" loading="lazy">
-          <button class="btn-sm" style="width:100%;margin-top:4px;background:rgba(239,68,68,.55)" onclick="dupDelete('${relEsc}',this)">🗑 Apagar</button>
+          <button class="btn-sm" style="width:100%;margin-top:4px;background:rgba(239,68,68,.55)" data-ui-action="duplicate" data-rel="${esc(m.rel_path||'')}">🗑 Apagar</button>
         </div>`;
       });
       html+=`</div></div>`;
     });
     grid.innerHTML=html;
+    bindSecurityActions(grid);
   }catch(e){
-    grid.innerHTML=`<div style="padding:20px;color:var(--red)">Erro: ${e.message} <button class="btn-sm" onclick="renderGallery()">Voltar</button></div>`;
+    grid.innerHTML=`<div style="padding:20px;color:var(--red)">Erro: ${esc(e.message)} <button class="btn-sm" onclick="renderGallery()">Voltar</button></div>`;
   }
 }
 
@@ -3162,8 +2948,7 @@ function showCtxMenu(e,uid,cardEl){
   document.getElementById("ctxBlockArtist").style.display=ctxPost?.artist?"flex":"none";
   document.getElementById("ctxOpen").style.display=ctxPost?.page_url?"flex":"none";
   document.getElementById("ctxFavArt").textContent=downloadActionLabel();
-  document.getElementById("ctxSaveArt").textContent="📌 Guardar (só URL)";
-  document.getElementById("ctxSelect").style.display="flex";
+  document.getElementById("ctxSaveArt").textContent="📌 Adicionar à coleção";
   menu.classList.add("open");
 }
 
@@ -3196,18 +2981,12 @@ function showCtxMenuGal(e, uid) {
   document.getElementById("ctxBlockArtist").style.display = ctxPost?.artist ? "flex" : "none";
   document.getElementById("ctxOpen").style.display = ctxPost?.page_url ? "flex" : "none";
   document.getElementById("ctxFavArt").textContent = downloadActionLabel();
-  document.getElementById("ctxSaveArt").textContent = ctxPost?.favorite ? "💔 Remover dos Guardados" : "📌 Guardar (só URL)";
-  
-  document.getElementById("ctxSelect").style.display = "none";
+  document.getElementById("ctxSaveArt").textContent = ctxPost?.favorite ? "💔 Remover dos Guardados" : "📌 Adicionar à coleção";
   menu.classList.add("open");
 }
 
 function initContextMenu(){
-  document.getElementById("ctxSelect").onclick=()=>{
-    const card=document.querySelector(`.card[data-uid="${ctxPost?.source}:${ctxPost?.id}"]`);
-    if(card)toggleCard(card);
-  };
-  document.getElementById("ctxOpen").onclick=()=>{ if(ctxPost?.page_url)window.open(ctxPost.page_url,"_blank"); };
+  document.getElementById("ctxOpen").onclick=()=>{ const url=safeExternalUrl(ctxPost?.page_url);if(url)window.open(url,"_blank","noopener,noreferrer"); };
   document.getElementById("ctxSauce").onclick=()=>{ if(ctxPost)window.open(`https://saucenao.com/search.php?url=${encodeURIComponent(ctxPost.url)}`,"_blank"); };
   document.getElementById("ctxArtist").onclick=()=>{ if(ctxPost?.artist)searchArtist(ctxPost.artist); };
   document.getElementById("ctxLb").onclick=()=>{ if(ctxPost)openLb(`${ctxPost.source}:${ctxPost.id||ctxPost.post_id}`); };

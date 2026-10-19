@@ -1,10 +1,12 @@
 .card.nsfw-blur:hover img,
-.gal-card.nsfw-blur:hover img {
+.gal-card.nsfw-blur:hover img,
+.cmp-item.nsfw-blur img {
   filter: blur(25px);
 }
 
 .card.nsfw-blur.nsfw-revealed img,
 .gal-card.nsfw-blur.nsfw-revealed img,
+.cmp-item.nsfw-blur.nsfw-revealed img,
 body.no-nsfw-blur .nsfw-blur img {
   filter: none !important;
 }
@@ -17,22 +19,48 @@ body.no-nsfw-blur .nsfw-blur img {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, .28);
+  border: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  color: #fff;
+  cursor: pointer;
 }
 
-.nsfw-reveal button {
+.nsfw-reveal span {
   border: 1px solid rgba(255, 255, 255, .28);
   border-radius: 999px;
   background: rgba(20, 20, 25, .9);
   color: #fff;
-  padding: 8px 13px;
+  padding: 16px;
   font: 600 11px/1 Inter, sans-serif;
   cursor: pointer;
 }
 
-.nsfw-revealed > .nsfw-reveal,
+.nsfw-revealed .nsfw-reveal,
 body.no-nsfw-blur .nsfw-reveal {
   display: none;
 }
+
+.cmp-media { position: relative; }
+.nsfw-hide {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #ffffff66;
+  border-radius: 999px;
+  background: #141419ed;
+  color: white;
+  cursor: pointer;
+}
+body:not(.no-nsfw-blur) .nsfw-revealed .nsfw-hide { display: block; }
+#lbNsfwHide { display: none; min-height: 44px; }
+body:not(.no-nsfw-blur) #lightbox.nsfw-blur.nsfw-revealed #lbNsfwHide { display: block; }
+.nsfw-hide:focus-visible, .nsfw-reveal:focus-visible { outline: 3px solid #b69aff; outline-offset: -3px; }
 
 #lbMediaStage {
   width: min(92vw, 1600px);
@@ -60,25 +88,40 @@ body.no-nsfw-blur .nsfw-reveal {
   transition: filter .18s;
 }
 
-#lightbox.nsfw-blur:not(.nsfw-revealed) #lbImg,
-#lightbox.nsfw-blur:not(.nsfw-revealed) #lbVideo {
+body:not(.no-nsfw-blur) #lightbox.nsfw-blur:not(.nsfw-revealed) #lbImg,
+body:not(.no-nsfw-blur) #lightbox.nsfw-blur:not(.nsfw-revealed) #lbVideo {
   filter: blur(32px);
 }
 
 #lbNsfwReveal {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  min-height: 44px;
   display: none;
   position: absolute;
   z-index: 12;
-  border: 1px solid rgba(255, 255, 255, .3);
-  border-radius: 999px;
-  background: rgba(20, 20, 25, .94);
+  border: 0;
+  border-radius: 0;
+  background: rgba(0, 0, 0, .15);
   color: #fff;
   padding: 9px 15px;
   font: 600 12px/1 Inter, sans-serif;
   cursor: pointer;
 }
 
-#lightbox.nsfw-blur:not(.nsfw-revealed) #lbNsfwReveal {
+#lbNsfwReveal span {
+  display: inline-block;
+  padding: 14px 18px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 999px;
+  background: rgba(20,20,25,.94);
+  pointer-events: none;
+}
+#lbNsfwReveal:focus-visible { outline: 3px solid #b69aff; outline-offset: -3px; }
+
+body:not(.no-nsfw-blur) #lightbox.nsfw-blur:not(.nsfw-revealed) #lbNsfwReveal {
   display: block;
 }
 
@@ -95,6 +138,134 @@ body.no-nsfw-blur #lightbox #lbVideo {
   min-width: 38px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* Per-artwork controls stay discoverable without covering the image. */
+.card .card-actions, .gal-card .gal-actions {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  opacity: 1;
+  padding: 8px;
+  transform: none;
+  align-items: center;
+}
+.card .card-btn, .gal-card .card-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+.card .card-meta, .gal-card .gal-card-meta {
+  position: static;
+  opacity: 1;
+  transform: none;
+  padding: 6px 8px 10px;
+  background: transparent;
+}
+.lb-bar { flex-wrap: wrap; max-width: 96vw; justify-content: center; }
+.lb-bar .lb-btn { min-height: 44px; }
+
+.card .art-primary, .gal-card .art-primary {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: 44px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: 600 12px/1.2 Inter, sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  text-decoration: none;
+}
+.card .art-save, .gal-card .art-save {
+  background: rgba(139,92,246,.12);
+  border-color: rgba(167,139,250,.28);
+  color: #d8c7ff;
+}
+.art-primary:hover { filter: brightness(1.15); }
+.art-credit { padding: 0 10px 3px; min-width: 0; }
+.art-artist {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  font: 600 12px/1.4 Inter, sans-serif;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.art-artist:hover { color: #c4b5fd; }
+.art-unknown, .art-saved-label { font-size: 11px; color: var(--muted); }
+.art-saved-label { flex: 1; padding: 8px 2px; }
+.card .card-meta, .gal-card .gal-card-meta { padding: 0 10px 10px; gap: 6px; }
+.card-meta .badge, .gal-card-meta .badge {
+  color: var(--muted);
+  background: transparent !important;
+  padding: 0;
+  box-shadow: none;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.card-meta .badge-nsfw { color: #fca5a5; }
+.art-menu { position: relative; flex: 0 0 44px; }
+.art-menu summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  list-style: none;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 24px;
+  cursor: pointer;
+}
+.art-menu summary::-webkit-details-marker { display: none; }
+.art-menu[open] summary { color: var(--text); background: var(--surface); }
+.art-menu-panel {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 6px);
+  right: 0;
+  width: 208px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  box-shadow: 0 8px 24px #0008;
+}
+.art-menu:not([open]) .art-menu-panel { display: none; }
+.card .art-menu-panel .card-btn, .gal-card .art-menu-panel .card-btn {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: 500 12px/1.3 Inter, sans-serif;
+  text-decoration: none;
+  text-align: left;
+}
+.art-menu-panel .card-btn:hover { background: rgba(255,255,255,.06); }
+.card .art-menu-panel .art-danger, .gal-card .art-menu-panel .art-danger { color: #fca5a5; }
+.card:has(.art-menu[open]), .gal-card:has(.art-menu[open]) { overflow: visible; z-index: 20; }
+.art-artist:focus-visible, .art-primary:focus-visible, .art-menu summary:focus-visible {
+  outline: 2px solid #b69aff;
+  outline-offset: 2px;
 }
 
 @media (max-width: 700px) {

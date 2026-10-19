@@ -2,6 +2,8 @@
   "use strict";
 
   const BLUR_KEY = "artfinder.blurNsfw";
+  const revealedIds = new Set(); // Memory only; never synchronize or persist.
+  const cards = '.card,.gal-card,.cmp-item';
   const zoom = { scale: 1, x: 0, y: 0, dragging: false, px: 0, py: 0 };
 
   function image() { return document.getElementById("lbImg"); }
@@ -43,6 +45,14 @@
   };
 
   window.setNsfwBlur = function setNsfwBlur(enabled) {
+    // Turning protection back on must hide previously revealed artwork too.
+    if (enabled) {
+      revealedIds.clear();
+      document.getElementById('lbVideo')?.pause?.();
+      document.querySelectorAll(".nsfw-revealed").forEach(element => {
+        element.classList.remove("nsfw-revealed");
+      });
+    }
     document.body.classList.toggle("no-nsfw-blur", !enabled);
     const toggle = document.getElementById("globalBlurToggle");
     if (toggle) toggle.checked = enabled;
@@ -50,24 +60,80 @@
   };
 
   window.revealNsfwCard = function revealNsfwCard(button) {
-    button.closest(".card,.gal-card")?.classList.add("nsfw-revealed");
+    const card = button.closest(cards);
+    if (!card) return;
+    setRevealed(card.dataset.uid, true);
+    card.querySelector?.('.nsfw-hide')?.focus?.({preventScroll: true});
   };
 
-  window.setLightboxNsfw = function setLightboxNsfw(enabled) {
+  window.hideNsfwCard = function hideNsfwCard(button) {
+    const card = button.closest(cards);
+    if (!card) return;
+    setRevealed(card.dataset.uid, false);
+    card.querySelector?.('.nsfw-reveal')?.focus?.({preventScroll: true});
+  };
+
+  window.syncNsfwCards = function syncNsfwCards(root = document) {
+    const found = Array.from(root.querySelectorAll(cards));
+    if (root.matches?.(cards)) found.push(root);
+    found.forEach(card => card.classList.toggle('nsfw-revealed', revealedIds.has(card.dataset.uid)));
+  };
+
+  function setRevealed(uid, revealed) {
+    if (!uid) return;
+    if (revealed) revealedIds.add(uid); else revealedIds.delete(uid);
+    window.syncNsfwCards();
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox?.dataset.uid === uid) {
+      lightbox.classList.toggle('nsfw-revealed', revealed);
+      if (!revealed) {
+        document.getElementById('lbVideo')?.pause?.();
+        window.resetLbZoom();
+      }
+    }
+  }
+
+  window.setLightboxNsfw = function setLightboxNsfw(enabled, uid = "") {
     const lightbox = document.getElementById("lightbox");
     if (!lightbox) return;
     lightbox.classList.toggle("nsfw-blur", enabled);
-    lightbox.classList.remove("nsfw-revealed");
+    lightbox.dataset.uid = uid;
+    lightbox.classList.toggle("nsfw-revealed", enabled && revealedIds.has(uid));
   };
 
   window.revealLightboxNsfw = function revealLightboxNsfw() {
-    document.getElementById("lightbox")?.classList.add("nsfw-revealed");
+    const lightbox = document.getElementById("lightbox");
+    if (!lightbox) return;
+    setRevealed(lightbox.dataset.uid, true);
+    document.getElementById('lbNsfwHide')?.focus?.({preventScroll: true});
+  };
+
+  window.hideLightboxNsfw = function hideLightboxNsfw() {
+    setRevealed(document.getElementById('lightbox')?.dataset.uid, false);
+    document.getElementById('lbNsfwReveal')?.focus?.({preventScroll: true});
   };
 
   document.addEventListener("DOMContentLoaded", () => {
     let enabled = true;
     try { enabled = localStorage.getItem(BLUR_KEY) !== "0"; } catch (_) {}
     window.setNsfwBlur(enabled);
+
+    // Native details provides keyboard activation; capture also handles cards
+    // whose individual controls stop click propagation.
+    document.addEventListener('click', event => {
+      document.querySelectorAll('.art-menu[open]').forEach(menu => {
+        if (!menu.contains(event.target)) menu.removeAttribute('open');
+      });
+    }, true);
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      const menu = document.querySelector('.art-menu[open]');
+      if (!menu) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      menu.removeAttribute('open');
+      menu.querySelector('summary')?.focus();
+    }, true);
 
     const stage = document.getElementById("lbMediaStage");
     const img = image();
@@ -81,6 +147,7 @@
 
     stage.addEventListener("dblclick", event => {
       event.stopPropagation();
+      if (event.target.closest?.('button')) return;
       if (zoom.scale > 1) window.resetLbZoom(); else window.lbZoomBy(1);
     });
 
