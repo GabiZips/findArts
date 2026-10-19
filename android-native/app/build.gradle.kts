@@ -70,8 +70,8 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.2.0")
 
     implementation("com.squareup.okhttp3:okhttp:5.3.0")
-    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.6.3")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.3")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.3.0")
