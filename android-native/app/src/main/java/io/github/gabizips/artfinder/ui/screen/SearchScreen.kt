@@ -83,6 +83,7 @@ import io.github.gabizips.artfinder.model.Category
 import io.github.gabizips.artfinder.model.SearchOptions
 import io.github.gabizips.artfinder.model.SettingsSnapshot
 import io.github.gabizips.artfinder.ui.component.ArtworkPreview
+import io.github.gabizips.artfinder.ui.component.shouldHideArtwork
 import io.github.gabizips.artfinder.ui.component.ArtFinderPanel
 import io.github.gabizips.artfinder.ui.component.ArtFinderPill
 import io.github.gabizips.artfinder.ui.component.ArtFinderBackdrop
@@ -109,6 +110,7 @@ fun SearchScreen(
     var confirmLargeSearch by remember { mutableStateOf(false) }
     var viewerUid by rememberSaveable { mutableStateOf<String?>(null) }
     var collectionPost by remember { mutableStateOf<ArtPost?>(null) }
+    var revealedIds by remember(settings.displayPreferences.blurNsfw) { mutableStateOf(emptyList<String>()) }
     var draftOptions by remember { mutableStateOf(settings.searchOptions) }
     val context = LocalContext.current
     val unknownArtist = stringResource(R.string.unknown_artist)
@@ -293,6 +295,9 @@ fun SearchScreen(
                         viewModel = viewModel,
                         onOpen = { viewerUid = "${post.source.id}:${post.id}" },
                         onKeep = { collectionPost = post },
+                        revealed = "${post.source.id}:${post.id}" in revealedIds,
+                        onReveal = { revealedIds = revealedIds + "${post.source.id}:${post.id}" },
+                        onHide = { revealedIds = revealedIds - "${post.source.id}:${post.id}" },
                     )
                 }
             }
@@ -308,7 +313,8 @@ fun SearchScreen(
                 contentDescription = post.tags,
                 title = post.artist.ifBlank { unknownArtist },
                 subtitle = "${post.source.label} · ${post.width}×${post.height}",
-                initiallyBlurred = settings.displayPreferences.blurNsfw && post.rating.equals("nsfw", ignoreCase = true),
+                initiallyBlurred = shouldHideArtwork(post.rating, settings.displayPreferences.blurNsfw, "${post.source.id}:${post.id}" in revealedIds),
+                canHide = shouldHideArtwork(post.rating, settings.displayPreferences.blurNsfw),
             )
         }
         val initialIndex = viewerImages.indexOfFirst { it.key == uid }
@@ -317,6 +323,8 @@ fun SearchScreen(
                 images = viewerImages,
                 initialIndex = initialIndex,
                 onDismiss = { viewerUid = null },
+                onReveal = { revealedIds = revealedIds + it },
+                onHide = { revealedIds = revealedIds - it },
             )
         } else {
             LaunchedEffect(uid) { viewerUid = null }
@@ -605,18 +613,21 @@ private fun ArtCard(
     viewModel: MainViewModel,
     onOpen: () -> Unit,
     onKeep: () -> Unit,
+    revealed: Boolean,
+    onReveal: () -> Unit,
+    onHide: () -> Unit,
 ) {
     val context = LocalContext.current
     val uid = "${post.source.id}:${post.id}"
-    var nsfwRevealed by rememberSaveable(uid) { mutableStateOf(false) }
-    val hiddenNsfw = blurNsfw && post.rating.equals("nsfw", ignoreCase = true) && !nsfwRevealed
+    val hiddenNsfw = shouldHideArtwork(post.rating, blurNsfw, revealed)
     ArtFinderPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(6.dp)) {
         ArtworkPreview(
             model = post.previewModel(context),
             contentDescription = post.tags,
             badge = post.source.label,
             hidden = hiddenNsfw,
-            onReveal = { nsfwRevealed = true },
+            onReveal = onReveal,
+            onHide = if (shouldHideArtwork(post.rating, blurNsfw)) onHide else null,
             onOpen = onOpen,
             modifier = Modifier,
         )
@@ -638,20 +649,20 @@ private fun ArtCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 ArtFinderSecondaryButton(
                     label = stringResource(R.string.keep),
                     icon = Icons.Outlined.BookmarkBorder,
                     onClick = onKeep,
                     enabled = uid !in state.saving,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 ArtFinderSecondaryButton(
                     label = if (uid in state.saving) "…" else stringResource(R.string.download),
                     icon = Icons.Outlined.Download,
                     onClick = { viewModel.download(post) },
                     enabled = uid !in state.saving,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }

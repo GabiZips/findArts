@@ -2,11 +2,14 @@ package io.github.gabizips.artfinder.data
 
 import io.github.gabizips.artfinder.model.Category
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.net.URI
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 import java.util.Base64
 import javax.crypto.Cipher
@@ -16,12 +19,15 @@ import javax.crypto.spec.SecretKeySpec
 data class PairingImport(val categories: List<Category>?, val credentials: Map<String, String>)
 
 class PairingRepository(
-    private val client: OkHttpClient = OkHttpClient.Builder()
+    client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(4, TimeUnit.SECONDS)
         .readTimeout(8, TimeUnit.SECONDS)
         .callTimeout(12, TimeUnit.SECONDS)
         .build(),
 ) {
+    // Also harden injected clients: endpoint validation must never be bypassed by a redirect.
+    private val client = client.newBuilder().followRedirects(false).followSslRedirects(false).build()
+
     suspend fun receive(code: String): PairingImport = withContext(Dispatchers.IO) {
         require(code.length <= 12_000 && code.startsWith(PREFIX)) { "Código de pareamento inválido." }
         val descriptor = JSONObject(decode(code.removePrefix(PREFIX)).toString(Charsets.UTF_8))
@@ -30,11 +36,19 @@ class PairingRepository(
         require(key.size == 32) { "Código de pareamento inválido." }
 
         val request = Request.Builder().url(endpoint.toString()).header("Accept", "application/json").build()
-        val body = client.newCall(request).execute().use { response ->
+        val coroutineContext = currentCoroutineContext()
+        val body = client.newCall(request).useCancellable { response ->
             when {
                 response.code == 410 -> error("O código expirou ou já foi utilizado.")
                 !response.isSuccessful -> error("O PC recusou o pareamento (${response.code}).")
-                else -> response.body.string().takeIf { it.length <= 600_000 } ?: error("Resposta de pareamento inválida.")
+                else -> {
+                    require(response.body.contentLength() <= MAX_RESPONSE_BYTES) { "Resposta de pareamento inválida." }
+                    val output = ByteArrayOutputStream()
+                    response.body.byteStream().use { input ->
+                        copyBounded(input, output, MAX_RESPONSE_BYTES) { coroutineContext.ensureActive() }
+                    }
+                    output.toString(Charsets.UTF_8.name())
+                }
             }
         }
         decryptEnvelope(body, key)
@@ -94,6 +108,7 @@ class PairingRepository(
     private fun decode(value: String): ByteArray = Base64.getUrlDecoder().decode(value)
 
     companion object {
+        internal const val MAX_RESPONSE_BYTES = 600_000L
         const val PREFIX = "artfinder-pair:v1:"
         val AAD = "ArtFinder pairing v1".toByteArray(Charsets.UTF_8)
     }

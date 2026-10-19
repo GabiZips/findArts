@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
@@ -146,6 +145,7 @@ fun ArtworkPreview(
     onReveal: () -> Unit,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
+    onHide: (() -> Unit)? = null,
 ) {
     Box(
         modifier = modifier
@@ -153,14 +153,18 @@ fun ArtworkPreview(
             .aspectRatio(.82f)
             .clip(MaterialTheme.shapes.large)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(enabled = !hidden, onClick = onOpen),
+            .clickable(
+                onClick = { if (hidden) onReveal() else onOpen() },
+            ),
     ) {
-        AsyncImage(
-            model = model,
-            contentDescription = contentDescription,
-            modifier = Modifier.fillMaxSize().blur(if (hidden) 28.dp else 0.dp),
-            contentScale = ContentScale.Crop,
-        )
+        ProtectedArtwork(hidden, Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = model,
+                contentDescription = contentDescription,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
@@ -184,11 +188,11 @@ fun ArtworkPreview(
             )
         }
         if (hidden) {
-            Box(
-                Modifier.fillMaxSize().background(Color.Black.copy(alpha = .46f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Button(onClick = onReveal) { Text(stringResource(R.string.show_nsfw)) }
+            Text(stringResource(R.string.show_nsfw), Modifier.align(Alignment.Center))
+        }
+        if (!hidden && onHide != null) {
+            androidx.compose.material3.Button(onClick = onHide, modifier = Modifier.align(Alignment.BottomCenter)) {
+                Text(stringResource(R.string.hide_artwork))
             }
         }
     }

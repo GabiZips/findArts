@@ -3,7 +3,7 @@ package io.github.gabizips.artfinder
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.gabizips.artfinder.data.PairingImport
+import io.github.gabizips.artfinder.data.runPairingOperation
 import io.github.gabizips.artfinder.data.applySearchOptions
 import io.github.gabizips.artfinder.model.ArtPost
 import io.github.gabizips.artfinder.model.ArtSource
@@ -130,11 +130,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun importPairing(code: String, replace: Boolean) = viewModelScope.launch {
-        pairingBusy.value = true
+        if (pairingBusy.value) return@launch
         pairingMessage.value = null
         pairingError.value = false
-        runCatching { container.pairing.receive(code.trim()) }
-            .onSuccess { imported: PairingImport ->
+        runPairingOperation(
+            setBusy = { pairingBusy.value = it },
+            onFailure = {
+                pairingError.value = true
+                pairingMessage.value = it.message ?: app.getString(R.string.import_failed)
+            },
+        ) {
+                val imported = container.pairing.receive(code.trim())
                 container.settings.importConfiguration(imported.categories, imported.credentials, replace)
                 val tagCount = imported.categories?.size ?: 0
                 val credentialCount = imported.credentials.size
@@ -143,12 +149,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     app.resources.getQuantityString(R.plurals.imported_tags, tagCount, tagCount),
                     app.resources.getQuantityString(R.plurals.imported_credentials, credentialCount, credentialCount),
                 )
-            }
-            .onFailure {
-                pairingError.value = true
-                pairingMessage.value = it.message ?: app.getString(R.string.import_failed)
-            }
-        pairingBusy.value = false
+        }
     }
 
     fun upsertCategory(category: Category) = viewModelScope.launch {
@@ -201,6 +202,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .onFailure { searchState.value = searchState.value.copy(message = it.message) }
     }
 
+    private fun <T> artworkBatch(items: List<T>, uid: (T) -> String, operation: suspend (T) -> Unit) = viewModelScope.launch {
+        val pending = items.distinctBy(uid).filter { uid(it) !in searchState.value.saving }
+        if (pending.isEmpty()) return@launch
+        val ids = pending.map(uid).toSet()
+        searchState.update { it.copy(saving = it.saving + ids, message = null) }
+        var succeeded = 0
+        var failed = 0
+        try {
+            pending.forEach { item ->
+                try {
+                    operation(item)
+                    succeeded++
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    failed++
+                }
+            }
+            searchState.update { it.copy(message = app.getString(R.string.batch_result, succeeded, failed)) }
+        } finally {
+            searchState.update { it.copy(saving = it.saving - ids) }
+        }
+    }
+
+    fun downloadPosts(posts: List<ArtPost>) = artworkBatch(posts, { "${it.source.id}:${it.id}" }) { container.gallery.download(it) }
+    fun downloadItems(items: List<GalleryItem>) = artworkBatch(items, GalleryItem::uid) { container.gallery.download(it) }
+    fun keepPosts(posts: List<ArtPost>, collectionIds: Set<String>) = artworkBatch(posts, { "${it.source.id}:${it.id}" }) {
+        val existing = container.settings.galleryItem("${it.source.id}:${it.id}")
+        container.gallery.keep(it, existing?.collectionIds.orEmpty() + collectionIds)
+    }
+    fun addItemsToCollections(items: List<GalleryItem>, collectionIds: Set<String>) = artworkBatch(items, GalleryItem::uid) {
+        val current = container.settings.galleryItem(it.uid) ?: return@artworkBatch
+        container.gallery.setCollections(current, current.collectionIds + collectionIds)
+    }
+
     fun createCollection(name: String) = viewModelScope.launch {
         runCatching { container.settings.createCollection(name) }
             .onFailure { searchState.value = searchState.value.copy(message = it.message) }
@@ -215,7 +251,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         container.settings.deleteCollection(id)
     }
 
-    fun delete(item: GalleryItem) = viewModelScope.launch { container.gallery.delete(item) }
+    fun delete(item: GalleryItem) = viewModelScope.launch {
+        try {
+            container.gallery.delete(item)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            searchState.update { it.copy(message = error.message ?: app.getString(R.string.save_failed)) }
+        }
+    }
 
     fun clearMessages() {
         searchState.value = searchState.value.copy(message = null)

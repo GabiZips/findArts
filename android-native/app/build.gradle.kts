@@ -11,14 +11,18 @@ android {
         applicationId = "io.github.gabizips.artfinder"
         minSdk = 29
         targetSdk = 36
-        versionCode = 100000
-        versionName = "0.10.0"
+        versionCode = 100001
+        versionName = "0.10.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -60,6 +61,8 @@ import io.github.gabizips.artfinder.R
 import io.github.gabizips.artfinder.model.ArtCollection
 import io.github.gabizips.artfinder.model.GalleryItem
 import io.github.gabizips.artfinder.ui.component.ArtworkPreview
+import io.github.gabizips.artfinder.ui.component.ProtectedArtwork
+import io.github.gabizips.artfinder.ui.component.shouldHideArtwork
 import io.github.gabizips.artfinder.ui.component.ArtFinderBackdrop
 import io.github.gabizips.artfinder.ui.component.ArtFinderPanel
 import io.github.gabizips.artfinder.ui.component.ArtFinderPill
@@ -88,6 +91,8 @@ fun GalleryScreen(
     var creatingCollection by rememberSaveable { mutableStateOf(false) }
     var renamingCollection by rememberSaveable { mutableStateOf(false) }
     var deletingCollection by rememberSaveable { mutableStateOf(false) }
+    var removingUid by rememberSaveable { mutableStateOf<String?>(null) }
+    var revealedIds by remember(blurNsfw) { mutableStateOf(emptyList<String>()) }
 
     LaunchedEffect(collections, selectedCollectionId) {
         if (selectedCollectionId != null && collections.none { it.id == selectedCollectionId }) selectedCollectionId = null
@@ -122,6 +127,7 @@ fun GalleryScreen(
                     CollectionTile(
                         name = stringResource(R.string.all_artworks),
                         artwork = items.firstOrNull(),
+                        blurNsfw = blurNsfw,
                         count = items.size,
                         selected = selectedCollectionId == null,
                         onClick = { selectedCollectionId = null },
@@ -132,6 +138,7 @@ fun GalleryScreen(
                     CollectionTile(
                         name = collection.name,
                         artwork = collectionItems.maxByOrNull(GalleryItem::savedAt),
+                        blurNsfw = blurNsfw,
                         count = collectionItems.size,
                         selected = selectedCollectionId == collection.id,
                         onClick = { selectedCollectionId = collection.id },
@@ -181,7 +188,11 @@ fun GalleryScreen(
                         onCollections = { pickerUid = item.uid },
                         onDownload = { viewModel.download(item) },
                         onDelete = { deletingUid = item.uid },
+                        onRemoveFromCollection = if (selectedCollectionId != null) ({ removingUid = item.uid }) else null,
                         busy = item.uid in busyItems,
+                        revealed = item.uid in revealedIds,
+                        onReveal = { revealedIds = revealedIds + item.uid },
+                        onHide = { revealedIds = revealedIds - item.uid },
                     )
                 }
             }
@@ -197,7 +208,8 @@ fun GalleryScreen(
                 contentDescription = item.artist,
                 title = item.artist.ifBlank { item.source.replaceFirstChar(Char::uppercase) },
                 subtitle = item.source.replaceFirstChar(Char::uppercase),
-                initiallyBlurred = blurNsfw && item.rating.equals("nsfw", ignoreCase = true),
+                initiallyBlurred = shouldHideArtwork(item.rating, blurNsfw, item.uid in revealedIds),
+                canHide = shouldHideArtwork(item.rating, blurNsfw),
             )
         }
         val initialIndex = viewerImages.indexOfFirst { it.key == uid }
@@ -206,6 +218,8 @@ fun GalleryScreen(
                 images = viewerImages,
                 initialIndex = initialIndex,
                 onDismiss = { viewerUid = null },
+                onReveal = { revealedIds = revealedIds + it },
+                onHide = { revealedIds = revealedIds - it },
             )
         } else {
             LaunchedEffect(uid) { viewerUid = null }
@@ -255,11 +269,25 @@ fun GalleryScreen(
             },
         )
     }
+    items.firstOrNull { it.uid == removingUid }?.let { item ->
+        AlertDialog(
+            onDismissRequest = { removingUid = null },
+            title = { Text(stringResource(R.string.remove_from_collection)) },
+            text = { Text(stringResource(R.string.remove_from_collection_confirmation)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setCollections(item, item.collectionIds - setOfNotNull(selectedCollectionId))
+                    removingUid = null
+                }) { Text(stringResource(R.string.remove)) }
+            },
+            dismissButton = { TextButton(onClick = { removingUid = null }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
     items.firstOrNull { it.uid == deletingUid }?.let { item ->
         AlertDialog(
             onDismissRequest = { deletingUid = null },
-            title = { Text(stringResource(R.string.delete_art_title)) },
-            text = { Text(stringResource(R.string.delete_art_confirmation)) },
+            title = { Text(stringResource(if (item.contentUri.isBlank()) R.string.delete_art_title else R.string.delete_file_title)) },
+            text = { Text(stringResource(if (item.contentUri.isBlank()) R.string.delete_art_confirmation else R.string.delete_file_confirmation)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.delete(item)
@@ -276,9 +304,10 @@ fun GalleryScreen(
 @Composable
 private fun CollectionTile(
     name: String,
-    artwork: GalleryItem?,
-    count: Int,
     selected: Boolean,
+    artwork: GalleryItem?,
+    blurNsfw: Boolean,
+    count: Int,
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -293,12 +322,14 @@ private fun CollectionTile(
     ) {
         Box(Modifier.fillMaxSize()) {
             if (artwork != null) {
-                AsyncImage(
-                    model = artwork.imageModel(context),
-                    contentDescription = name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
+                ProtectedArtwork(shouldHideArtwork(artwork.rating, blurNsfw), Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = artwork.imageModel(context),
+                        contentDescription = name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
             } else {
                 Box(
                     Modifier.fillMaxSize().background(
@@ -346,18 +377,22 @@ private fun GalleryCard(
     onCollections: () -> Unit,
     onDownload: () -> Unit,
     onDelete: () -> Unit,
+    onRemoveFromCollection: (() -> Unit)?,
     busy: Boolean,
+    revealed: Boolean,
+    onReveal: () -> Unit,
+    onHide: () -> Unit,
 ) {
     val context = LocalContext.current
-    var nsfwRevealed by rememberSaveable(item.uid) { mutableStateOf(false) }
-    val hiddenNsfw = blurNsfw && item.rating.equals("nsfw", ignoreCase = true) && !nsfwRevealed
+    val hiddenNsfw = shouldHideArtwork(item.rating, blurNsfw, revealed)
     ArtFinderPanel(Modifier.fillMaxWidth(), contentPadding = PaddingValues(6.dp)) {
         ArtworkPreview(
             model = item.imageModel(context),
             contentDescription = item.artist,
             badge = item.source.replaceFirstChar(Char::uppercase),
             hidden = hiddenNsfw,
-            onReveal = { nsfwRevealed = true },
+            onReveal = onReveal,
+            onHide = if (shouldHideArtwork(item.rating, blurNsfw)) onHide else null,
             onOpen = onOpen,
             modifier = Modifier,
         )
@@ -375,14 +410,16 @@ private fun GalleryCard(
                     positive = item.contentUri.isNotBlank(),
                 )
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (item.pageUrl.isNotBlank()) IconButton(onClick = {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.pageUrl)))
                 }) { Icon(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(R.string.open_source)) }
                 IconButton(onClick = onCollections) { Icon(Icons.Outlined.Folder, stringResource(R.string.choose_collections)) }
-                if (item.contentUri.isBlank()) {
-                    IconButton(onClick = onDownload, enabled = !busy) { Icon(Icons.Outlined.Download, stringResource(R.string.download)) }
+                if (onRemoveFromCollection != null) IconButton(onClick = onRemoveFromCollection) {
+                    Icon(Icons.Outlined.FolderOff, stringResource(R.string.remove_from_collection))
                 }
+                // Keep retry available if the file was deleted outside ArtFinder.
+                IconButton(onClick = onDownload, enabled = !busy) { Icon(Icons.Outlined.Download, stringResource(R.string.download)) }
                 IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete)) }
             }
         }

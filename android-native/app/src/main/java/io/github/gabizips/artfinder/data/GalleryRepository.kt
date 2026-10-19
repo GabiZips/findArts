@@ -12,14 +12,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.io.IOException
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class GalleryRepository(
     private val context: Context,
     private val settings: SettingsRepository,
-    private val client: OkHttpClient = OkHttpClient(),
+    private val client: OkHttpClient = OkHttpClient.Builder().callTimeout(120, TimeUnit.SECONDS).build(),
 ) {
     suspend fun keep(post: ArtPost, collectionIds: Set<String> = emptySet()): GalleryItem = withContext(Dispatchers.IO) {
         val uid = "${post.source.id}:${post.id}"
@@ -57,71 +59,101 @@ class GalleryRepository(
         )
     }
 
-    suspend fun download(post: ArtPost): GalleryItem = withContext(Dispatchers.IO) {
-        val existing = settings.galleryItem("${post.source.id}:${post.id}")
-        if (!existing?.contentUri.isNullOrBlank()) return@withContext existing
-        val request = Request.Builder().url(post.url).apply {
-            if (post.source.id == "pixiv") header("Referer", "https://www.pixiv.net/")
-            header("User-Agent", "ArtFinder-Android/0.10.0")
-        }.build()
-        val downloaded = client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("Falha ao baixar: HTTP ${response.code}")
-            val body = response.body
-            require(body.contentLength() <= MAX_BYTES || body.contentLength() < 0) { "A imagem excede 100 MB." }
-            val bytes = body.byteStream().use { input ->
-                val output = ByteArrayOutputStream(body.contentLength().coerceIn(0, 4L * 1024 * 1024).toInt())
-                val buffer = ByteArray(16 * 1024)
-                var total = 0
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    require(total <= MAX_BYTES) { "A imagem excede 100 MB." }
-                    output.write(buffer, 0, count)
-                }
-                output.toByteArray()
-            }
-            require(bytes.size in 1..MAX_BYTES) { "Arquivo de imagem inválido." }
-            bytes to response.header("Content-Type").orEmpty().substringBefore(';')
-        }
-        val mime = supportedMime(downloaded.second, downloaded.first)
-        val extension = when (mime) { "image/png" -> "png"; "image/webp" -> "webp"; else -> "jpg" }
-        val safeSource = post.source.id.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_-]"), "_")
-        val safeId = post.id.replace(Regex("[^a-zA-Z0-9_-]"), "_").take(100)
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "${safeSource}_${safeId}.$extension")
-            put(MediaStore.Images.Media.MIME_TYPE, mime)
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/ArtFinder")
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-        val resolver = context.contentResolver
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: error("O Android não permitiu criar a imagem na galeria.")
-        try {
-            resolver.openOutputStream(uri, "w")?.use { it.write(downloaded.first) }
-                ?: error("Não foi possível escrever a imagem.")
-            resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
-        } catch (error: Throwable) {
-            resolver.delete(uri, null, null)
-            throw error
-        }
-        val item = GalleryItem(
-            uid = "${post.source.id}:${post.id}", contentUri = uri.toString(),
-            source = post.source.id, sourceId = post.id, pageUrl = post.pageUrl,
-            previewUrl = post.previewUrl, originalUrl = post.url,
-            artist = post.artist, categoryKey = post.categoryKey, savedAt = System.currentTimeMillis(),
-            rating = post.rating, collectionIds = existing?.collectionIds.orEmpty(),
-        )
-        settings.addGalleryItem(item)
-        item
+    private val transfers = TransferCoordinator(3)
+
+    private fun readable(uri: String): Boolean = try {
+        context.contentResolver.openFileDescriptor(Uri.parse(uri), "r")?.use { true }
+            ?: throw IOException("Não foi possível verificar a imagem no dispositivo.")
+    } catch (_: java.io.FileNotFoundException) {
+        false
     }
 
-    suspend fun delete(item: GalleryItem) = withContext(Dispatchers.IO) {
-        if (item.contentUri.isNotBlank()) {
-            val uri = Uri.parse(item.contentUri)
-            runCatching { context.contentResolver.delete(uri, null, null) }
+    suspend fun download(post: ArtPost): GalleryItem = transfers.run("${post.source.id}:${post.id}") {
+        withContext(Dispatchers.IO) {
+            val existing = settings.galleryItem("${post.source.id}:${post.id}")
+            if (existing != null && existing.contentUri.isNotBlank() && readable(existing.contentUri)) {
+                return@withContext existing
+            }
+            val request = Request.Builder().url(post.url).apply {
+                if (post.source.id == "pixiv") header("Referer", "https://www.pixiv.net/")
+                header("User-Agent", "ArtFinder-Android/0.10.1")
+            }.build()
+            val staging = java.io.File.createTempFile("artfinder-", ".download", context.cacheDir)
+            val coroutineContext = currentCoroutineContext()
+            try {
+                val contentType = client.newCall(request).useCancellable { response ->
+                    if (!response.isSuccessful) throw IOException("Falha ao baixar: HTTP ${response.code}")
+                    require(response.body.contentLength() <= MAX_BYTES) { "A imagem excede 100 MB." }
+                    response.body.byteStream().use { input ->
+                        staging.outputStream().use { output ->
+                            copyBounded(input, output, MAX_BYTES.toLong()) { coroutineContext.ensureActive() }
+                        }
+                    }
+                    response.header("Content-Type").orEmpty().substringBefore(';')
+                }
+                require(staging.length() in 1..MAX_BYTES.toLong()) { "Arquivo de imagem inválido." }
+                val signature = staging.inputStream().use { input ->
+                    val bytes = ByteArray(12)
+                    bytes.copyOf(input.read(bytes).coerceAtLeast(0))
+                }
+                val mime = supportedMime(contentType, signature)
+                val extension = when (mime) { "image/png" -> "png"; "image/webp" -> "webp"; else -> "jpg" }
+                val safeId = post.id.replace(Regex("[^a-zA-Z0-9_-]"), "_").take(100)
+                val safeSource = post.source.id.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9_-]"), "_")
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, "${safeSource}_$safeId.$extension")
+                    put(MediaStore.Images.Media.MIME_TYPE, mime)
+                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/ArtFinder")
+                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                }
+                coroutineContext.ensureActive()
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: error("O Android não permitiu criar a imagem na galeria.")
+                try {
+                    resolver.openOutputStream(uri, "w")?.use { output ->
+                        staging.inputStream().use { input ->
+                            copyBounded(input, output, MAX_BYTES.toLong()) { coroutineContext.ensureActive() }
+                        }
+                    } ?: error("Não foi possível escrever a imagem.")
+                    check(resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null) > 0)
+                    val item = GalleryItem(
+                        uid = "${post.source.id}:${post.id}", contentUri = uri.toString(),
+                        source = post.source.id, sourceId = post.id, pageUrl = post.pageUrl,
+                        previewUrl = post.previewUrl, originalUrl = post.url,
+                        artist = post.artist, categoryKey = post.categoryKey,
+                        savedAt = existing?.savedAt ?: System.currentTimeMillis(),
+                        rating = post.rating, collectionIds = existing?.collectionIds.orEmpty(),
+                    )
+                    settings.addGalleryItem(item)
+                    item
+                } catch (error: Throwable) {
+                    runCatching { resolver.delete(uri, null, null) }
+                    throw error
+                }
+            } finally {
+                staging.delete()
+            }
         }
-        settings.removeGalleryItem(item.uid)
+    }
+
+    suspend fun delete(item: GalleryItem) = transfers.run(item.uid) {
+        withContext(Dispatchers.IO) {
+            val current = settings.galleryItem(item.uid) ?: return@withContext
+            if (current.contentUri.isBlank()) {
+                settings.removeGalleryItem(item.uid)
+            } else {
+                deleteThenForget(
+                    deleteFile = {
+                        val uri = Uri.parse(current.contentUri)
+                        val deleted = context.contentResolver.delete(uri, null, null)
+                        // Zero rows is success only when the image is already absent.
+                        if (deleted == 0 && !readable(current.contentUri)) 1 else deleted
+                    },
+                    forget = { settings.removeGalleryItem(item.uid) },
+                )
+            }
+        }
     }
 
     suspend fun setCollections(item: GalleryItem, collectionIds: Set<String>) =

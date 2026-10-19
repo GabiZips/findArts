@@ -42,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -65,6 +64,7 @@ data class ViewerImage(
     val title: String,
     val subtitle: String,
     val initiallyBlurred: Boolean,
+    val canHide: Boolean = false,
 )
 
 @Composable
@@ -72,6 +72,8 @@ fun ZoomableImageViewer(
     images: List<ViewerImage>,
     initialIndex: Int,
     onDismiss: () -> Unit,
+    onReveal: (String) -> Unit = {},
+    onHide: (String) -> Unit = {},
 ) {
     if (images.isEmpty()) return
     val safeInitialIndex = initialIndex.coerceIn(images.indices)
@@ -101,9 +103,17 @@ fun ZoomableImageViewer(
                     active = page == pagerState.currentPage,
                     onScaleChanged = { currentScale = it },
                     onToggleControls = { controlsVisible = !controlsVisible },
+                    onReveal = { onReveal(images[page].key) },
                 )
             }
 
+            val currentImage = images[pagerState.currentPage]
+            if (currentImage.canHide && !currentImage.initiallyBlurred) {
+                Button(
+                    onClick = { onHide(currentImage.key) },
+                    modifier = Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.safeDrawing).padding(top = 10.dp),
+                ) { Text(stringResource(R.string.hide_artwork)) }
+            }
             AnimatedVisibility(
                 visible = controlsVisible,
                 enter = fadeIn(),
@@ -128,10 +138,11 @@ private fun ZoomableImagePage(
     active: Boolean,
     onScaleChanged: (Float) -> Unit,
     onToggleControls: () -> Unit,
+    onReveal: () -> Unit,
 ) {
     var scale by remember(image.key) { mutableFloatStateOf(1f) }
     var offset by remember(image.key) { mutableStateOf(Offset.Zero) }
-    var revealed by remember(image.key) { mutableStateOf(!image.initiallyBlurred) }
+    val revealed = !image.initiallyBlurred
 
     fun updateScale(next: Float) {
         scale = next.coerceIn(1f, 6f)
@@ -146,51 +157,45 @@ private fun ZoomableImagePage(
     LaunchedEffect(active) {
         if (active) onScaleChanged(scale)
     }
+    LaunchedEffect(revealed) { if (!revealed) reset() }
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        AsyncImage(
-            model = image.model,
-            contentDescription = image.contentDescription,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    translationX = offset.x,
-                    translationY = offset.y,
-                )
-                .combinedClickable(
-                    enabled = revealed,
-                    onClick = onToggleControls,
-                    onDoubleClick = { if (scale > 1f) reset() else updateScale(2.5f) },
-                )
-                .pointerInput(image.key, revealed) {
-                    if (!revealed) return@pointerInput
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        do {
-                            val event = awaitPointerEvent()
-                            val multiTouch = event.changes.count { it.pressed } >= 2
-                            if (multiTouch || scale > 1.01f) {
-                                val nextScale = (scale * event.calculateZoom()).coerceIn(1f, 6f)
-                                scale = nextScale
-                                offset = if (nextScale <= 1.01f) Offset.Zero else offset + event.calculatePan()
-                                if (active) onScaleChanged(scale)
-                                event.changes.forEach { it.consume() }
-                            }
-                        } while (event.changes.any { it.pressed })
-                    }
-                }
-                .blur(if (revealed) 0.dp else 28.dp),
-        )
-        if (!revealed) {
-            Box(
-                Modifier.fillMaxSize().background(Color.Black.copy(alpha = .5f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Button(onClick = { revealed = true }) { Text(stringResource(R.string.show_nsfw)) }
-            }
+        ProtectedArtwork(!revealed, Modifier.fillMaxSize(), onReveal = onReveal) {
+            AsyncImage(
+                model = image.model,
+                contentDescription = image.contentDescription,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y,
+                    )
+                    .combinedClickable(
+                        enabled = revealed,
+                        onClick = onToggleControls,
+                        onDoubleClick = { if (scale > 1f) reset() else updateScale(2.5f) },
+                    )
+                    .pointerInput(image.key, revealed) {
+                        if (!revealed) return@pointerInput
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            do {
+                                val event = awaitPointerEvent()
+                                val multiTouch = event.changes.count { it.pressed } >= 2
+                                if (multiTouch || scale > 1.01f) {
+                                    val nextScale = (scale * event.calculateZoom()).coerceIn(1f, 6f)
+                                    scale = nextScale
+                                    offset = if (nextScale <= 1.01f) Offset.Zero else offset + event.calculatePan()
+                                    if (active) onScaleChanged(scale)
+                                    event.changes.forEach { it.consume() }
+                                }
+                            } while (event.changes.any { it.pressed })
+                        }
+                    },
+            )
         }
     }
 }

@@ -17,8 +17,14 @@
     <string name="viewer_position">%1$d of %2$d</string>
     <string name="swipe_for_next">Swipe to see the next artwork</string>
     <string name="confirm">Confirm</string>
-    <string name="keep">Keep</string>
-    <string name="download">Download</string>
+    <string name="keep">Add to collection</string>
+    <string name="download">Download to device</string>
+    <string name="select_artwork">Select artwork</string>
+    <string name="selection_count">%1$d selected</string>
+    <string name="cancel_selection">Cancel selection</string>
+    <string name="batch_result">%1$d completed · %2$d failed</string>
+    <string name="delete_file_title">Delete file from device?</string>
+    <string name="delete_file_confirmation">The downloaded file will be deleted from Pictures/ArtFinder and the artwork removed from the library and collections. This cannot be undone.</string>
     <string name="kept_library">Artwork kept in the ArtFinder library.</string>
     <string name="downloaded_device">Image downloaded to Pictures/ArtFinder.</string>
     <string name="choose_collections">Choose collections</string>
@@ -78,7 +84,9 @@
     <string name="delete_collection_title">Delete this collection?</string>
     <string name="delete_collection_confirmation">The “%1$s” collection will be deleted. Its artwork will remain in the main library.</string>
     <string name="delete_art_title">Remove this artwork?</string>
-    <string name="delete_art_confirmation">It will be removed from the library and every collection. An existing downloaded copy will remain in Pictures/ArtFinder.</string>
+    <string name="delete_art_confirmation">The link will be removed from the library and every collection. No device file will be deleted.</string>
+    <string name="remove_from_collection">Remove from this collection</string>
+    <string name="remove_from_collection_confirmation">The artwork will remain in your library, other collections and on your device.</string>
     <string name="local_data_only">Your data stays only on this device.</string>
     <string name="settings_description">Pair devices and configure only the sources you use.</string>
     <string name="configured_sources">%1$d credentials configured</string>
@@ -134,4 +142,5 @@
     <string name="continue_search">Continue</string>
     <string name="search_progress_details">Sources %1$d/%2$d · requests %3$d/%4$d estimated</string>
     <string name="search_summary">%1$d artworks · %2$d requests made</string>
+    <string name="hide_artwork">Hide image</string>
 </resources>

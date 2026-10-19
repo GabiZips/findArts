@@ -150,7 +150,8 @@ fun ArtFinderSecondaryButton(
                 modifier = Modifier.padding(start = 7.dp),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

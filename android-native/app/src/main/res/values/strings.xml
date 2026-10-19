@@ -17,8 +17,14 @@
     <string name="viewer_position">%1$d de %2$d</string>
     <string name="swipe_for_next">Deslize para ver a próxima arte</string>
     <string name="confirm">Confirmar</string>
-    <string name="keep">Guardar</string>
-    <string name="download">Baixar</string>
+    <string name="keep">Adicionar à coleção</string>
+    <string name="download">Baixar no dispositivo</string>
+    <string name="select_artwork">Selecionar arte</string>
+    <string name="selection_count">%1$d selecionadas</string>
+    <string name="cancel_selection">Cancelar seleção</string>
+    <string name="batch_result">%1$d concluídas · %2$d falhas</string>
+    <string name="delete_file_title">Apagar arquivo do dispositivo?</string>
+    <string name="delete_file_confirmation">O arquivo baixado será apagado de Pictures/ArtFinder e a arte será removida da biblioteca e das coleções. Esta ação não pode ser desfeita.</string>
     <string name="kept_library">Arte guardada na biblioteca do ArtFinder.</string>
     <string name="downloaded_device">Imagem baixada em Pictures/ArtFinder.</string>
     <string name="choose_collections">Escolher coleções</string>
@@ -78,7 +84,9 @@
     <string name="delete_collection_title">Excluir esta coleção?</string>
     <string name="delete_collection_confirmation">A coleção “%1$s” será excluída. As artes continuarão na biblioteca geral.</string>
     <string name="delete_art_title">Remover esta arte?</string>
-    <string name="delete_art_confirmation">Ela será removida da biblioteca e de todas as coleções. Uma cópia já baixada continuará em Pictures/ArtFinder.</string>
+    <string name="delete_art_confirmation">O link será removido da biblioteca e de todas as coleções. Nenhum arquivo do dispositivo será apagado.</string>
+    <string name="remove_from_collection">Remover desta coleção</string>
+    <string name="remove_from_collection_confirmation">A arte continuará na biblioteca, nas outras coleções e no dispositivo.</string>
     <string name="local_data_only">Os dados ficam somente neste aparelho.</string>
     <string name="settings_description">Pareie dispositivos e configure apenas as fontes que você usa.</string>
     <string name="configured_sources">%1$d credenciais configuradas</string>
@@ -134,4 +142,5 @@
     <string name="continue_search">Continuar</string>
     <string name="search_progress_details">Fontes %1$d/%2$d · chamadas %3$d/%4$d estimadas</string>
     <string name="search_summary">%1$d artes · %2$d chamadas realizadas</string>
+    <string name="hide_artwork">Ocultar imagem</string>
 </resources>
