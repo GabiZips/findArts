@@ -33,6 +33,10 @@ de várias fontes em uma só interface.
 
 ## Baixar para Windows
 
+> Este repositório foi recriado com histórico revisado. Os binários de releases
+> antigas não foram transferidos; enquanto não houver uma release aqui, use as
+> instruções de compilação abaixo. Tags históricas não são downloads de aplicativos.
+
 Versões estáveis ficam em
 [GitHub Releases](https://github.com/GabiZips/findArts/releases), acompanhadas
 do arquivo `SHA256SUMS.txt`:

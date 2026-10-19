@@ -27,6 +27,10 @@ artwork and fan art from multiple sources in one interface.
 
 ## Windows
 
+> This repository was recreated with reviewed history. Old release binaries
+> were not transferred. Until a release is available here, use the build
+> instructions below. Historical tags are source snapshots, not app downloads.
+
 Stable binaries are published under
 [GitHub Releases](https://github.com/GabiZips/findArts/releases). Download
 `ArtFinder-Windows.exe`; `SHA256SUMS.txt` can be used to verify it. Temporary
