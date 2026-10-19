@@ -38,4 +38,4 @@ def is_loopback_client(host: str | None) -> bool:
 def token_matches(candidate: str | None) -> bool:
     expected = os.getenv("ARTFINDER_LAN_TOKEN", "").strip()
     supplied = (candidate or "").strip()
-    return bool(expected and supplied and hmac.compare_digest(expected, supplied))
+    return bool(expected and supplied and hmac.compare_digest(expected.encode("utf-8"), supplied.encode("utf-8")))

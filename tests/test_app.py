@@ -268,20 +268,45 @@ class AppRouteTests(unittest.TestCase):
         self.assertTrue(pixiv["fields"][0]["configured"])
 
     def test_credential_writer_preserves_unrelated_env_values(self):
-        with tempfile.TemporaryDirectory() as temp, patch.object(app, "DATA_DIR", temp):
+        with tempfile.TemporaryDirectory() as temp, patch.object(app, "DATA_DIR", temp), patch.object(app, "profile_store") as factory:
+            factory.return_value.read.return_value = None
             env_path = Path(temp) / ".env"
             env_path.write_text("UNRELATED=keep\nPIXIV_REFRESH_TOKEN=old\n", encoding="utf-8")
             app._write_credentials({"PIXIV_REFRESH_TOKEN": "new"}, set())
             self.assertEqual(
                 env_path.read_text(encoding="utf-8"),
-                "UNRELATED=keep\nPIXIV_REFRESH_TOKEN=new\n",
+                "UNRELATED=keep\nPIXIV_REFRESH_TOKEN=old\n",
             )
+            saved = json.loads(factory.return_value.write.call_args.args[1])
+            self.assertEqual(saved["value"], "new")
 
     def test_unknown_credential_field_is_rejected(self):
         response = asyncio.run(
             app.save_credential_settings({"values": {"UNSAFE_FIELD": "value"}})
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_migration_preserves_existing_native_entries(self):
+        with patch.object(app, "profile_store") as factory, patch.object(config, "CREDENTIAL_STORAGE_ERROR", False), patch.object(app, "_configured_credential_values", return_value={"PIXIV_REFRESH_TOKEN": "legacy"}):
+            factory.return_value.read.return_value = '{"version":1,"value":"native"}'
+            result = asyncio.run(app.migrate_credential_settings())
+            self.assertEqual(result["migrated"], 0)
+            factory.return_value.write.assert_not_called()
+
+    def test_migration_copies_missing_and_is_explicit(self):
+        with patch.object(app, "profile_store") as factory, patch.object(config, "CREDENTIAL_STORAGE_ERROR", False), patch.object(app, "_configured_credential_values", return_value={"PIXIV_REFRESH_TOKEN": "legacy"}):
+            factory.return_value.read.return_value = None
+            result = asyncio.run(app.migrate_credential_settings())
+            self.assertEqual(result["migrated"], 1)
+            self.assertTrue(result["legacy_file_preserved"])
+            self.assertNotIn("legacy", json.dumps(result).replace("legacy_file_preserved", ""))
+
+    def test_save_vault_failure_is_safe_response(self):
+        from utils.credential_store import CredentialStoreError
+        with patch.object(app, "_write_credentials", side_effect=CredentialStoreError("secret-probe")):
+            result = asyncio.run(app.save_credential_settings({"values": {"PIXIV_REFRESH_TOKEN": "test"}}))
+        self.assertEqual(result.status_code, 503)
+        self.assertNotIn(b"secret-probe", result.body)
 
     def test_malformed_credential_clear_list_is_rejected(self):
         response = asyncio.run(app.save_credential_settings({"clear": [{}]}))
@@ -360,7 +385,9 @@ class AppRouteTests(unittest.TestCase):
                 patch.object(app, "DATA_DIR", root),
                 patch.object(config, "PIXIV_REFRESH_TOKEN", ""),
                 patch.object(app, "_apply_credentials"),
+                patch.object(app, "profile_store") as factory,
             ):
+                factory.return_value.read.return_value = None
                 response = asyncio.run(
                     app.import_pairing({"payload": payload, "mode": "merge"})
                 )
@@ -371,10 +398,8 @@ class AppRouteTests(unittest.TestCase):
                 categories["vex"]["source_tags"]["pixiv"],
                 ["ヴェックス"],
             )
-            self.assertIn(
-                "PIXIV_REFRESH_TOKEN=paired-token",
-                (root / ".env").read_text(encoding="utf-8"),
-            )
+            self.assertFalse((root / ".env").exists())
+            self.assertEqual(json.loads(factory.return_value.write.call_args.args[1])["value"], "paired-token")
 
     def test_pairing_import_rejects_unknown_credential(self):
         payload = {
@@ -399,8 +424,9 @@ class AppRouteTests(unittest.TestCase):
             "nonce": "nonce",
             "ciphertext": "ciphertext",
         }
-        response = MagicMock(status_code=200, content=b"envelope")
-        response.json.return_value = envelope
+        response = MagicMock(status_code=200)
+        response.__enter__.return_value = response
+        response.iter_content.return_value = [json.dumps(envelope).encode()]
         session = MagicMock()
         session.__enter__.return_value = session
         session.get.return_value = response
@@ -416,6 +442,8 @@ class AppRouteTests(unittest.TestCase):
             "http://192.168.1.20:54321/v1/pair/token",
             headers={"Accept": "application/json"},
             timeout=(3, 8),
+            allow_redirects=False,
+            stream=True,
         )
 
     def test_mobile_pairing_relay_rejects_public_endpoint(self):

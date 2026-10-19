@@ -47,7 +47,7 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 from config import DATA_DIR, DOWNLOAD_DIR, RESOURCE_DIR, USER_CATEGORIES_PATH
-from artfinder.domain.content_policy import is_ai_generated, matched_ai_indicators
+from artfinder.domain.search import build_search_plan, fetch_query, accepted_posts
 from artfinder.api.library import router as library_router
 from utils.database import get_stats, known_uids, add_to_blacklist, add_blocked_artist, get_blocked_artists
 from utils.downloader import download_batch
@@ -60,6 +60,8 @@ from utils.lan_security import (
     token_matches,
 )
 from utils.normalize import normalize_posts
+from utils.local_security import SESSION_COOKIE, trusted_host, valid_session, set_session_cookie
+from utils.http_transport import public_image_get
 from utils.pairing import PairingError, pairing_manager, parse_pairing_code
 
 USER_CATS_FILE = Path(USER_CATEGORIES_PATH)
@@ -74,52 +76,15 @@ _LEGACY_BUNDLED_CATEGORY_HASHES = {
     "09dbf971205e5a66094e97ebb478019c8ae9b30c2411610a72c9b3049d47e3c5",
 }
 
-CREDENTIAL_FIELDS = {
-    "Danbooru": ("DANBOORU_LOGIN", "DANBOORU_API_KEY"),
-    "Gelbooru": ("GELBOORU_USER_ID", "GELBOORU_API_KEY"),
-    "Pixiv": ("PIXIV_REFRESH_TOKEN",),
-    "Tumblr": (
-        "TUMBLR_API_KEY",
-        "TUMBLR_CONSUMER_SECRET",
-        "TUMBLR_OAUTH_TOKEN",
-        "TUMBLR_OAUTH_TOKEN_SECRET",
-    ),
-    "DeviantArt": ("DEVIANTART_CLIENT_ID", "DEVIANTART_CLIENT_SECRET"),
-    "Bluesky": ("BSKY_HANDLE", "BSKY_PASSWORD"),
-}
-_CREDENTIAL_KEYS = frozenset(key for keys in CREDENTIAL_FIELDS.values() for key in keys)
+from utils.credentials import CREDENTIAL_FIELDS, CREDENTIAL_KEYS as _CREDENTIAL_KEYS
+from utils.credentials import profile_store, save_credentials, clean_legacy_credentials
+from utils.credential_store import CredentialStoreError
 
 
 def _write_credentials(updates: dict[str, str], removals: set[str]) -> None:
-    """Atomically update only credential keys in the private .env file."""
-    env_path = Path(DATA_DIR) / ".env"
+    """Settings and pairing share the same native credential boundary."""
     with _CREDENTIALS_LOCK:
-        lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
-        changed = set(updates) | removals
-        kept = []
-        for line in lines:
-            stripped = line.strip()
-            key = stripped.partition("=")[0].strip() if "=" in stripped else ""
-            if key not in changed:
-                kept.append(line)
-        kept.extend(f"{key}={value}" for key, value in updates.items())
-
-        env_path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp_name = tempfile.mkstemp(prefix=".env.", suffix=".tmp", dir=str(env_path.parent))
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as file:
-                file.write("\n".join(kept).rstrip() + ("\n" if kept else ""))
-                file.flush()
-                os.fsync(file.fileno())
-            os.replace(tmp_name, env_path)
-            if os.name != "nt":
-                os.chmod(env_path, 0o600)
-        except Exception:
-            try:
-                os.unlink(tmp_name)
-            except OSError:
-                pass
-            raise
+        save_credentials(profile_store(DATA_DIR), updates, removals)
 
 
 def _apply_credentials(updates: dict[str, str], removals: set[str]) -> None:
@@ -166,6 +131,8 @@ def _credential_status_payload() -> dict:
     import config as current_config
 
     return {
+        "storage": "native",
+        "storage_error": current_config.CREDENTIAL_STORAGE_ERROR,
         "groups": [
             {
                 "source": source,
@@ -378,10 +345,16 @@ downloads_path.mkdir(parents=True, exist_ok=True)
 async def local_security_headers(request: Request, call_next):
     """Bloqueia mutações cross-site e adiciona headers seguros.
 
-    Requisições sem Origin continuam aceitas para scripts/CLI locais. Browsers
-    enviando formulários/fetch de outro site são rejeitados.
+    Scripts locais precisam manter o cookie emitido na abertura da interface.
+    Browsers enviando formulários/fetch de outro site são rejeitados.
     """
+    if len(request.headers.getlist("host")) != 1 or not trusted_host(
+        request.headers.get("host", ""), lan=lan_mode_enabled()
+    ):
+        return JSONResponse({"error": "Host nao autorizado"}, status_code=400)
     client_host = request.client.host if request.client else ""
+    if not lan_mode_enabled() and not is_loopback_client(client_host):
+        return JSONResponse({"error": "Acesso remoto desativado"}, status_code=403)
     remote_lan_client = lan_mode_enabled() and not is_loopback_client(client_host)
     if remote_lan_client:
         query_token = request.query_params.get(LAN_QUERY_NAME)
@@ -434,7 +407,16 @@ async def local_security_headers(request: Request, call_next):
             except Exception:
                 return JSONResponse({"error": "Origem invalida"}, status_code=403)
 
+    bootstrap = request.method == "GET" and request.url.path == "/"
+    public_asset = request.url.path.startswith("/ui/") or request.url.path in {
+        "/api/health", "/favicon.ico",
+    }
+    if not remote_lan_client and not bootstrap and not public_asset:
+        if not valid_session(request.cookies.get(SESSION_COOKIE) or request.headers.get("x-artfinder-session")):
+            return JSONResponse({"error": "Sessao local expirada. Reabra a interface do ArtFinder."}, status_code=401)
     response = await call_next(request)
+    if bootstrap and not remote_lan_client:
+        set_session_cookie(response)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
@@ -593,9 +575,37 @@ async def save_credential_settings(body: dict):
     try:
         _write_credentials(updates, removals)
         _apply_credentials(updates, removals)
-    except OSError as exc:
-        return JSONResponse({"error": f"Nao foi possivel salvar: {exc}"}, status_code=500)
+    except (OSError, CredentialStoreError):
+        return JSONResponse({"error": "Nao foi possivel salvar no cofre do sistema."}, status_code=503)
     return {"ok": True, **_credential_status_payload()}
+
+
+@app.post("/api/settings/credentials/migrate")
+async def migrate_credential_settings():
+    """Explicitly copy only missing entries; never overwrite or delete legacy files."""
+    import config as current_config
+    if current_config.CREDENTIAL_STORAGE_ERROR:
+        return JSONResponse({"error": "Reinicie o app apos desbloquear o cofre."}, status_code=503)
+    try:
+        with _CREDENTIALS_LOCK:
+            store = profile_store(DATA_DIR)
+            values = {key: value for key, value in _configured_credential_values().items()
+                      if store.read(key) is None}
+            save_credentials(store, values, set())
+    except CredentialStoreError:
+        return JSONResponse({"error": "Nao foi possivel migrar para o cofre do sistema."}, status_code=503)
+    return {"ok": True, "migrated": len(values), "legacy_file_preserved": True}
+
+
+@app.post("/api/settings/credentials/cleanup-legacy")
+async def cleanup_legacy_credential_settings():
+    """Explicit cleanup; never removes a legacy value missing from the vault."""
+    try:
+        with _CREDENTIALS_LOCK:
+            result = clean_legacy_credentials(profile_store(DATA_DIR), Path(DATA_DIR) / ".env")
+    except (CredentialStoreError, OSError, UnicodeError):
+        return JSONResponse({"error": "Nao foi possivel limpar o arquivo antigo. Ele foi preservado."}, status_code=503)
+    return {"ok": True, **result}
 
 
 @app.post("/api/pairing/create")
@@ -659,15 +669,21 @@ def _validated_pairing_endpoint(code: object) -> str:
     endpoint = urlsplit(descriptor["url"])
     try:
         address = ipaddress.ip_address(endpoint.hostname or "")
+        port = endpoint.port
+        if port is None or not 1 <= port <= 65535:
+            raise ValueError("Porta invalida")
     except ValueError as exc:
         raise PairingError("Endereco de pareamento invalido") from exc
     if (
         endpoint.scheme != "http"
-        or not address.is_private
-        or address.is_loopback
-        or address.is_link_local
+        or not any(address in network for network in (
+            ipaddress.ip_network("10.0.0.0/8"), ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+        ))
         or endpoint.username
         or endpoint.password
+        or endpoint.query
+        or endpoint.fragment
         or not endpoint.path.startswith("/v1/pair/")
     ):
         raise PairingError("Endereco de pareamento invalido")
@@ -693,14 +709,26 @@ async def fetch_pairing_envelope(request: Request, body: dict):
     def download_envelope():
         with _requests.Session() as session:
             session.trust_env = False
-            return session.get(
+            with session.get(
                 endpoint,
                 headers={"Accept": "application/json"},
                 timeout=(3, 8),
-            )
+                allow_redirects=False,
+                stream=True,
+            ) as response:
+                if response.status_code != 200:
+                    return response.status_code, b""
+                content = bytearray()
+                for chunk in response.iter_content(16 * 1024):
+                    if len(content) + len(chunk) > 600_000:
+                        raise PairingError("Resposta de pareamento grande demais")
+                    content.extend(chunk)
+                return response.status_code, bytes(content)
 
     try:
-        response = await asyncio.get_running_loop().run_in_executor(None, download_envelope)
+        status, content = await asyncio.get_running_loop().run_in_executor(None, download_envelope)
+    except PairingError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=502)
     except _requests.Timeout:
         return JSONResponse({"error": "O PC demorou demais para responder"}, status_code=504)
     except _requests.RequestException:
@@ -708,12 +736,12 @@ async def fetch_pairing_envelope(request: Request, body: dict):
             {"error": "Nao foi possivel acessar o PC. Verifique o Wi-Fi e o firewall"},
             status_code=502,
         )
-    if response.status_code == 410:
+    if status == 410:
         return JSONResponse({"error": "Codigo expirado ou ja utilizado"}, status_code=410)
-    if response.status_code != 200 or len(response.content) > 600_000:
+    if status != 200:
         return JSONResponse({"error": "Resposta de pareamento invalida"}, status_code=502)
     try:
-        envelope = response.json()
+        envelope = json.loads(content)
     except ValueError:
         return JSONResponse({"error": "Resposta de pareamento invalida"}, status_code=502)
     if (
@@ -1511,148 +1539,61 @@ async def clear_database():
             "message": f"Banco limpo: {removed} registro(s) removido(s)."}
 
 
+def _run_plan_sync(plan, all_sources, errors=None):
+    from utils.database import get_blacklisted_uids
+    seen = set()
+    blocked = get_blocked_artists()
+    blacklist = get_blacklisted_uids()
+    posts = []
+    for combo in plan.combos:
+        category, source, _tags, _direct = combo
+        try:
+            raw = fetch_query(all_sources[source], combo, plan.pages)
+            posts.extend(accepted_posts(
+                raw, source=source, category=category, seen=seen,
+                blacklist=blacklist, blocked_artists=blocked, min_score=plan.min_score,
+            ))
+        except Exception as exc:
+            if errors is not None:
+                errors.append({"source": source, "category": category, "error": str(exc)})
+    return sorted(posts, key=lambda post: post["score"], reverse=True)
+
+
 def _run_search_sync(categories, source_names, pages, custom_cats, all_sources, errors=None):
-    """Executa busca sincrona – chamada em thread do executor."""
-    all_posts: list[dict] = []
-    seen_ids: set[str] = set()
-    blocked_artists: set[str] = get_blocked_artists()
-    try:
-        from utils.database import get_blacklisted_uids
-        blacklist_ids = get_blacklisted_uids()
-    except Exception:
-        blacklist_ids = set()
-
-    def add_posts(posts, cat):
-        for p in normalize_posts(posts):
-            uid = f"{p.get('source','?')}:{p.get('id','?')}"
-            if uid in seen_ids or uid in blacklist_ids:
-                continue   # 'return' abortava o lote inteiro na 1ª duplicata
-            artist_lower = (p.get("artist") or "").strip().lower()
-            if artist_lower and artist_lower in blocked_artists:
-                continue
-            seen_ids.add(uid)
-            if not p.get("category"):
-                p["category"] = cat
-            all_posts.append(p)
-
-    for cat in categories:
-        for sn in source_names:
-            fn = all_sources.get(sn)
-            if not fn: continue
-            try:
-                res = fn(cat, max_pages=pages)
-                add_posts(res, cat)
-                print(f"  [Busca] {sn} -> '{cat}': retornou {len(res)} artes")
-            except Exception as e:
-                print(f"  [search] {sn}/{cat}: {e}")
-                if errors is not None:
-                    errors.append({"source": sn, "category": cat, "error": str(e)})
-
-    for ccat in custom_cats:
-        label = ccat.get("label","custom"); ctags = ccat.get("tags","")
-        if not ctags: continue
-        for sn in source_names:
-            fn = all_sources.get(sn)
-            if not fn: continue
-            try:
-                # tags= explícito: o antigo hack de injetar em m.CATEGORIES
-                # era race condition com buscas simultâneas (duas abas/celular)
-                res = fn(label, max_pages=pages, tags=ctags)
-                add_posts(res, label)
-                print(f"  [Busca] {sn} -> '{label}': retornou {len(res)} artes")
-            except Exception as e:
-                print(f"  [search-custom] {sn}/{label}: {e}")
-                if errors is not None:
-                    errors.append({"source": sn, "category": label, "error": str(e)})
-
-    all_posts.sort(key=lambda x: x.get("score") or 0, reverse=True)
-    return all_posts
+    """Compatibility entry point; shares policy with both HTTP search routes."""
+    plan = build_search_plan(
+        {"categories": [], "sources": source_names, "pages": pages, "custom_categories": custom_cats},
+        {}, all_sources,
+    )
+    plan.combos.extend((category, source, None, None) for category in categories
+                       for source in source_names if source in all_sources)
+    return _run_plan_sync(plan, all_sources, errors)
 
 
 @app.post("/api/search")
 async def search(body: dict):
-    """Busca sincrona (fallback)."""
-    # Resolve tags das categorias selecionadas
-    user_cats  = _load_user_cats()
-    cat_keys   = body.get("categories", list(user_cats.keys()))
-    extra_cats = body.get("custom_categories", [])
-    resolved   = []
-    for k in cat_keys:
-        if k not in user_cats:
-            continue
-        for tg in _split_tags(user_cats[k]["tags"]):
-            resolved.append({"label": k, "tags": tg})
-    resolved  += extra_cats
-    source_names = body.get("sources", [])
-    pages        = max(1, min(int(body.get("pages", 2)), 50))
-    all_sources  = _get_sources()
-    if not source_names: source_names = list(all_sources.keys())
-    else: source_names = [s for s in source_names if s in all_sources]
-    loop = asyncio.get_running_loop()
-    errors: list[dict] = []
-    posts = await loop.run_in_executor(
-        None,
-        lambda: _run_search_sync([], source_names, pages, resolved, all_sources, errors),
-    )
+    all_sources = _get_sources()
+    try:
+        plan = build_search_plan(body, _load_user_cats(), all_sources)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    errors = []
+    posts = await asyncio.to_thread(_run_plan_sync, plan, all_sources, errors)
     return {"posts": posts, "total": len(posts), "errors": errors}
 
 
-
-
-
-
-
-
-
-
-
-
 @app.post("/api/search-stream")
-
-
-
-
 async def search_stream(body: dict, request: Request):
-    """Busca com SSE: envia posts fonte por fonte com progresso em tempo real."""
+    """Stream the same query plan and content policy as the JSON route."""
     if not HAS_SSE:
-        return JSONResponse(await search(body))
-
-    # Resolve categorias do usuario
-    user_cats    = _load_user_cats()
-    cat_keys     = body.get("categories", list(user_cats.keys()))
-    extra_cats   = body.get("custom_categories", [])  # categorias ad-hoc do frontend
-    source_names = body.get("sources", [])
-    pages        = max(1, min(int(body.get("pages", 2)), 50))
-    min_score    = int(body.get("min_score", 0))
-    all_sources  = _get_sources()
-    if not source_names: source_names = list(all_sources.keys())
-    else: source_names = [s for s in source_names if s in all_sources]
-
-    # Monta os combos (categoria × fonte). Cada combo é
-    # (label, fonte, tags_booru | None, query_direta | None):
-    #  - se a categoria tem source_tags para a fonte, usa essas queries
-    #    como estão (query_direta) — uma busca por query;
-    #  - senão, usa as tags booru (divididas por ';'), que cada fonte
-    #    converte do seu jeito.
-    combos: list[tuple[str, str, str | None, str | None]] = []
-    for k in cat_keys:
-        if k not in user_cats:
-            continue
-        ucat = user_cats[k]
-        stags = {s.lower(): v for s, v in (ucat.get("source_tags") or {}).items()}
-        for sn in source_names:
-            ov = stags.get(sn.lower())
-            if ov:
-                for q in (ov if isinstance(ov, list) else [ov]):
-                    if q:
-                        combos.append((k, sn, None, q))
-            else:
-                for tg in _split_tags(ucat.get("tags", "")):
-                    combos.append((k, sn, tg, None))
-    for c in extra_cats:
-        for sn in source_names:
-            for tg in _split_tags(c.get("tags", "")):
-                combos.append((c.get("label", "custom"), sn, tg, None))
+        result = await search(body)
+        return result if isinstance(result, Response) else JSONResponse(result)
+    all_sources = _get_sources()
+    try:
+        plan = build_search_plan(body, _load_user_cats(), all_sources)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    combos, pages = plan.combos, plan.pages
 
     # blacklist_ids: UIDs permanentemente bloqueados (persiste em TODOS os combos)
     blacklist_ids: set[str] = set()
@@ -1698,38 +1639,11 @@ async def search_stream(body: dict, request: Request):
                 yield {"event":"progress","data":json.dumps({"source":src_name,"cat":cat,"done":i+1,"total":len(combos),"error":str(e)})}
                 continue
 
-            new_posts = []
-            for p in posts:
-                # 0a) Filtra por score mínimo
-                if int(p.get("score") or 0) < min_score:
-                    continue
-                
-                # 0b) Filtra por artista bloqueado
-                artist_lower = (p.get("artist") or "").strip().lower()
-                if artist_lower and artist_lower in blocked_artists:
-                    continue
-
-                # 0c) Filtro central de IA (segunda camada de defesa)
-                if is_ai_generated(p):
-                    indicators = matched_ai_indicators(p)
-                    print(f"  [AI-filter] Bloqueado: {p.get('source')}:{p.get('id')} (indicadores: {indicators})")
-                    continue
-
-                uid = f"{p.get('source','?')}:{p.get('id','?')}"
-                # Bloqueia se estiver na blacklist permanente
-                if uid in blacklist_ids:
-                    continue
-                # Bloqueia duplicatas DENTRO da mesma busca inteira
-                if uid in request_seen:
-                    continue
-                request_seen.add(uid)
-                # normalize_posts() já garante todos os campos com tipos corretos,
-                # mas deixa category "" para fontes que não a preenchem (bsky,
-                # deviantart) — setdefault não corrige valor vazio, então
-                # atribuímos explicitamente para o download ir pra pasta certa.
-                if not p.get("category"):
-                    p["category"] = cat
-                new_posts.append(p)
+            new_posts = accepted_posts(
+                posts, source=src_name, category=cat, seen=request_seen,
+                blacklist=blacklist_ids, blocked_artists=blocked_artists,
+                min_score=plan.min_score,
+            )
 
 
             novos_db = 0
@@ -1964,10 +1878,11 @@ def _fetch_image_sync(url: str) -> tuple[bytes, str]:
         }
         auth = (
             (DANBOORU_LOGIN, DANBOORU_API_KEY)
-            if danbooru and DANBOORU_LOGIN and DANBOORU_API_KEY
+            if parsed.scheme == "https" and parsed.hostname == "danbooru.donmai.us"
+            and DANBOORU_LOGIN and DANBOORU_API_KEY
             else None
         )
-        with _requests.get(
+        with public_image_get(
             current_url,
             headers=headers,
             auth=auth,

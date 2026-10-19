@@ -168,3 +168,17 @@ ORGANIZE_BY = "category"
 BSKY_HANDLE   = os.getenv("BSKY_HANDLE", "")
 BSKY_PASSWORD = os.getenv("BSKY_PASSWORD", "")
 BSKY_DELAY    = 1.0
+
+# Native records take precedence over legacy .env and environment values.
+# On vault failure use no credentials, rather than resurrecting old secrets.
+from utils.credentials import CREDENTIAL_KEYS, profile_store, resolve_credentials
+from utils.credential_store import CredentialStoreError
+
+CREDENTIAL_STORAGE_ERROR = False
+try:
+    _credentials = resolve_credentials(profile_store(DATA_DIR), os.environ)
+except CredentialStoreError:
+    CREDENTIAL_STORAGE_ERROR = True
+    _credentials = dict.fromkeys(CREDENTIAL_KEYS, "")
+globals().update(_credentials)
+del _credentials

@@ -37,6 +37,7 @@ from utils.database import (
     set_download_public_uri,
 )
 from utils.network import is_domain, validate_redirect, validate_remote_url
+from utils.http_transport import PublicResolver
 
 
 _MAX_DOWNLOAD_BYTES = MAX_FILE_MB * 1024 * 1024
@@ -103,7 +104,7 @@ async def _fetch_image(
     """Fetch an image with bounded streaming and validated redirects."""
     current_url = url
     for redirect_count in range(_MAX_REDIRECTS + 1):
-        validate_remote_url(current_url)
+        await asyncio.to_thread(validate_remote_url, current_url)
         async with session.get(
             current_url,
             headers=_request_headers(current_url),
@@ -116,7 +117,7 @@ async def _fetch_image(
                 location = response.headers.get("Location", "")
                 if not location:
                     raise ValueError("Redirecionamento sem destino")
-                current_url = validate_redirect(current_url, location)
+                current_url = await asyncio.to_thread(validate_redirect, current_url, location)
                 continue
 
             if response.status != 200:
@@ -310,7 +311,7 @@ async def download_batch(
     downloaded = 0
     done_count = 0
     total = len(posts)
-    connector = aiohttp.TCPConnector(limit=MAX_DOWNLOAD_WORKERS)
+    connector = aiohttp.TCPConnector(limit=MAX_DOWNLOAD_WORKERS, resolver=PublicResolver())
     headers = {"User-Agent": "artFinder/2.0 (personal archiver)"}
 
     async def callback(ok: bool, message: str) -> None:

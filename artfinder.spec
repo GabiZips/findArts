@@ -10,6 +10,7 @@ hiddenimports = (
     + collect_submodules("filters")
     + collect_submodules("utils")
     + collect_submodules("artfinder")
+    + ["keyring.backends.Windows" if sys.platform == "win32" else "keyring.backends.SecretService"]
 )
 
 a = Analysis(

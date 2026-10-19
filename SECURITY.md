@@ -23,3 +23,18 @@ and personal file paths before sending logs.
   tokenized URL printed by the desktop process.
 - Never port-forward ArtFinder or expose it directly to the internet.
 - Do not distribute Android debug builds as stable releases.
+
+## Local application protections
+
+The local UI establishes an HttpOnly, SameSite Strict process session. Private
+API routes require it even on loopback. Unknown DNS Host names are rejected;
+LAN access still requires its separate token. Local scripts must bootstrap `/`
+and retain cookies before accessing private API routes.
+
+Image transports validate the connected public IP, preserve TLS hostname
+verification, and do not use environment proxies. Danbooru credentials are
+restricted to HTTPS on the exact API host. Hidden Android artwork uses an
+opaque placeholder rather than relying on platform-specific blur support.
+
+See [hardening and validation notes](docs/security-hardening.md) for tests,
+remaining limitations and migrations that have not yet been performed.

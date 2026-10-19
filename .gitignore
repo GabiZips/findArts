@@ -16,6 +16,11 @@ downloads/
 twitter_cookies.json
 *_cookies.json
 *.token
+*.p12
+*.jks
+*.keystore
+*.log
+.pytest_cache/
 
 # Python
 __pycache__/

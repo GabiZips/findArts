@@ -15,6 +15,10 @@ sse-starlette>=2.1.0
 # Core HTTP e parsing
 requests>=2.31.0
 requests-oauthlib>=2.0.0
+# Security floors also apply to installations outside the locked release builds.
+oauthlib>=4.0.0
+urllib3>=2.8.0
+multidict>=6.9.1
 aiohttp>=3.9.0
 aiofiles>=23.2.1
 
@@ -31,6 +35,7 @@ beautifulsoup4>=4.12.0
 
 # Pareamento local PC -> celular: pacote autenticado e código temporário.
 cryptography>=49.0.0
+keyring>=25.7.0
 
 # Pixiv (API oficial do app móvel)
 pixivpy3>=3.7.0
