@@ -7,7 +7,7 @@
 
 [Português](README.md) · [English](README.en.md)
 
-A local application for searching, comparing, organizing and downloading
+A local application for searching, organizing and downloading
 artwork and fan art from multiple sources in one interface.
 
 > [!IMPORTANT]
@@ -21,7 +21,7 @@ artwork and fan art from multiple sources in one interface.
   Bluesky and DeviantArt.
 - Source-specific tags and custom categories without editing Python code.
 - Local SQLite favorites, review groups, blacklist and download history.
-- Gallery, side-by-side comparison and content filters.
+- Library, collections, a zoomable viewer and content filters.
 - Size validation and perceptual-hash deduplication during downloads.
 - Portuguese and English interface with a saved language preference.
 
@@ -37,6 +37,11 @@ Personal data is stored separately under `%LOCALAPPDATA%\ArtFinder\`, so
 replacing the executable does not delete settings, the database or images.
 A fresh installation starts with no characters or tags. User-created
 categories remain local to that device and are never bundled into the executable.
+
+To build a per-user installer, install Inno Setup 6 and run
+`./scripts/build-windows-installer.ps1 -AppVersion 0.10.1`.
+The Setup is generated under `dist/review/`; this does not publish a release.
+Install updates over the existing application without uninstalling first.
 
 ## Linux
 
@@ -68,7 +73,7 @@ available.
 **Save to Gallery** publishes one copy under `Pictures/ArtFinder` through
 MediaStore, without broad storage permissions. ArtFinder's Gallery references
 that same copy. Search supports 1–25 pages per source (default 5), content
-rating, age, score and AI filters. Very large searches require confirmation,
+rating, age and score filters. Metadata-based AI blocking is mandatory. Very large searches require confirmation,
 and NSFW thumbnails stay blurred until tapped. PC pairing uses only the
 temporary full code copied into Android; the app does not request camera access.
 Search controls collapse after a query so artwork gets most of the screen. In
@@ -107,10 +112,12 @@ Linux dependency selects the PySide6 backend for pywebview.
 
 ## Optional credentials
 
-Copy `.env.example` to `.env` and configure only the sources you intend to use.
-Never commit or share this file.
-
-The same fields can be configured in **Settings > Sources and credentials**. The
+Configure sources in **Settings > Sources and credentials**. New desktop
+credentials use Windows Credential Manager or Linux Secret Service. Linux
+requires an available, unlocked secret service. Legacy `.env` files are not
+automatically deleted; use the explicit migration and cleanup actions in settings.
+`.env.example` documents development and legacy fields. Never share a populated
+`.env` file. The
 application reports only whether a value exists and never displays a saved
 password or token back to the interface.
 

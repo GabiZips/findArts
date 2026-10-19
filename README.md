@@ -9,7 +9,7 @@
 
 [Português](README.md) · [English](README.en.md)
 
-Aplicativo local para pesquisar, comparar, organizar e baixar artes e fan arts
+Aplicativo local para pesquisar, organizar e baixar artes e fan arts
 de várias fontes em uma só interface.
 
 > [!IMPORTANT]
@@ -25,7 +25,7 @@ de várias fontes em uma só interface.
 - Categorias personalizadas sem alterações no código.
 - Favoritos, avaliações, blacklist e histórico armazenados localmente em
   SQLite.
-- Galeria, comparação lado a lado e filtros de conteúdo.
+- Biblioteca, coleções, visualizador com zoom e filtros de conteúdo.
 - Download com limite de tamanho, validação do arquivo e deduplicação por hash
   perceptual.
 - Preservação do autor e do link original quando a fonte fornece esses dados.
@@ -51,7 +51,6 @@ Os dados do aplicativo ficam separados do executável:
 
 ```text
 %LOCALAPPDATA%\ArtFinder\
-├── .env
 ├── user_categories.json
 ├── webview\
 └── downloads\
@@ -84,9 +83,15 @@ venv\Scripts\python -m PyInstaller --noconfirm --clean artfinder.spec
 
 O resultado será `dist\ArtFinder.exe`.
 
+Para gerar o instalador por usuário, instale Inno Setup 6 e execute
+`./scripts/build-windows-installer.ps1 -AppVersion 0.10.1`.
+O Setup fica em `dist/review/`. Instale atualizações sem desinstalar antes.
+Consulte o [guia de atualização](docs/update-0.10.1.md). Gerar o pacote local
+não publica uma release no GitHub.
+
 O workflow `.github/workflows/build-windows.yml` também executa os testes e
 gera o executável no GitHub Actions. Tags como `v0.2.0` acionam o workflow de
-Release, que publica Windows, Linux e seus checksums juntos.
+Release, que publica Windows, Linux, Android e seus checksums juntos.
 
 ## Linux
 
@@ -127,7 +132,7 @@ ArtFinder referencia essa mesma cópia, evitando duplicar o arquivo. Apagar no
 aplicativo remove a imagem que ele criou e o registro local.
 
 Na busca, é possível escolher de 1 a 25 páginas por fonte, com padrão de 5,
-filtrar por SFW/Sensível/NSFW, período, score e arte de IA. Buscas grandes
+filtrar por SFW/Sensível/NSFW, período e score. O bloqueio de arte marcada como IA é obrigatório. Buscas grandes
 mostram o custo estimado e pedem confirmação entre 21 e 25 páginas. Conteúdo
 NSFW fica borrado até ser revelado com um toque; qualquer resolução é aceita.
 Depois da busca, os controles se recolhem para priorizar as imagens. Ao abrir
@@ -176,12 +181,12 @@ sessão. Se o Windows solicitar, permita o Python apenas em redes privadas.
 
 ## Credenciais opcionais
 
-Copie `.env.example` para `.env` e preencha somente as fontes que pretende
-usar. No executável, coloque esse arquivo em
-`%LOCALAPPDATA%\ArtFinder\.env`.
-
-Também é possível configurar esses campos pela interface em
-**Configurações > Fontes e credenciais**. O aplicativo informa apenas se um valor está
+Configure as fontes em **Configurações > Fontes e credenciais**. Novos valores
+desktop usam o cofre nativo do sistema: Windows Credential Manager ou Secret
+Service no Linux. No Linux, o serviço precisa estar disponível e desbloqueado.
+Arquivos `.env` legados não são apagados automaticamente; use as ações explícitas
+de migração e limpeza nas configurações. `.env.example` documenta os campos
+para desenvolvimento e compatibilidade legada. O aplicativo informa apenas se um valor está
 configurado e nunca exibe uma senha ou token salvo de volta na tela.
 
 | Fonte | Configuração |
@@ -222,8 +227,9 @@ são overrides e têm prioridade sobre sugestões automáticas.
 - **Baixar** salva o arquivo no disco; no Android ele também aparece em
   `Pictures/ArtFinder`.
 - Coleções organizam uma mesma arte em pastas sem duplicar a imagem.
-- O blur de NSFW começa ligado, fica salvo por dispositivo e cada imagem exige
-  o botão **Mostrar imagem** enquanto estiver protegida.
+- A proteção NSFW começa ligada. Clique/toque na área protegida para revelar,
+  novamente para abrir e use **Ocultar imagem** para proteger de novo.
+  Revelações são temporárias e não são sincronizadas.
 - Arte identificada como gerada por IA é sempre removida dos resultados. Não há
   opção para desligar essa política.
 - O visualizador interno aceita zoom e arrasto; o link da fonte continua sendo

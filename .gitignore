@@ -8,10 +8,13 @@ downloads/
 # Banco de dados SQLite
 *.db
 *.sqlite
+*.sqlite3
 
 # Credenciais e sessões (NUNCA commitar!)
 .env
 *.env
+.env.*
+!.env.example
 .local-secrets/
 twitter_cookies.json
 *_cookies.json
