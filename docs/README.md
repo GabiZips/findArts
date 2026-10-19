@@ -5,7 +5,16 @@ ficar no README principal.
 
 ## Guias
 
+- [Cofre nativo: decisão e ponto de retomada](adr/0009-native-credential-storage.md)
+
+- [Preparação para publicação pública](public-release-readiness.md)
+- [Contrato de interface](ui-guidelines.md)
+- [Proposta: sincronização opcional por conta, ainda não implementada](adr/0008-optional-account-sync-proposal.md)
+
+- [Correções de segurança, testes e próximas etapas](security-hardening.md)
 - [Assinatura do Android](android-signing.md)
+- [Validação Android em aparelho](android-device-validation.md)
+- [Atualização privada 0.10.1](update-0.10.1.md)
 - [Cliente Android nativo](../android-native/README.md)
 - [Scripts auxiliares](../scripts/README.md)
 - [Como contribuir](../CONTRIBUTING.md)
