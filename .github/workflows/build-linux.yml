@@ -50,8 +50,8 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           ARCH: x86_64
         run: |
-          curl --fail --location --retry 3 -o appimagetool.AppImage https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
-          echo "a6d71e2b6cd66f8e8d16c37ad164658985e0cf5fcaa950c90a482890cb9d13e0  appimagetool.AppImage" | sha256sum --check --strict
+          curl --fail --location --retry 3 -o appimagetool.AppImage https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          echo "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  appimagetool.AppImage" | sha256sum --check --strict
           chmod +x appimagetool.AppImage
           ./appimagetool.AppImage ArtFinder.AppDir ArtFinder-Linux-x86_64.AppImage
 

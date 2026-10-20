@@ -25,11 +25,18 @@ artwork and fan art from multiple sources in one interface.
 - Size validation and perceptual-hash deduplication during downloads.
 - Portuguese and English interface with a saved language preference.
 
-## Windows
+## Downloads
 
-> This repository was recreated with reviewed history. Old release binaries
-> were not transferred. Until a release is available here, use the build
-> instructions below. Historical tags are source snapshots, not app downloads.
+- [Android APK](https://github.com/GabiZips/findArts/releases/latest/download/ArtFinder-Android-10-16.apk)
+- [Windows installer](https://github.com/GabiZips/findArts/releases/latest/download/ArtFinder-Windows-Setup.exe)
+- [Linux AppImage](https://github.com/GabiZips/findArts/releases/latest/download/ArtFinder-Linux-x86_64.AppImage)
+- [All releases and checksums](https://github.com/GabiZips/findArts/releases)
+
+These links download apps directly, without an Actions ZIP. If the GitHub mobile
+app does not start the download, open this README in your browser. The automatic
+**Source code** archives contain source files, not an installable app.
+
+## Windows
 
 Stable binaries are published under
 [GitHub Releases](https://github.com/GabiZips/findArts/releases). Download

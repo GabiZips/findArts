@@ -1171,7 +1171,7 @@ async function loadSources(){
   try{
     const sourceData=await(await fetch("/api/sources")).json();
     const enabled=(sourceData.sources||[]).map(s=>`<label class="check-item"><input type="checkbox" name="src" value="${esc(s)}" checked><span>${esc(s)}</span></label>`);
-    const disabled=(sourceData.unavailable_sources||[]).map(s=>`<label class="check-item" title="${esc(s.reason||"Configuração necessária")}" style="opacity:.52"><input type="checkbox" disabled><span>${esc(s.name)} · ${t("configurar")}</span></label>`);
+    const disabled=(sourceData.unavailable_sources||[]).map(s=>`<label class="check-item" title="${esc(s.reason||"Configuração necessária")}" style="opacity:.52"><input type="checkbox" disabled><span>${esc(s.name)} · ${s.status==="unavailable"?t("Conector indisponível nesta instalação"):t("configurar")}</span></label>`);
     document.getElementById("srcGroup").innerHTML=[...enabled,...disabled].join("");
     applyTranslations(document.getElementById("srcGroup"));
   }catch(e){

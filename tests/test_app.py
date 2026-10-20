@@ -243,6 +243,17 @@ class AppRouteTests(unittest.TestCase):
         ):
             self.assertNotIn("Gelbooru", app._get_sources())
 
+    def test_sources_distinguish_broken_connector_from_missing_credentials(self):
+        with (
+            patch.object(app, "_get_sources", return_value={}),
+            patch.object(config, "PIXIV_REFRESH_TOKEN", ""),
+        ):
+            result = asyncio.run(app.list_sources())
+        unavailable = {entry["name"]: entry for entry in result["unavailable_sources"]}
+        self.assertEqual(unavailable["Danbooru"]["status"], "unavailable")
+        self.assertEqual(unavailable["Danbooru"]["missing"], [])
+        self.assertEqual(unavailable["Pixiv"]["status"], "configuration_required")
+
     def test_sync_search_reports_source_failures(self):
         def broken_source(*args, **kwargs):
             raise RuntimeError("network unavailable")

@@ -8,7 +8,7 @@ explique o comportamento afetado e não inclua artes, credenciais ou dados locai
 ```powershell
 py -3.12 -m venv venv
 venv\Scripts\python -m pip install -r requirements-dev.txt
-venv\Scripts\python -m pytest
+venv\Scripts\python -m unittest discover -s tests -v
 venv\Scripts\python -m ruff check .
 ```
 

@@ -534,6 +534,9 @@ async def list_sources():
 
     active = list(_get_sources().keys())
     requirements = {
+        "Danbooru": (),
+        "Safebooru": (),
+        "e621": (),
         "Gelbooru": ("GELBOORU_USER_ID", "GELBOORU_API_KEY"),
         "Pixiv": ("PIXIV_REFRESH_TOKEN",),
         "Tumblr": ("TUMBLR_API_KEY",),
@@ -548,6 +551,7 @@ async def list_sources():
         unavailable.append({
             "name": source,
             "missing": missing,
+            "status": "configuration_required" if missing else "unavailable",
             "reason": (
                 "Configuração necessária: " + ", ".join(missing)
                 if missing

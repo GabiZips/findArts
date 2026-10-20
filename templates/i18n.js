@@ -172,6 +172,7 @@
     "Fontes e credenciais": "Sources and credentials",
     "Ative Pixiv, Tumblr, Bluesky, DeviantArt e outras fontes sem editar o arquivo .env.": "Enable Pixiv, Tumblr, Bluesky, DeviantArt and other sources without editing the .env file.",
     "Configurar fontes": "Configure sources",
+    "Conector indisponível nesta instalação": "Connector unavailable in this installation",
     "Os valores ficam somente neste dispositivo. Por segurança, credenciais salvas nunca são exibidas de volta; deixe um campo vazio para manter o valor atual.": "Values remain on this device only. For safety, saved credentials are never displayed again; leave a field empty to keep its current value.",
     "Salvar credenciais": "Save credentials",
     "Configurado — deixe vazio para manter": "Configured — leave empty to keep",

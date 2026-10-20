@@ -31,11 +31,18 @@ de várias fontes em uma só interface.
 - Preservação do autor e do link original quando a fonte fornece esses dados.
 - Interface em português e inglês, com idioma salvo no dispositivo.
 
-## Baixar para Windows
+## Downloads
 
-> Este repositório foi recriado com histórico revisado. Os binários de releases
-> antigas não foram transferidos; enquanto não houver uma release aqui, use as
-> instruções de compilação abaixo. Tags históricas não são downloads de aplicativos.
+- [Baixar Android (APK)](https://github.com/GabiZips/findArts/releases/latest/download/ArtFinder-Android-10-16.apk)
+- [Instalar no Windows (Setup)](https://github.com/GabiZips/findArts/releases/latest/download/ArtFinder-Windows-Setup.exe)
+- [Baixar Linux (AppImage)](https://github.com/GabiZips/findArts/releases/latest/download/ArtFinder-Linux-x86_64.AppImage)
+- [Todas as versões e checksums](https://github.com/GabiZips/findArts/releases)
+
+Os links acima baixam os aplicativos diretamente, sem o ZIP do Actions.
+No celular, se o app do GitHub não abrir o download, abra este README no navegador.
+Não baixe os arquivos automáticos **Source code**: eles contêm o código, não o app.
+
+## Baixar para Windows
 
 Versões estáveis ficam em
 [GitHub Releases](https://github.com/GabiZips/findArts/releases), acompanhadas
