@@ -33,9 +33,14 @@ artwork and fan art from multiple sources in one interface.
 
 Stable binaries are published under
 [GitHub Releases](https://github.com/GabiZips/findArts/releases). Download
-`ArtFinder-Windows.exe`; `SHA256SUMS.txt` can be used to verify it. Temporary
+`ArtFinder-Windows-Setup.exe` to install, or `ArtFinder-Windows.exe` for the
+portable application; `SHA256SUMS.txt` can be used to verify them. Temporary
 development builds remain available from the
 [Windows build workflow](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml).
+
+Actions downloads artifacts as ZIP files: `ArtFinder-Windows-Installer` contains
+the Setup, while `ArtFinder-Windows` contains the portable executable. Extract
+before running. Release assets provide the `.exe` files directly.
 
 Personal data is stored separately under `%LOCALAPPDATA%\ArtFinder\`, so
 replacing the executable does not delete settings, the database or images.

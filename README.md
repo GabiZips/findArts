@@ -42,11 +42,15 @@ Versões estáveis ficam em
 do arquivo `SHA256SUMS.txt`:
 
 1. Abra a versão mais recente.
-2. Baixe `ArtFinder-Windows.exe`.
-3. Execute o arquivo.
+2. Baixe `ArtFinder-Windows-Setup.exe` para instalar, quando disponível na release.
+3. Execute o instalador. `ArtFinder-Windows.exe` é a alternativa portátil.
 
 Builds de desenvolvimento continuam disponíveis temporariamente em
 [GitHub Actions](https://github.com/GabiZips/findArts/actions/workflows/build-windows.yml).
+
+No Actions, `ArtFinder-Windows-Installer` contém o Setup e `ArtFinder-Windows`
+contém o portátil. O GitHub baixa esses artefatos como ZIP; extraia antes de
+executar. Nas Releases, os arquivos `.exe` são disponibilizados diretamente.
 
 O Windows pode exibir um aviso do SmartScreen porque o executável ainda não
 possui assinatura digital comercial.

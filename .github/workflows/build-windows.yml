@@ -55,7 +55,34 @@ jobs:
             throw 'The executable contains local user data or credentials.'
           }
 
-      - name: Upload Windows build
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          python scripts/verify-windows-package.py dist/ArtFinder.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Package verification failed.' }
+          $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
+          if (-not (Test-Path $compiler)) {
+            choco install innosetup --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed.' }
+          }
+          $gradle = Get-Content android-native/app/build.gradle.kts -Raw
+          if ($gradle -notmatch 'versionName\s*=\s*"([^"]+)"') { throw 'App version missing.' }
+          $version = $Matches[1]
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid app version.' }
+          $executable = (Resolve-Path dist/ArtFinder.exe).Path
+          & $compiler "/DAppVersion=$version" "/DAppExecutable=$executable" packaging/windows/artfinder.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
+          Copy-Item "dist/review/ArtFinder-Setup-$version.exe" dist/ArtFinder-Windows-Setup.exe
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArtFinder-Windows-Installer
+          path: dist/ArtFinder-Windows-Setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows portable build
         uses: actions/upload-artifact@v4
         with:
           name: ArtFinder-Windows
