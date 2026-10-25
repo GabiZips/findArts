@@ -4,11 +4,22 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const html = fs.readFileSync(path.join(__dirname, '../templates/index.html'), 'utf8');
+test('video links with signed query strings and fragments use the video path', () => {
+  const context = vm.createContext({});
+  const definition = html.match(/function mediaTypeOf\(u\)\{[\s\S]*?\n\}/)[0];
+  vm.runInContext(definition, context);
+  for (const url of ['https://cdn.example/file.mp4?token=x', 'https://cdn.example/file.WEBM#fragment', 'https://cdn.example/file.m4v']) {
+    assert.equal(context.mediaTypeOf(url), 'video');
+  }
+  assert.equal(context.mediaTypeOf('https://cdn.example/file.jpg?name=video.mp4'), 'image');
+  assert.ok(html.includes('/api/proxy-video?url='));
+});
 const start = html.indexOf('function esc(');
 const end = html.indexOf('// END SECURITY HELPERS');
 assert.ok(start >= 0 && end > start);
 function helpers(extra = {}) {
   const context = vm.createContext({URL, AVAL_LABEL: {}, ...extra});
+  vm.runInContext(html.match(/function mediaTypeOf\(u\)\{[\s\S]*?\n\}/)[0], context);
   vm.runInContext(html.slice(start, end), context);
   return context;
 }

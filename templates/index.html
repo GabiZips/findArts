@@ -1117,7 +1117,7 @@ function galleryCardHtml(it,index,mobile=false){
   return `<div class="gal-card${hidden?" nsfw-blur":""}" data-uid="${esc(uid)}" data-rel="${esc(it.rel_path||"")}" data-type="${esc(it._type||"")}" data-source="${esc(it.source||"")}" data-pid="${esc(pid)}" data-index="${Number(index)}" onclick="openGalLbIdx(Number(this.dataset.index))" oncontextmenu="showCtxMenuGal(event,this.dataset.uid)">
     <img src="${esc(img)}" data-fallback="${esc(full)}" loading="lazy" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback=''}else{onImgError(this)}">
     ${hidden?artworkPrivacyControls():""}
-    ${/\.(webm|mp4)$/i.test(it.orig_url||it.url||"")?'<div class="vid-icon">▶</div>':""}
+    ${mediaTypeOf(it.orig_url||it.url)==="video"?'<div class="vid-icon">▶</div>':""}
     <div class="gal-actions">
       ${!downloaded&&it._type!=="favorite"?`<button type="button" class="card-btn art-primary art-save" data-ui-action="save-art" data-uid="${esc(uid)}" title="Adicionar à coleção">Guardar</button>`:'<span class="art-saved-label">Guardado</span>'}
       ${!downloaded?`<button type="button" class="card-btn art-primary" data-ui-action="download-art" data-uid="${esc(uid)}" title="Baixar no dispositivo">Baixar</button>`:(mobile&&!it.public_uri?'<button type="button" class="card-btn art-primary" data-ui-action="export">Salvar no celular</button>':'<span class="art-saved-label">Baixada</span>')}
@@ -2111,7 +2111,7 @@ function renderPage(page){
     const artistHtml=artistBadge(p.artist);
     let pr=(p.rating||"sfw").toLowerCase();
     const isNsfw = (["questionable","q","explicit","e","nsfw","sensitive","s"].includes(pr)) ? " nsfw-blur" : "";
-    const isVid = (p.url||"").toLowerCase().endsWith(".webm") || (p.url||"").toLowerCase().endsWith(".mp4");
+    const isVid = mediaTypeOf(p.url)==="video";
 
     const div=document.createElement("div");
     div.className=`card${isNsfw}`;
@@ -2294,11 +2294,12 @@ function openLb(idxOrUid){
   setLightboxNsfw(["questionable","q","explicit","e","nsfw","sensitive","s"].includes(rating), `${p.source}:${p.id||p.post_id}`);
   resetLbZoom();
   const originalUrl = p.url || p.preview_url || "";
-    const isVid = originalUrl.toLowerCase().endsWith(".webm") || originalUrl.toLowerCase().endsWith(".mp4");
+    const isVid = mediaTypeOf(originalUrl)==="video";
     if(isVid) {
       document.getElementById("lbImg").style.display = "none";
       document.getElementById("lbVideo").style.display = "block";
-      document.getElementById("lbVideo").src = originalUrl;
+      document.getElementById("lbVideo").pause();
+      document.getElementById("lbVideo").src = `/api/proxy-video?url=${encodeURIComponent(originalUrl)}`;
     } else {
       document.getElementById("lbVideo").style.display = "none";
       document.getElementById("lbVideo").pause();
@@ -2317,7 +2318,7 @@ function openLb(idxOrUid){
   document.getElementById("lightbox").classList.add("open");
   // pré-carrega a próxima imagem para navegação instantânea
   const nx=filteredPosts[idx+1];
-  if(nx && !/\.(webm|mp4)$/i.test(nx.url||"")){
+  if(nx && mediaTypeOf(nx.url)!=="video"){
     const im=new Image();
     im.src=`/api/proxy-image?url=${encodeURIComponent(nx.url||nx.preview_url||"")}`;
   }
@@ -2713,11 +2714,12 @@ function openGalLb(src,pageUrl,source,score,origUrl,rating,uid=""){
     document.getElementById("lbNext").classList.add("hidden");
     document.getElementById("lbRateBar").style.display="none";
     let checkUrl = origUrl || src;
-    const isVid = checkUrl.toLowerCase().endsWith(".webm") || checkUrl.toLowerCase().endsWith(".mp4");
+    const isVid = mediaTypeOf(checkUrl)==="video";
     if(isVid) {
       document.getElementById("lbImg").style.display = "none";
       document.getElementById("lbVideo").style.display = "block";
-      document.getElementById("lbVideo").src = checkUrl;
+      document.getElementById("lbVideo").pause();
+      document.getElementById("lbVideo").src = src.startsWith("/api/file?") ? src : `/api/proxy-video?url=${encodeURIComponent(checkUrl)}`;
     } else {
       document.getElementById("lbVideo").style.display = "none";
       document.getElementById("lbVideo").pause();

@@ -139,6 +139,13 @@
     const img = image();
     if (!stage || !img) return;
 
+    const video = document.getElementById('lbVideo');
+    video?.addEventListener('error', () => {
+      if (video.getAttribute('src') && document.getElementById('lightbox')?.classList.contains('open')) {
+        toast(t('Não foi possível reproduzir o vídeo. Tente abrir na fonte.'), 'error');
+      }
+    });
+
     stage.addEventListener("wheel", event => {
       if (img.style.display === "none") return;
       event.preventDefault();
