@@ -20,7 +20,7 @@ oauthlib>=4.0.0
 urllib3>=2.8.0
 multidict>=6.9.1
 aiohttp>=3.9.0
-aiofiles>=23.2.1
+aiofiles>=25.1.0
 
 # Processamento de imagem e cores
 Pillow>=13.0.0
