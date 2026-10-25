@@ -1854,7 +1854,7 @@ def _get_referer(url: str) -> str:
         return "https://danbooru.donmai.us/"
 
 
-def _fetch_image_sync(url: str) -> tuple[bytes, str]:
+def _fetch_image_sync(url: str, allow_video: bool = False) -> tuple[bytes, str]:
     """Fetch a bounded image while validating the URL and every redirect."""
     global _proxy_cache_bytes
 
@@ -1864,6 +1864,8 @@ def _fetch_image_sync(url: str) -> tuple[bytes, str]:
     with _proxy_cache_lock:
         cached = _proxy_cache.get(url)
     if cached is not None:
+        if cached[1].startswith("video/") and not allow_video:
+            raise ValueError("O servidor nao retornou uma imagem")
         return cached
 
     current_url = url
@@ -1878,7 +1880,7 @@ def _fetch_image_sync(url: str) -> tuple[bytes, str]:
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
             ),
             "Referer": _get_referer(current_url),
-            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+            "Accept": "video/*,*/*;q=0.8" if allow_video else "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
         }
         auth = (
             (DANBOORU_LOGIN, DANBOORU_API_KEY)
@@ -1890,7 +1892,7 @@ def _fetch_image_sync(url: str) -> tuple[bytes, str]:
             current_url,
             headers=headers,
             auth=auth,
-            timeout=20,
+            timeout=60 if allow_video else 20,
             stream=True,
             allow_redirects=False,
         ) as response:
@@ -1906,14 +1908,17 @@ def _fetch_image_sync(url: str) -> tuple[bytes, str]:
             content_type = (
                 response.headers.get("content-type", "").split(";", 1)[0].lower()
             )
-            if content_type not in {
+            allowed_types = {
                 "image/jpeg",
                 "image/png",
                 "image/gif",
                 "image/webp",
                 "image/avif",
                 "image/bmp",
-            }:
+            }
+            if allow_video:
+                allowed_types.update({"video/mp4", "video/webm", "video/x-m4v"})
+            if content_type not in allowed_types:
                 raise ValueError("O servidor nao retornou uma imagem")
             try:
                 declared_size = int(response.headers.get("content-length", "0"))
@@ -1965,11 +1970,38 @@ async def proxy_image(url: str):
 
 
 
+def _video_response(data: bytes, content_type: str, byte_range: str | None):
+    """Serve one byte range so browser playback and seeking work consistently."""
+    from utils.media import video_byte_range
+
+    headers = {"Accept-Ranges": "bytes", "Cache-Control": "private, max-age=3600"}
+    if not content_type.startswith("video/"):
+        return JSONResponse({"error": "Formato de vídeo não suportado"}, status_code=502)
+    if byte_range:
+        try:
+            start, end = video_byte_range(byte_range, len(data))
+        except ValueError:
+            return Response(status_code=416, headers={**headers, "Content-Range": f"bytes */{len(data)}"})
+        headers["Content-Range"] = f"bytes {start}-{end}/{len(data)}"
+        return Response(data[start:end + 1], status_code=206, media_type=content_type, headers=headers)
+    return Response(data, media_type=content_type, headers=headers)
+
+
+@app.get("/api/proxy-video")
+async def proxy_video(request: Request, url: str):
+    # Reuse bounded, public-IP-pinned transport and redirect validation.
+    try:
+        data, content_type = await asyncio.to_thread(_fetch_image_sync, url, True)
+    except Exception:
+        return JSONResponse({"error": "Não foi possível carregar o vídeo da fonte"}, status_code=502)
+    return _video_response(data, content_type, request.headers.get("range"))
+
+
 _DOWNLOADED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 _PRIVATE_DOWNLOAD_ROOTS = {"metadata", ".thumbs"}
 
 
-def _resolve_download_image(rel_path: str, *, must_exist: bool = True) -> Path:
+def _resolve_download_image(rel_path: str, *, must_exist: bool = True, allow_video: bool = False) -> Path:
     """Resolve a user-provided private image path without allowing traversal."""
     if not isinstance(rel_path, str) or not rel_path or Path(rel_path).is_absolute():
         raise ValueError("Caminho invalido")
@@ -1982,7 +2014,9 @@ def _resolve_download_image(rel_path: str, *, must_exist: bool = True) -> Path:
     if (
         not relative.parts
         or relative.parts[0].lower() in _PRIVATE_DOWNLOAD_ROOTS
-        or file_path.suffix.lower() not in _DOWNLOADED_IMAGE_EXTENSIONS
+        or file_path.suffix.lower() not in (
+            _DOWNLOADED_IMAGE_EXTENSIONS | ({".mp4", ".webm", ".m4v"} if allow_video else set())
+        )
     ):
         raise PermissionError("Arquivo nao permitido")
     if must_exist and not file_path.is_file():
@@ -2038,7 +2072,7 @@ async def thumb(rel_path: str):
 async def downloaded_file(rel_path: str):
     """Serve only downloaded image files, never the database or metadata."""
     try:
-        file_path = _resolve_download_image(rel_path)
+        file_path = _resolve_download_image(rel_path, allow_video=True)
     except ValueError:
         return JSONResponse({"error": "Caminho invalido"}, status_code=400)
     except PermissionError:

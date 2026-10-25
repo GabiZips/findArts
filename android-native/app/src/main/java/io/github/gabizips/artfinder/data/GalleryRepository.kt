@@ -76,7 +76,7 @@ class GalleryRepository(
             }
             val request = Request.Builder().url(post.url).apply {
                 if (post.source.id == "pixiv") header("Referer", "https://www.pixiv.net/")
-                header("User-Agent", "ArtFinder-Android/0.10.1")
+                header("User-Agent", "ArtFinder-Android/0.10.2")
             }.build()
             val staging = java.io.File.createTempFile("artfinder-", ".download", context.cacheDir)
             val coroutineContext = currentCoroutineContext()
