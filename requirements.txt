@@ -6,7 +6,7 @@ starlette>=1.3.1
 annotated-types>=0.7.0
 typing-extensions>=4.16.0
 typing-inspection>=0.4.2
-anyio>=4.14.2
+anyio>=4.15.1
 idna>=3.18
 annotated-doc>=0.0.4
 # Streaming SSE da busca (sem isso a galeria não renderiza os resultados)
