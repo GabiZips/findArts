@@ -519,6 +519,18 @@ async def viewer_styles():
     return FileResponse(Path(RESOURCE_DIR) / "templates" / "viewer.css", media_type="text/css")
 
 
+@app.get("/ui/desktop.css", response_class=FileResponse)
+async def desktop_styles():
+    return FileResponse(Path(RESOURCE_DIR) / "templates" / "desktop.css", media_type="text/css")
+
+
+@app.get("/ui/desktop.js", response_class=FileResponse)
+async def desktop_script():
+    return FileResponse(
+        Path(RESOURCE_DIR) / "templates" / "desktop.js", media_type="application/javascript"
+    )
+
+
 @app.get("/ui/viewer.js", response_class=FileResponse)
 async def viewer_script():
     return FileResponse(
