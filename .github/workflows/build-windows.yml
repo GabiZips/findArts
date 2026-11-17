@@ -75,7 +75,7 @@ jobs:
           Copy-Item "dist/review/ArtFinder-Setup-$version.exe" dist/ArtFinder-Windows-Setup.exe
 
       - name: Upload Windows installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ArtFinder-Windows-Installer
           path: dist/ArtFinder-Windows-Setup.exe
@@ -83,7 +83,7 @@ jobs:
           retention-days: 14
 
       - name: Upload Windows portable build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ArtFinder-Windows
           path: dist/ArtFinder.exe
