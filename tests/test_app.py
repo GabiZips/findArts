@@ -75,6 +75,12 @@ class AppRouteTests(unittest.TestCase):
         viewer_styles = asyncio.run(app.viewer_styles())
         self.assertEqual(Path(viewer_script.path).name, "viewer.js")
         self.assertEqual(Path(viewer_styles.path).name, "viewer.css")
+        self.assertIn('src="/ui/desktop.js"', html)
+        self.assertIn('href="/ui/desktop.css"', html)
+        for handler, filename in [(app.desktop_script, "desktop.js"), (app.desktop_styles, "desktop.css")]:
+            resource = asyncio.run(handler())
+            self.assertEqual(Path(resource.path).name, filename)
+            self.assertTrue(Path(resource.path).is_file())
 
     def test_interface_has_persistent_nsfw_blur_and_zoom_controls(self):
         html = asyncio.run(app.index()).body.decode("utf-8")
