@@ -80,11 +80,12 @@ autenticação real nem compatibilidade de todos os codecs em outras máquinas.
 
 ## Biblioteca e direção visual
 
-A interface PC usa navegação lateral com coleções, grade virtualizada com
-controle de tamanho e painel de detalhes redimensionável. O painel respeita a
-mesma proteção de prévias NSFW do visualizador. A busca direta por tags conserva
-a busca avançada em janela. Tamanho das miniaturas, visibilidade dos detalhes
-e tema são persistidos; quatro temas mantêm suas chaves anteriores.
+A interface PC usa navegação no topo, coleções em Minha galeria e uma grade
+virtualizada que ocupa a largura da janela. O painel de detalhes abre sob
+demanda e respeita a proteção de prévias NSFW do visualizador. A busca direta
+por tags continua disponível durante a exploração. A busca avançada abre
+em janela. O tamanho das artes, a visibilidade dos detalhes e o tema são
+persistidos. Os quatro temas mantêm suas chaves anteriores.
 
 Referências de interação: [Eagle](https://eagle.cool/support/get-started)
 (biblioteca, barra de ferramentas e inspetor) e

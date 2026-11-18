@@ -1,36 +1,33 @@
 # ArtFinder desktop
 
-A native image library for finding, comparing and saving artwork. The desktop
-surface operates as a tool: familiar navigation, compact controls, visible
-selection and artwork as the main content. The Qt client is the PC target;
-the separate browser and Android clients retain their own layouts.
+ArtFinder is a native workspace for finding and saving artwork. Its identity
+comes from two overlapping prints with a finder lens, a saturated cobalt cover
+and a warm orange action color. The mark is drawn in Qt and also appears in the
+Windows executable and installer icons.
 
 ## Visual system
 
-- Charcoal canvas #202124, surface #292b2f, text #f1f2f4, secondary text #b1b5bd,
-  divider #454951 and selection/action blue #84b7ff.
-- Source Sans 3 for controls and metadata, Archivo for the product mark and titles.
-- 200 px sidebar, compact workspace toolbar, flexible grid and 230–330 px inspector.
-  The inspector can be hidden; the grid adapts to thumbnail size and window width.
-- Native desktop density: 13 px control text, 20 px titles, explicit button edges,
-  5–6 px control corners and visible keyboard focus. Minimum window: 1000 × 680.
-- Persistent Night, Graphite, Forest and Light themes. Dark is the default.
-- No decorative hero, generated illustrations, purple wash or marketing cards.
-  Identity comes from the compass mark, consistent icons and the library composition.
+- Noturno uses navy #121625, cobalt #304cc7 and orange #ff9d50. Grafite,
+  Floresta and Claro offer three additional persistent palettes.
+- Archivo carries the wordmark and headings. Source Sans 3 carries controls,
+  artwork credit and metadata.
+- Top navigation leaves the window width available for artwork. The grid starts
+  with a target column width of 410 px and offers an adjustable range of
+  180–720 px. Images preserve their aspect ratio.
+- Orange marks the primary action and the current artwork selection.
+  Secondary actions have defined edges, visible icons and text labels.
+- The opening search cover uses the original mark and color blocks. The app
+  includes no generated imagery.
 
 ## Interaction
 
-Search by tags from the empty state; choose categories/sources in New search.
-Select to inspect, double-click to open, Ctrl-click for batch actions. Collection
-names and artwork metadata are user content. Never translate or reinterpret them.
-Protected media must not be requested by either grid or inspector before reveal.
-Loading, empty, unavailable-image and disabled states must explain what is happening.
+Search from the top field or open Advanced search for categories and sources.
+Filter the loaded results by text or site. An empty filtered view offers a direct
+way to clear the filters. Select to enable actions, double-click to open, and
+Ctrl-click for batch actions. The bottom toolbar controls artwork size and the
+optional inspector, which respects protected previews. Collection management
+lives in My gallery. Language and preview privacy are under Settings → General.
 
-## References and validation
-
-[Eagle](https://eagle.cool/support/get-started) informs the library/inspector
-structure. [PureRef](https://www.pureref.com/handbook/canvas/) informs the focus on
-artwork. Neither product's assets are bundled. No AI-generated imagery is used.
-Validate native captures at 1440 × 900 and 1000 × 680, all themes, selection,
-protected media, dialogs and keyboard interaction. Screenshots use synthetic test
-fixtures; actual artwork comes from the user's configured sources.
+Check the desktop layout at 1440 × 900 and 1000 × 680. Test theme switching,
+search and filtering, selection, collection navigation and protected previews.
+Review screenshots use only geometric test fixtures.
