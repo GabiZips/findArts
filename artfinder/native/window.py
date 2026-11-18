@@ -2,22 +2,22 @@
 import json
 from urllib.parse import quote, urlsplit
 
-from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence, QShortcut
+from PySide6.QtCore import QItemSelection, QItemSelectionModel, QSettings, QSize, Qt, QUrl
+from PySide6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QGridLayout,
-    QHBoxLayout, QLabel, QListView, QMainWindow, QMenu, QMessageBox, QProgressBar,
-    QScrollArea, QStackedWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
-    QLineEdit, QListWidget, QListWidgetItem, QSlider, QSplitter,
+    QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog,
+    QHBoxLayout, QLabel, QLineEdit, QListView, QMainWindow, QMenu, QMessageBox,
+    QProgressBar, QSlider, QSplitter, QStackedWidget, QTableWidget, QTableWidgetItem,
+    QVBoxLayout, QWidget,
 )
 
 from .studio import nav_icon
 from .inspector import Inspector
-from .themes import THEMES, apply_theme, load_fonts, refresh_icons, stylesheet
+from .themes import THEMES, apply_theme, load_fonts, stylesheet
 from .client import ApiClient
 from .dialogs import CategoryDialog, CollectionsDialog, FiltersDialog, SearchDialog, SettingsDialog
 from .models import ArtworkModel, canonical, filter_posts, rating, source_name, uid
-from .widgets import ArtworkDelegate, ArtworkGrid, ImageView, Thumbnails, Viewer, button, label, pixmap_from_bytes
+from .widgets import ArtworkDelegate, ArtworkGrid, Thumbnails, Viewer, button, label
 
 
 STYLE = stylesheet("night")
@@ -45,10 +45,11 @@ class NativeWindow(QMainWindow):
         self.revealed = set()
         self.section = "search"
         self.search_reply = None
+        self.search_attempted = False
         self.search_generation = 0
         self.library_generation = 0
         self.setWindowTitle("ArtFinder")
-        self.setWindowIcon(QIcon(str(Path(resource_dir) / "assets" / "artfinder.ico")))
+        self.setWindowIcon(nav_icon("brand"))
         self.resize(1440, 900)
         self.setMinimumSize(1000, 680)
         geometry = self.preferences.value("geometry")
@@ -60,82 +61,58 @@ class NativeWindow(QMainWindow):
         self.model = ArtworkModel(self)
         central = QWidget()
         self.setCentralWidget(central)
-        outer = QHBoxLayout(central)
+        outer = QVBoxLayout(central)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
-        rail = QWidget()
-        rail.setObjectName("rail")
-        rail.setFixedWidth(200)
-        rail_layout = QVBoxLayout(rail)
-        rail_layout.setContentsMargins(12, 18, 12, 14)
-        rail_layout.setSpacing(8)
-        brand = QHBoxLayout()
+        masthead = QWidget()
+        masthead.setObjectName("masthead")
+        mast = QHBoxLayout(masthead)
+        mast.setContentsMargins(22, 10, 22, 10)
+        mast.setSpacing(10)
         mark = QLabel()
-        mark.setPixmap(nav_icon("brand").pixmap(38, 38))
-        brand.addWidget(mark)
-        brand.addWidget(label("ArtFinder", "brand"), 1)
-        rail_layout.addLayout(brand)
-        rail_layout.addSpacing(18)
+        mark.setPixmap(nav_icon("brand").pixmap(46, 46))
+        mast.addWidget(mark)
+        mast.addWidget(label("ArtFinder", "brand"))
+        mast.addSpacing(22)
         self.nav = {}
+        self.navigation = QButtonGroup(self)
+        self.navigation.setExclusive(True)
         for key, title in [("search", "Explorar"), ("gallery", "Minha galeria"), ("stats", "Estatísticas")]:
-            item = button(title, lambda checked=False, key=key: self.switch_section(key))
-            item.setProperty("iconName", key)
-            item.setProperty("navigation", True)
-            item.setIcon(nav_icon(key))
-            item.setIconSize(QSize(21, 21))
+            item = button(title, lambda checked=False, key=key: self.switch_section(key), icon=key)
+            item.setObjectName("navTab")
             item.setCheckable(True)
+            self.navigation.addButton(item)
             item.setChecked(key == "search")
             self.nav[key] = item
-            item.toggled.connect(lambda: refresh_icons(QApplication.instance(), self.theme))
-            rail_layout.addWidget(item)
-        rail_layout.addWidget(label("Coleções", "navHeading"))
-        self.collection_list = QListWidget()
-        self.collection_list.setObjectName("collectionList")
-        self.collection_list.setProperty("userDataLabels", True)
-        self.collection_list.itemClicked.connect(self.select_collection)
-        rail_layout.addWidget(self.collection_list, 1)
-        for key, title, callback in [
-            ("categories", "Categorias", self.open_categories),
-            ("collections", "Coleções", lambda: self.open_dialog(CollectionsDialog)),
-            ("settings", "Configurações", lambda: self.open_dialog(SettingsDialog)),
-        ]:
-            item = button(title, callback)
-            item.setProperty("iconName", key)
-            item.setProperty("navigation", True)
-            item.setIcon(nav_icon(key))
-            item.setIconSize(QSize(21, 21))
-            rail_layout.addWidget(item)
-        self.language = QComboBox()
-        self.language.setProperty("userDataLabels", True)
-        self.language.addItem("Português", "pt-BR")
-        self.language.addItem("English", "en")
-        self.language.setCurrentIndex(max(0, self.language.findData(self.translations.language)))
-        self.language.currentIndexChanged.connect(self.change_language)
-        rail_layout.addWidget(self.language)
-        self.blur_box = QCheckBox("Ocultar prévias NSFW")
-        self.blur_box.setChecked(self.blur)
-        self.blur_box.toggled.connect(self.set_blur)
-        rail_layout.addWidget(self.blur_box)
-        self.disk_status = label("Biblioteca local", "muted")
-        rail_layout.addWidget(self.disk_status)
-        outer.addWidget(rail)
+            mast.addWidget(item)
+        mast.addStretch(1)
+        mast.addWidget(button("Categorias", self.open_categories, icon="categories"))
+        mast.addWidget(button("Configurações", lambda: self.open_dialog(SettingsDialog), icon="settings"))
+        outer.addWidget(masthead)
+
         workspace = QWidget()
         content = QVBoxLayout(workspace)
-        content.setContentsMargins(18, 16, 18, 8)
+        content.setContentsMargins(22, 14, 22, 10)
         content.setSpacing(10)
-        header = QHBoxLayout()
-        titles = QVBoxLayout()
-        self.title = label("Explorar artes", "title")
-        self.subtitle = label("Busque nas suas fontes e organize suas descobertas.", "muted")
-        titles.addWidget(self.title)
-        titles.addWidget(self.subtitle)
-        header.addLayout(titles, 1)
-        self.filter_button = button("Filtros", self.open_filters)
-        self.new_search = button("Nova busca", self.open_search, True)
+        self.command_bar = QWidget()
+        self.command_bar.setObjectName("commandBar")
+        command = QHBoxLayout(self.command_bar)
+        command.setContentsMargins(10, 8, 8, 8)
+        command.setSpacing(8)
+        self.quick_search = QLineEdit(self.search_options.get("tags", ""))
+        self.quick_search.setPlaceholderText("Digite tags, personagens ou artistas…")
+        self.quick_search.setAccessibleName("Tags da busca")
+        self.quick_search.setClearButtonEnabled(True)
+        self.quick_search.returnPressed.connect(self.search_tags)
+        command.addWidget(self.quick_search, 1)
+        self.empty_search = button("Buscar", self.search_tags, True)
+        self.empty_search.setEnabled(False)
+        command.addWidget(self.empty_search)
+        self.new_search = button("Busca avançada", self.open_search, icon="filter")
+        self.new_search.setToolTip("Escolher categorias, fontes e páginas (Ctrl+N)")
         self.new_search.setEnabled(False)
-        header.addWidget(self.filter_button)
-        header.addWidget(self.new_search)
-        content.addLayout(header)
+        command.addWidget(self.new_search)
+        content.addWidget(self.command_bar)
         self.progress_panel = QWidget()
         progress_layout = QHBoxLayout(self.progress_panel)
         progress_layout.setContentsMargins(0, 0, 0, 0)
@@ -148,12 +125,36 @@ class NativeWindow(QMainWindow):
         progress_layout.addWidget(button("Cancelar", self.cancel_search))
         self.progress_panel.hide()
         content.addWidget(self.progress_panel)
+        header = QHBoxLayout()
+        self.title = label("Explorar", "title")
+        header.addWidget(self.title)
+        self.count = label("", "resultCount")
+        header.addWidget(self.count)
+        header.addStretch(1)
+        self.library_toolbar = QWidget()
+        library_layout = QHBoxLayout(self.library_toolbar)
+        library_layout.setContentsMargins(0, 0, 0, 0)
+        self.collection_filter = QComboBox()
+        self.collection_filter.setProperty("userDataLabels", True)
+        self.collection_filter.setMinimumContentsLength(15)
+        self.collection_filter.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.collection_filter.addItem("Todas as coleções", None)
+        self.collection_filter.currentIndexChanged.connect(self.apply_filters)
+        library_layout.addWidget(self.collection_filter)
+        library_layout.addWidget(button("Coleções", lambda: self.open_dialog(CollectionsDialog), icon="collections"))
+        self.duplicates_button = button("Duplicatas", self.show_duplicates)
+        library_layout.addWidget(self.duplicates_button)
+        library_layout.addWidget(button("Atualizar", self.refresh_library))
+        header.addWidget(self.library_toolbar)
+        self.filter_button = button("Filtros", self.open_filters)
+        header.addWidget(self.filter_button)
+        content.addLayout(header)
         self.toolbar = QWidget()
-        self.toolbar.setObjectName("searchTools")
         toolbar = QHBoxLayout(self.toolbar)
         toolbar.setContentsMargins(0, 0, 0, 0)
         self.query = QLineEdit()
         self.query.setPlaceholderText("Filtrar por artista, categoria ou tag…")
+        self.query.setAccessibleName("Filtrar resultados")
         self.query.setClearButtonEnabled(True)
         self.query.textChanged.connect(self.apply_filters)
         toolbar.addWidget(self.query, 1)
@@ -166,26 +167,11 @@ class NativeWindow(QMainWindow):
             self.sort.addItem(name, value)
         self.sort.currentIndexChanged.connect(self.apply_filters)
         toolbar.addWidget(self.sort)
-        toolbar.addWidget(button("Atualizar", self.refresh_library))
-        content.addWidget(self.toolbar)
-        self.library_toolbar = QWidget()
-        library_layout = QHBoxLayout(self.library_toolbar)
-        library_layout.setContentsMargins(0, 0, 0, 0)
-        self.collection_filter = QComboBox()
-        self.collection_filter.setProperty("userDataLabels", True)
-        self.collection_filter.addItem("Todas as coleções", None)
-        self.collection_filter.currentIndexChanged.connect(self.apply_filters)
-        library_layout.addWidget(self.collection_filter)
-        self.duplicates_button = button("Duplicatas", self.show_duplicates)
-        library_layout.addWidget(self.duplicates_button)
         self.hide_saved = QCheckBox("Ocultar artes já guardadas")
         self.hide_saved.setChecked(True)
         self.hide_saved.toggled.connect(self.apply_filters)
-        library_layout.addWidget(self.hide_saved)
-        library_layout.addStretch()
-        self.count = label("0 artes", "muted")
-        library_layout.addWidget(self.count)
-        content.addWidget(self.library_toolbar)
+        toolbar.addWidget(self.hide_saved)
+        content.addWidget(self.toolbar)
         self.pages = QStackedWidget()
         self.grid = ArtworkGrid()
         self.grid.setObjectName("artGrid")
@@ -195,7 +181,7 @@ class NativeWindow(QMainWindow):
         self.grid.setLayoutMode(QListView.LayoutMode.Batched)
         self.grid.setBatchSize(80)
         self.grid.setUniformItemSizes(True)
-        self.grid.setGridSize(QSize(260, 328))
+        self.grid.setGridSize(QSize(410, 485))
         self.grid.setMouseTracking(True)
         self.grid.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.grid.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
@@ -208,31 +194,31 @@ class NativeWindow(QMainWindow):
         self.thumbnails.changed.connect(self.grid.viewport().update)
         self.empty = QWidget()
         empty_layout = QVBoxLayout(self.empty)
-        empty_layout.setContentsMargins(32, 32, 32, 32)
-        empty_layout.addStretch()
-        self.empty_title = label("Sua próxima descoberta começa aqui", "emptyTitle")
-        self.empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_layout.setContentsMargins(0, 8, 0, 0)
+        empty_layout.setSpacing(16)
+        self.search_cover = QWidget()
+        self.search_cover.setObjectName("searchCover")
+        cover = QHBoxLayout(self.search_cover)
+        cover.setContentsMargins(38, 22, 38, 22)
+        cover.setSpacing(24)
+        introduction = QVBoxLayout()
+        introduction.setSpacing(10)
+        introduction.addStretch()
+        introduction.addWidget(label("Encontre sua próxima referência.", "coverTitle"))
+        introduction.addWidget(label("Busque por tags ou combine categorias e fontes em Busca avançada.", "coverCopy"))
+        introduction.addStretch()
+        cover.addLayout(introduction, 1)
+        cover_mark = QLabel()
+        cover_mark.setPixmap(nav_icon("brand").pixmap(200, 200))
+        cover.addWidget(cover_mark)
+        empty_layout.addWidget(self.search_cover)
+        self.empty_title = label("", "emptyTitle")
+        self.empty_message = label("", "muted")
         empty_layout.addWidget(self.empty_title)
-        self.empty_message = label("Busque por tags ou abra uma busca para escolher categorias e fontes.", "muted")
-        self.empty_message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty_layout.addWidget(self.empty_message)
-        empty_layout.addSpacing(18)
-        self.quick_search = QLineEdit()
-        self.quick_search.setPlaceholderText("Digite tags, personagens ou artistas…")
-        self.quick_search.setClearButtonEnabled(True)
-        self.quick_search.setMinimumWidth(420)
-        self.quick_search.setMaximumWidth(520)
-        self.quick_search.setMinimumHeight(34)
-        self.quick_search.returnPressed.connect(self.search_tags)
-        empty_layout.addWidget(self.quick_search, 0, Qt.AlignmentFlag.AlignHCenter)
-        self.empty_search = button("Buscar", self.search_tags, True)
-        self.empty_search.setEnabled(False)
-        empty_layout.addWidget(self.empty_search, 0, Qt.AlignmentFlag.AlignHCenter)
-        empty_layout.addSpacing(12)
-        self.search_hint = label("Ctrl + N  Nova busca     ·     Ctrl + F  Filtrar resultados", "muted")
-        self.search_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty_layout.addWidget(self.search_hint)
-        empty_layout.addStretch(2)
+        self.reset_button = button("Limpar filtros", self.reset_filters, icon="close")
+        empty_layout.addWidget(self.reset_button, 0, Qt.AlignmentFlag.AlignLeft)
+        empty_layout.addStretch(1)
         self.stats = QTableWidget(0, 2)
         self.stats.setHorizontalHeaderLabels(["Biblioteca", "Quantidade"])
         self.stats.horizontalHeader().setStretchLastSection(True)
@@ -249,64 +235,86 @@ class NativeWindow(QMainWindow):
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setSizes([850, 250])
         content.addWidget(self.splitter, 1)
-        status_tools = QHBoxLayout()
-        self.grid_hint = label("Duplo clique para abrir · Ctrl + clique para selecionar", "muted")
-        status_tools.addWidget(self.grid_hint, 1)
-        status_tools.addWidget(label("Miniaturas", "muted"))
-        self.thumbnail_size = QSlider(Qt.Orientation.Horizontal)
-        self.thumbnail_size.setRange(160, 320)
-        self.thumbnail_size.setValue(self.preferences.value("thumbnail_size", 220, type=int))
-        self.thumbnail_size.setFixedWidth(100)
-        self.thumbnail_size.setToolTip("Tamanho das miniaturas")
-        self.thumbnail_size.setAccessibleName("Tamanho das miniaturas")
-        self.thumbnail_size.valueChanged.connect(self.resize_thumbnails)
-        status_tools.addWidget(self.thumbnail_size)
-        self.inspector_toggle = button("Detalhes", self.toggle_inspector)
-        self.inspector_toggle.setCheckable(True)
-        self.inspector_toggle.setChecked(self.preferences.value("show_inspector", True, type=bool))
-        status_tools.addWidget(self.inspector_toggle)
-        content.addLayout(status_tools)
-        self.grid.set_thumbnail_width(self.thumbnail_size.value())
         self.actions = QWidget()
         self.actions.setObjectName("actions")
         actions = QHBoxLayout(self.actions)
-        actions.setContentsMargins(14, 12, 14, 12)
-        self.selection_label = label("Selecione uma arte para abrir ou guardar.", "muted")
+        actions.setContentsMargins(10, 7, 8, 7)
+        actions.setSpacing(7)
+        actions.addWidget(label("Tamanho", "muted"))
+        self.thumbnail_size = QSlider(Qt.Orientation.Horizontal)
+        self.thumbnail_size.setRange(180, 720)
+        self.thumbnail_size.setValue(self.preferences.value("artwork_width", 410, type=int))
+        self.thumbnail_size.setFixedWidth(80)
+        self.thumbnail_size.setToolTip("Tamanho das artes")
+        self.thumbnail_size.setAccessibleName("Tamanho das artes")
+        self.thumbnail_size.setSingleStep(40)
+        self.thumbnail_size.setPageStep(90)
+        self.thumbnail_size.valueChanged.connect(self.resize_thumbnails)
+        actions.addWidget(self.thumbnail_size)
+        self.grid.set_thumbnail_width(self.thumbnail_size.value())
+        self.inspector_toggle = button("Detalhes", self.toggle_inspector, icon="panel")
+        self.inspector_toggle.setCheckable(True)
+        self.inspector_toggle.setChecked(self.preferences.value("artwork_details", False, type=bool))
+        actions.addWidget(self.inspector_toggle)
+        actions.addSpacing(8)
+        self.selection_label = label("Selecione uma arte", "muted")
         actions.addWidget(self.selection_label, 1)
         self.save_collection = QComboBox()
         self.save_collection.setProperty("userDataLabels", True)
         self.save_collection.setToolTip("Coleção usada ao guardar")
+        self.save_collection.setMinimumContentsLength(10)
+        self.save_collection.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.save_collection.addItem("Sem coleção", None)
         actions.addWidget(self.save_collection)
-        self.open_button = button("Abrir", self.open_selected)
-        self.save_button = button("Guardar", self.save_selected)
-        self.download_button = button("Baixar", lambda: self.download(self.selected()), True)
+        self.open_button = button("Abrir arte", self.open_selected, icon="open")
+        self.save_button = button("Guardar", self.save_selected, True)
+        self.download_button = button("Baixar", lambda: self.download(self.selected()))
         for widget in [self.open_button, self.save_button, self.download_button]:
             actions.addWidget(widget)
         content.addWidget(self.actions)
         outer.addWidget(workspace, 1)
+        self.language = self.translations.language
+        self.disk_status = label("", "muted")
+        self.statusBar().addPermanentWidget(self.disk_status)
         self.statusBar().showMessage("Conectando à biblioteca local…")
-        for key, callback in [("Ctrl+N", self.open_search), ("Ctrl+F", self.query.setFocus), ("Ctrl+,", lambda: self.open_dialog(SettingsDialog))]:
+        for key, callback in [("Ctrl+N", self.open_search), ("Ctrl+F", self.focus_search), ("Ctrl+,", lambda: self.open_dialog(SettingsDialog))]:
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(callback)
-        self.collection_filter.hide()
         self.apply_filters()
         apply_theme(QApplication.instance(), self.theme)
         self.refresh_configuration()
         self.refresh_library()
 
     def resize_thumbnails(self, size):
-        self.preferences.setValue("thumbnail_size", size)
+        self.preferences.setValue("artwork_width", size)
         self.grid.set_thumbnail_width(size)
 
     def toggle_inspector(self, *_):
-        enabled = self.inspector_toggle.isChecked()
-        self.preferences.setValue("show_inspector", enabled)
-        self.inspector.setVisible(enabled and self.pages.currentWidget() == self.grid)
+        self.preferences.setValue("artwork_details", self.inspector_toggle.isChecked())
+        self.update_inspector()
 
-    def select_collection(self, item):
-        self.collection_filter.setCurrentIndex(max(0, self.collection_filter.findData(item.data(Qt.ItemDataRole.UserRole))))
-        self.switch_section("gallery")
+    def update_inspector(self):
+        self.inspector.setVisible(self.inspector_toggle.isChecked() and self.pages.currentWidget() == self.grid)
+
+    def focus_search(self):
+        if self.quick_search.isVisible():
+            self.quick_search.setFocus()
+            self.quick_search.selectAll()
+        elif self.query.isVisible():
+            self.query.setFocus()
+
+    def reset_filters(self):
+        self.filters = {}
+        self.preferences.setValue("filters", "{}")
+        for control in (self.query, self.source_filter, self.collection_filter, self.hide_saved):
+            control.blockSignals(True)
+        self.query.clear()
+        self.source_filter.setCurrentIndex(0)
+        self.collection_filter.setCurrentIndex(0)
+        self.hide_saved.setChecked(False)
+        for control in (self.query, self.source_filter, self.collection_filter, self.hide_saved):
+            control.blockSignals(False)
+        self.apply_filters()
 
     def search_tags(self):
         if not self.new_search.isEnabled() or not self.api.authenticated:
@@ -336,8 +344,8 @@ class NativeWindow(QMainWindow):
     def notify(self, message):
         self.statusBar().showMessage(self.translations.text(message), 12000)
 
-    def change_language(self):
-        language = self.language.currentData()
+    def change_language(self, language):
+        self.language = language
         self.preferences.setValue("language", language)
         self.translations.set_language(language)
 
@@ -387,14 +395,8 @@ class NativeWindow(QMainWindow):
         self.api.request("/api/stats", self.set_stats)
 
     def set_collections(self, data):
+        previous_filter = self.collection_filter.currentData()
         self.collections = data.get("collections", [])
-        self.collection_list.clear()
-        for collection in self.collections:
-            item = QListWidgetItem(collection["name"], self.collection_list)
-            item.setData(Qt.ItemDataRole.UserRole, collection["id"])
-        if not self.collections:
-            item = QListWidgetItem("Nenhuma coleção", self.collection_list)
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
         for box, title in [(self.save_collection, "Sem coleção"), (self.collection_filter, "Todas as coleções")]:
             selected = box.currentData()
             box.blockSignals(True)
@@ -404,10 +406,12 @@ class NativeWindow(QMainWindow):
                 box.addItem(item["name"], item["id"])
             box.setCurrentIndex(max(0, box.findData(selected)))
             box.blockSignals(False)
+        if self.collection_filter.currentData() != previous_filter:
+            self.apply_filters()
 
     def set_stats(self, data):
         total, disk = data.get("total", 0), data.get("disk_mb", 0)
-        self.disk_status.setText(f"{total} artes no banco\n{disk} MB em downloads")
+        self.disk_status.setText(f"{total} artes  ·  {disk} MB")
         rows = [("Artes no banco", total), ("Downloads (MB)", disk)]
         for name, key in [("Fonte", "by_source"), ("Categoria", "by_category"), ("Avaliação", "by_rating")]:
             rows.extend((f"{name} / {title}", value) for title, value in (data.get(key) or {}).items())
@@ -416,26 +420,38 @@ class NativeWindow(QMainWindow):
             self.stats.setItem(row, 0, QTableWidgetItem(str(title)))
             self.stats.setItem(row, 1, QTableWidgetItem(str(value)))
 
+    def clear_result_query(self):
+        self.query.blockSignals(True)
+        self.query.clear()
+        self.query.blockSignals(False)
+        self.source_filter.blockSignals(True)
+        self.source_filter.setCurrentIndex(0)
+        self.source_filter.blockSignals(False)
+
     def switch_section(self, section):
+        if self.section != section:
+            self.clear_result_query()
+            self.grid.clearSelection()
         self.section = section
-        for key, widget in self.nav.items():
-            widget.setChecked(key == section)
-        self.title.setText({"search": "Explorar artes", "gallery": "Sua galeria", "stats": "Sua biblioteca em números"}[section])
-        self.subtitle.setText({"search": "Busque nas suas fontes e organize suas descobertas.", "gallery": "As artes que você escolheu guardar.", "stats": "Acompanhe suas artes e organize seus arquivos."}[section])
-        self.toolbar.setVisible(section != "stats")
-        self.library_toolbar.setVisible(section != "stats")
-        self.actions.setVisible(section != "stats")
-        self.filter_button.setVisible(section != "stats")
-        self.new_search.setVisible(True)
-        self.hide_saved.setVisible(section == "search")
-        self.collection_filter.setVisible(section == "gallery")
+        self.nav[section].setChecked(True)
+        self.title.setText({"search": "Explorar", "gallery": "Minha galeria", "stats": "Estatísticas"}[section])
         if section != "search":
             self.refresh_library()
         self.apply_filters()
 
     def apply_filters(self, *_):
+        in_search = self.section == "search"
+        in_gallery = self.section == "gallery"
+        self.command_bar.setVisible(in_search)
+        self.progress_panel.setVisible(in_search and self.search_reply is not None)
+        self.library_toolbar.setVisible(in_gallery)
+        self.hide_saved.setVisible(in_search)
         if self.section == "stats":
             self.pages.setCurrentWidget(self.stats)
+            self.count.hide()
+            self.toolbar.hide()
+            self.filter_button.hide()
+            self.actions.hide()
             self.inspector.hide()
             return
         posts = self.search_posts if self.section == "search" else self.library_posts
@@ -453,23 +469,45 @@ class NativeWindow(QMainWindow):
         options = {**self.filters, "query": self.query.text(), "source": self.source_filter.currentData(), "sort": self.sort.currentData(),
                    "hide_saved": self.section == "search" and self.hide_saved.isChecked(), "collection": self.collection_filter.currentData() if self.section == "gallery" else None}
         visible = filter_posts(posts, options, self.ratings, self.saved)
-        self.model.replace(visible)
-        self.count.setText(f"{len(visible)} de {len(posts)} artes")
+        if visible != self.model.posts:
+            selected = {uid(post) for post in self.selected()}
+            current = self.grid.currentIndex().data(Qt.ItemDataRole.UserRole)
+            current_id = uid(current) if current else None
+            selection_model = self.grid.selectionModel()
+            selection_model.blockSignals(True)
+            self.model.replace(visible)
+            selection = QItemSelection()
+            for row, post in enumerate(visible):
+                if uid(post) in selected:
+                    index = self.model.index(row, 0)
+                    selection.select(index, index)
+                    if uid(post) == current_id:
+                        selection_model.setCurrentIndex(index, QItemSelectionModel.SelectionFlag.NoUpdate)
+            selection_model.select(selection, QItemSelectionModel.SelectionFlag.ClearAndSelect)
+            selection_model.blockSignals(False)
+
+        self.count.setText(f"{len(visible)} / {len(posts)}")
+        self.count.setVisible(bool(posts))
         self.pages.setCurrentWidget(self.grid if visible else self.empty)
         self.toolbar.setVisible(bool(posts))
-        self.library_toolbar.setVisible(bool(posts))
-        self.duplicates_button.setVisible(self.section == "gallery")
-        self.actions.setVisible(bool(visible))
         self.filter_button.setVisible(bool(posts))
-        self.new_search.setVisible(True)
         if not visible:
-            initial = not posts and self.section == "search"
-            self.empty_title.setText("Sua próxima descoberta começa aqui" if initial else "Nenhuma arte para mostrar")
-            self.empty_message.setText("Busque por tags ou escolha categorias e fontes em Nova busca." if initial else "Ajuste os filtros. As artes que você guardar aparecem nesta galeria.")
-            self.quick_search.setVisible(initial)
-            self.search_hint.setVisible(initial)
-            self.empty_search.setVisible(initial)
-        self.toggle_inspector()
+            introductory = in_search and not posts and not self.search_attempted
+            self.search_cover.setVisible(introductory)
+            self.empty_title.setVisible(not introductory)
+            self.empty_message.setVisible(not introductory)
+            self.reset_button.setVisible(bool(posts))
+            if self.search_reply:
+                title, message = "Buscando artes…", "Os resultados aparecem conforme chegam."
+            elif posts:
+                title, message = "Nenhuma arte com esses filtros", "Limpe os filtros para ver os resultados carregados."
+            elif in_search:
+                title, message = "Sem resultados", "Experimente outras tags ou fontes."
+            else:
+                title, message = "Sua galeria está vazia", "Use Guardar em uma arte de Explorar para trazê-la para cá."
+            self.empty_title.setText(title)
+            self.empty_message.setText(message)
+        self.update_inspector()
         self.selection_changed()
 
     def open_dialog(self, dialog_type):
@@ -485,20 +523,22 @@ class NativeWindow(QMainWindow):
         if not self.api.authenticated or not self.new_search.isEnabled():
             return
         dialog = SearchDialog(self)
+        dialog.tags.setText(self.quick_search.text())
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.search_options = dialog.values()
+            self.quick_search.setText(self.search_options["tags"])
             self.preferences.setValue("search", json.dumps(self.search_options))
             self.start_search()
 
     def start_search(self):
+        self.search_generation += 1
         if self.search_reply:
             self.search_reply.abort()
-        self.search_generation += 1
         generation = self.search_generation
         self.switch_section("search")
+        self.search_attempted = True
         self.search_posts = []
-        self.apply_filters()
-        self.progress_panel.show()
+        self.clear_result_query()
         self.progress.setValue(0)
         self.progress_text.setText("Iniciando busca…")
         self.new_search.setEnabled(False)
@@ -531,6 +571,7 @@ class NativeWindow(QMainWindow):
                 return
             self.search_reply = None
             self.progress_panel.hide()
+            self.apply_filters()
             self.new_search.setEnabled(True)
             self.empty_search.setEnabled(True)
             if error:
@@ -538,6 +579,7 @@ class NativeWindow(QMainWindow):
             elif cancelled:
                 self.notify("Busca cancelada. Os resultados recebidos foram mantidos.")
         self.search_reply = self.api.search(body, event, finished)
+        self.apply_filters()
 
     def cancel_search(self):
         if self.search_reply:
@@ -564,11 +606,12 @@ class NativeWindow(QMainWindow):
         selected = self.selected()
         self.inspector.set_posts(selected)
         count = len(selected)
-        self.actions.setVisible(count > 0 and self.section != "stats")
-        self.selection_label.setText(f"{count} selecionada(s)" if count else "Duplo clique para abrir • Ctrl + clique para selecionar")
+        self.actions.setVisible(self.pages.currentWidget() == self.grid)
+        self.selection_label.setText(f"{count} selecionada(s)" if count else "")
         self.open_button.setEnabled(count == 1)
         self.save_button.setEnabled(count > 0)
         self.download_button.setEnabled(count > 0)
+        self.save_collection.setEnabled(count > 0)
 
     def open_selected(self):
         selected = self.grid.selectionModel().selectedIndexes()

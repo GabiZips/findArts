@@ -3,9 +3,9 @@ from PySide6.QtGui import QColor, QPalette
 
 # Keep stable keys so existing user preferences continue to work.
 THEMES = {
-    "night": {"name": "Noturno", "bg": "#202124", "surface": "#292b2f", "rail": "#292b2f",
-              "text": "#f1f2f4", "muted": "#b1b5bd", "border": "#454951", "accent": "#84b7ff",
-              "ink": "#13233b", "hover": "#3b414b", "selected": "#354961", "error": "#ffb5ad"},
+    "night": {"name": "Noturno", "bg": "#121625", "surface": "#1c2339", "rail": "#171e34",
+              "text": "#f4f5ff", "muted": "#bdc8e0", "border": "#3c4968", "accent": "#ff9d50",
+              "ink": "#27170f", "hover": "#35466c", "selected": "#393052", "error": "#ffb5ad"},
     "graphite": {"name": "Grafite", "bg": "#222222", "surface": "#303030", "rail": "#282828",
                  "text": "#f6f1e9", "muted": "#bdbdbd", "border": "#4e4e4e", "accent": "#e9c48c",
                  "ink": "#302211", "hover": "#4e463b", "selected": "#584a33", "error": "#ffb5ad"},
@@ -18,33 +18,33 @@ THEMES = {
 }
 
 CONTROLS = {
-    "night": {"control": "#353940", "controlEdge": "#626a77", "nav": "#30343a", "navText": "#e2e5eb"},
-    "graphite": {"control": "#48423b", "controlEdge": "#a09380", "nav": "#2a2723", "navText": "#eee5d6"},
-    "forest": {"control": "#43553f", "controlEdge": "#8fa284", "nav": "#283629", "navText": "#e2ecd7"},
-    "light": {"control": "#dce7eb", "controlEdge": "#73909c", "nav": "#2a4652", "navText": "#e3eff2"},
+    "night": {"control": "#283654", "controlEdge": "#60749d"},
+    "graphite": {"control": "#48423b", "controlEdge": "#a09380"},
+    "forest": {"control": "#43553f", "controlEdge": "#8fa284"},
+    "light": {"control": "#dce7eb", "controlEdge": "#73909c"},
 }
 
 STYLE_TEMPLATE = """
-QWidget { background: @bg; color: @text; font-family: 'Source Sans 3', 'Segoe UI'; font-size: 13px; }
+QWidget { background: @bg; color: @text; font-family: 'Source Sans 3', 'Segoe UI'; font-size: 15px; }
 QMainWindow, QDialog { background: @bg; }
 QLabel, QCheckBox { background: transparent; }
-QLabel#brand { font-family: 'Archivo'; font-size: 18px; font-weight: 700; }
-QLabel#title { font-family: 'Archivo'; font-size: 20px; font-weight: 600; }
+QLabel#brand { font-family: 'Archivo'; font-size: 24px; font-weight: 800; }
+QLabel#title { font-family: 'Archivo'; font-size: 24px; font-weight: 750; }
 QLabel#dialogTitle, QLabel#emptyTitle { font-size: 25px; font-weight: 600; padding: 8px 0; }
 QLabel#sectionTitle { font-size: 15px; font-weight: 600; padding: 12px 0 6px; }
 QLabel#muted, QStatusBar { color: @muted; }
 QLabel#error { color: @error; }
 QPushButton {
     color: @text; background: @control;
-    border: 1px solid @controlEdge; border-radius: 5px;
-    padding: 7px 12px; min-height: 18px; font-weight: 600;
+    border: 1px solid @controlEdge; border-radius: 8px;
+    padding: 7px 13px; min-height: 21px; font-weight: 650;
 }
 QPushButton:hover { background: @hover; border-color: @accent; }
 QPushButton:pressed, QPushButton:checked { background: @selected; border: 1px solid @accent; }
 QPushButton[primary=true] { background: @accent; color: @ink; border: 1px solid @accent; font-weight: 700; }
-QPushButton[primary=true]:hover { background: @text; color: @bg; border-color: @text; }
+QPushButton[primary=true]:hover { background: @accent; color: @ink; border-color: @text; }
 QPushButton[primary=true]:pressed { background: @accent; color: @ink; border: 1px solid @text; }
-QPushButton:disabled { color: @muted; background: @surface; border: 1px dashed @border; }
+QPushButton:disabled, QPushButton[primary=true]:disabled { color: @muted; background: @surface; border: 1px solid @border; }
 QPushButton:focus, QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus { border: 1px solid @accent; background: @selected; }
 QPushButton[primary=true]:focus { background: @accent; color: @ink; border: 1px solid @text; }
 QLineEdit, QPlainTextEdit, QSpinBox, QComboBox { background: @surface; border: 1px solid @border; border-radius: 6px; padding: 7px; selection-background-color: @selected; selection-color: @text; }
@@ -69,28 +69,27 @@ QMenu::item { padding: 9px 22px; }
 QMenu::item:selected { background: @selected; }
 QStatusBar { border-top: 1px solid @border; }
 QHeaderView::section { background: @surface; color: @muted; padding: 8px; border: none; }
-QWidget#rail { background: @rail; border-right: 1px solid @border; }
-QWidget#rail QLabel, QWidget#rail QCheckBox { color: @navText; }
-QWidget#rail QLabel#muted { color: @navText; }
-QWidget#rail QPushButton { text-align: left; background: transparent; color: @navText; border: 1px solid transparent; border-radius: 5px; padding: 7px 10px; }
-QWidget#rail QPushButton:hover { background: @control; border-color: @border; color: @navText; }
-QWidget#rail QPushButton:checked { background: @selected; color: @text; border: 1px solid @controlEdge; font-weight: 700; }
-QWidget#rail QPushButton:focus { border: 1px solid @accent; }
-QLabel#emptyTitle { font-family: 'Archivo'; font-size: 26px; font-weight: 600; }
-QLabel#navHeading { color: @muted; padding: 12px 10px 4px; font-size: 12px; font-weight: 600; }
+QWidget#masthead { background: @rail; border-bottom: 1px solid @border; }
+QPushButton#navTab { background: transparent; border-color: transparent; padding: 8px 12px; }
+QPushButton#navTab:hover { background: @hover; border-color: @controlEdge; }
+QPushButton#navTab:checked { background: @surface; border: 1px solid @border; border-bottom: 3px solid @accent; }
+QPushButton#navTab:focus { border-color: @accent; }
+QLabel#resultCount { color: @muted; padding: 2px 10px; background: @surface; border-radius: 6px; }
+QWidget#searchCover { background: #304cc7; border-radius: 14px; }
+QLabel#coverTitle { color: #ffffff; font-family: 'Archivo'; font-size: 46px; font-weight: 800; }
+QLabel#coverCopy { color: #eff2ff; font-size: 17px; }
+QLabel#emptyTitle { font-family: 'Archivo'; font-size: 26px; font-weight: 700; }
 QWidget#inspector { background: @surface; border-left: 1px solid @border; }
 QWidget#inspector QLabel { border: none; }
 QWidget#inspectorBody, QWidget#inspectorBody QWidget { background: @surface; }
 QWidget#inspectorBody QLabel#inspectorPreview { background: @bg; }
 QLabel#inspectorPreview { background: @bg; border-radius: 5px; }
-QWidget#commandBar { background: @surface; border-bottom: 1px solid @border; }
-QListWidget#collectionList { border: none; background: transparent; }
-QListWidget#collectionList::item { padding: 7px 10px; }
-QListWidget#collectionList::item:selected { background: @selected; }
-QWidget#statusTools { border-top: 1px solid @border; background: @surface; }
+QWidget#commandBar, QWidget#actions { background: @surface; border: 1px solid @border; border-radius: 10px; }
+QWidget#commandBar QLineEdit { background: @bg; }
+QWidget#actions QSlider { min-height: 29px; }
 QSplitter::handle { background: @border; width: 1px; }
 QSlider::groove:horizontal { height: 4px; background: @border; border-radius: 2px; }
-QSlider::handle:horizontal { width: 12px; margin: -4px 0; background: @accent; border-radius: 6px; }
+QSlider::handle:horizontal { width: 16px; margin: -6px 0; background: @accent; border-radius: 8px; }
 QListView#artGrid { border: none; }
 QGraphicsView { background: #121318; border: none; }
 """
@@ -130,8 +129,6 @@ def refresh_icons(application, key):
     for widget in application.allWidgets():
         if isinstance(widget, QPushButton) and widget.property("iconName"):
             color = colors["ink"] if widget.property("primary") else colors["text"]
-            if widget.property("navigation"):
-                color = colors["text"] if widget.isChecked() else CONTROLS[key]["navText"]
             widget.setIcon(nav_icon(widget.property("iconName"), color))
 
 

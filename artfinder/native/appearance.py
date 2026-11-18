@@ -31,17 +31,17 @@ class ThemePreview(QPushButton):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(colors["bg"]))
         painter.drawRoundedRect(preview, 6, 6)
-        painter.fillRect(QRectF(preview.left(), preview.top(), 36, preview.height()), QColor(colors["rail"]))
+        painter.fillRect(QRectF(preview.left(), preview.top(), preview.width(), 22), QColor(colors["rail"]))
         painter.setBrush(QColor(colors["accent"]))
-        painter.drawRoundedRect(QRectF(preview.left() + 7, preview.top() + 12, 22, 6), 3, 3)
+        painter.drawRoundedRect(QRectF(preview.left() + 7, preview.top() + 7, 10, 9), 3, 3)
         painter.setBrush(QColor(colors["border"]))
-        for row in range(3):
-            painter.drawRoundedRect(QRectF(preview.left() + 7, preview.top() + 29 + row * 11, 22, 4), 2, 2)
-        tile_width = (preview.width() - 60) / 3
-        for col, color in enumerate([colors["selected"], colors["hover"], colors["accent"]]):
+        for col in range(3):
+            painter.drawRoundedRect(QRectF(preview.left() + 25 + col * 28, preview.top() + 9, 22, 5), 2, 2)
+        tile_width = (preview.width() - 22) / 3
+        for col, color in enumerate((colors["selected"], colors["hover"], colors["surface"])):
             painter.setBrush(QColor(color))
-            painter.drawRoundedRect(QRectF(preview.left() + 44 + col * (tile_width + 4),
-                                           preview.top() + 12, tile_width, preview.height() - 24), 4, 4)
+            painter.drawRoundedRect(QRectF(preview.left() + 7 + col * (tile_width + 4),
+                                           preview.top() + 29, tile_width, preview.height() - 36), 4, 4)
         painter.setPen(QColor(colors["text"]))
         font = painter.font()
         font.setBold(True)

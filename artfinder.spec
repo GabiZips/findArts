@@ -66,5 +66,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=["assets/artfinder.ico"] if sys.platform == "win32" else None,
+    icon=["assets/artfinder-desktop.ico"] if sys.platform == "win32" else None,
 )

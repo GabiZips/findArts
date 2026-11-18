@@ -91,11 +91,11 @@ WebView, Electron ou navegador embutido. Imagens, GIFs e vídeos usam componente
 O serviço interno FastAPI continua em uma porta aleatória, acessível somente
 no próprio computador, para reutilizar as fontes e o banco existentes.
 
-A área de trabalho reúne coleções na lateral, uma grade de miniaturas com
-tamanho ajustável e um painel de detalhes redimensionável. Selecione uma arte
-para consultar autor, fonte, dimensões e tags; use duplo clique para abrir.
-A busca inicial aceita tags diretamente, e **Nova busca** permite escolher
-categorias e fontes. Em **Configurações → Aparência**, escolha entre Noturno,
+A navegação fica no topo e a grade de artes ocupa a largura da janela. Ajuste
+o tamanho das artes na barra inferior. Selecione uma arte e abra **Detalhes**
+para consultar autor, fonte, dimensões e tags. Use duplo clique para abrir o
+visualizador. Em **Explorar**, busque por tags ou abra **Busca avançada** para
+escolher categorias e fontes. Gerencie coleções em **Minha galeria**. Em **Configurações → Aparência**, escolha entre Noturno,
 Grafite, Floresta e Claro. O aplicativo inicia com fundo escuro.
 
 As preferências da interface nativa ficam em `native-ui.ini` na pasta de dados.

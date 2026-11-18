@@ -2,32 +2,33 @@
 from collections import OrderedDict
 
 from PySide6.QtCore import QByteArray, QBuffer, QIODevice, QObject, QRect, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QImageReader, QKeySequence, QMovie, QPainter, QPainterPath, QPixmap, QShortcut
+from PySide6.QtGui import QColor, QImageReader, QKeySequence, QMovie, QPainter, QPainterPath, QPen, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QListView, QDialog, QGraphicsScene, QGraphicsView, QHBoxLayout, QLabel, QPushButton,
     QSlider, QStackedWidget, QStyledItemDelegate, QStyle, QVBoxLayout, QWidget,
 )
 
-from .themes import THEMES, CONTROLS
+from .themes import THEMES
 from .studio import nav_icon
 from .models import media_type, rating, uid
 
 
-def button(text, callback, primary=False):
+def button(text, callback, primary=False, *, icon=None):
     widget = QPushButton(text)
     widget.setCursor(Qt.CursorShape.PointingHandCursor)
     widget.setProperty("primary", primary)
     icons = {
-        "Nova busca": "plus", "Criar uma busca": "search", "Buscar": "search", "Filtros": "filter",
+        "Nova busca": "plus", "Criar uma busca": "search", "Buscar": "magnifier", "Filtros": "filter",
         "Atualizar": "refresh", "Abrir": "open", "Guardar": "save", "Baixar": "download",
         "Fechar": "close", "Cancelar": "close", "Salvar categoria": "check",
         "Salvar credenciais": "check", "Duplicatas": "gallery",
     }
-    if text in icons:
+    icon = icon or icons.get(text)
+    if icon:
         theme = QApplication.instance().property("theme") or "night"
         color = THEMES[theme]["ink" if primary else "text"]
-        widget.setProperty("iconName", icons[text])
-        widget.setIcon(nav_icon(icons[text], color))
+        widget.setProperty("iconName", icon)
+        widget.setIcon(nav_icon(icon, color))
         widget.setIconSize(QSize(19, 19))
     widget.clicked.connect(callback)
     return widget
@@ -42,14 +43,14 @@ def label(text, name=None):
     return widget
 
 
-def pixmap_from_bytes(raw, size=QSize(400, 320)):
+def pixmap_from_bytes(raw, size=QSize(800, 800)):
     buffer = QBuffer()
     buffer.setData(QByteArray(raw))
     buffer.open(QIODevice.OpenModeFlag.ReadOnly)
     reader = QImageReader(buffer)
     reader.setAutoTransform(True)
     original = reader.size()
-    if original.isValid() and size.isValid():
+    if original.isValid() and size.isValid() and (original.width() > size.width() or original.height() > size.height()):
         reader.setScaledSize(original.scaled(size, Qt.AspectRatioMode.KeepAspectRatio))
     return QPixmap.fromImage(reader.read())
 
@@ -92,7 +93,7 @@ class Thumbnails(QObject):
 
 class ArtworkGrid(QListView):
     """Fit complete columns to the viewport while retaining virtualized items."""
-    thumbnail_width = 220
+    thumbnail_width = 410
 
     def set_thumbnail_width(self, width):
         self.thumbnail_width = width
@@ -104,9 +105,9 @@ class ArtworkGrid(QListView):
 
     def reflow(self):
         available = max(1, self.viewport().width() - 18)
-        columns = max(1, available // self.thumbnail_width)
+        columns = max(1, round(available / self.thumbnail_width))
         width = available // columns
-        size = QSize(width, width + 56)
+        size = QSize(width, min(690, round(width * 1.05)) + 55)
         if size != self.gridSize():
             self.setGridSize(size)
             self.doItemsLayout()
@@ -126,14 +127,17 @@ class ArtworkDelegate(QStyledItemDelegate):
             return
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        bounds = option.rect.adjusted(7, 7, -7, -7)
+        bounds = option.rect.adjusted(6, 5, -6, -5)
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
         colors = THEMES[self.window.theme]
-        painter.setPen(QColor(colors["accent" if selected else "border"]))
+        painter.setPen(QPen(QColor(colors["accent" if selected else "border"]), 2 if selected else 1))
         hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
         painter.setBrush(QColor(colors["selected" if selected else "hover" if hovered else "surface"]))
-        painter.drawRoundedRect(bounds, 5, 5)
-        image_rect = bounds.adjusted(4, 4, -4, -62)
+        painter.drawRoundedRect(bounds, 11, 11)
+        image_rect = bounds.adjusted(3, 3, -3, -53)
+        painter.setBrush(QColor(colors["bg"]))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(image_rect, 8, 8)
         protected = self.window.blur and rating(post) == "nsfw" and uid(post) not in self.window.revealed
         image = None if protected else self.window.thumbnails.get(post)
         if image and not image.isNull():
@@ -146,17 +150,24 @@ class ArtworkDelegate(QStyledItemDelegate):
             painter.restore()
         else:
             painter.setPen(QColor(colors["muted"]))
-            painter.drawText(image_rect, Qt.AlignmentFlag.AlignCenter, "NSFW\nAbrir para revelar" if protected else "Carregando…" if image is None else "Prévia indisponível")
+            message = "NSFW\nAbrir para revelar" if protected else "Carregando…" if image is None else "Prévia indisponível"
+            painter.drawText(image_rect, Qt.AlignmentFlag.AlignCenter, self.window.translations.text(message))
         title_font = painter.font()
         title_font.setBold(True)
+        title_font.setPixelSize(16)
         painter.setFont(title_font)
         painter.setPen(QColor(colors["text"]))
         title = painter.fontMetrics().elidedText(post.get("artist") or "Artista desconhecido", Qt.TextElideMode.ElideRight, bounds.width() - 20)
         painter.drawText(bounds.adjusted(10, bounds.height() - 48, -10, -25), Qt.AlignmentFlag.AlignVCenter, title)
         title_font.setBold(False)
+        title_font.setPixelSize(13)
         painter.setFont(title_font)
         painter.setPen(QColor(colors["muted"]))
-        metadata = painter.fontMetrics().elidedText(f"{post.get('source', '')}  ·  {media_type(post).upper()}  ·  {post.get('score') or 0}", Qt.TextElideMode.ElideRight, bounds.width() - 20)
+        source = post.get("source", "")
+        kind = media_type(post)
+        media = f"  ·  {kind.upper()}" if kind != "image" else ""
+        score = post.get("score") or 0
+        metadata = painter.fontMetrics().elidedText(f"{source}{media}  ·  {score}", Qt.TextElideMode.ElideRight, bounds.width() - 20)
         painter.drawText(bounds.adjusted(10, bounds.height() - 24, -10, -4), Qt.AlignmentFlag.AlignVCenter, metadata)
         if selected:
             badge = QRect(bounds.left() + 12, bounds.top() + 12, 26, 26)
