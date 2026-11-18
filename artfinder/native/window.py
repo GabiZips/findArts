@@ -38,8 +38,9 @@ class NativeWindow(QMainWindow):
         self.translations = NativeTranslations(Path(resource_dir), self.preferences.value("language", "pt-BR"), self)
         QApplication.instance().installEventFilter(self.translations)
         self.categories, self.sources, self.unavailable_sources, self.collections = {}, [], [], []
-        self.search_posts, self.library_posts, self.ratings, self.saved = [], [], {}, set()
+        self.search_posts, self.library_posts, self.saved = [], [], set()
         self.filters = self.read_preference("filters", {})
+        self.filters.pop("assessments", None)
         self.search_options = self.read_preference("search", {})
         self.blur = self.preferences.value("blur_nsfw", True, type=bool)
         self.revealed = set()
@@ -199,18 +200,12 @@ class NativeWindow(QMainWindow):
         self.search_cover = QWidget()
         self.search_cover.setObjectName("searchCover")
         cover = QHBoxLayout(self.search_cover)
-        cover.setContentsMargins(38, 22, 38, 22)
-        cover.setSpacing(24)
+        cover.setContentsMargins(18, 12, 18, 15)
         introduction = QVBoxLayout()
-        introduction.setSpacing(10)
-        introduction.addStretch()
-        introduction.addWidget(label("Encontre sua próxima referência.", "coverTitle"))
-        introduction.addWidget(label("Busque por tags ou combine categorias e fontes em Busca avançada.", "coverCopy"))
-        introduction.addStretch()
+        introduction.setSpacing(2)
+        introduction.addWidget(label("Buscar artes", "coverTitle"))
+        introduction.addWidget(label("Digite tags ou escolha categorias e fontes em Busca avançada.", "muted"))
         cover.addLayout(introduction, 1)
-        cover_mark = QLabel()
-        cover_mark.setPixmap(nav_icon("brand").pixmap(200, 200))
-        cover.addWidget(cover_mark)
         empty_layout.addWidget(self.search_cover)
         self.empty_title = label("", "emptyTitle")
         self.empty_message = label("", "muted")
@@ -370,9 +365,8 @@ class NativeWindow(QMainWindow):
             if generation != self.library_generation:
                 return
             results[key] = data
-            if len(results) != 4:
+            if len(results) != 2:
                 return
-            self.ratings = results["ratings"].get("ratings", {})
             combined = {}
             for item in results["downloaded"].get("items", []):
                 post = canonical(item)
@@ -383,13 +377,10 @@ class NativeWindow(QMainWindow):
                 post = canonical(item)
                 key = uid(post)
                 combined[key] = {**post, **combined.get(key, {}), "collection_ids": item.get("collection_ids", []), "favorite": True}
-            for item in results["rated"].get("items", []):
-                post = canonical(item)
-                combined.setdefault(uid(post), post)
             self.library_posts = list(combined.values())
             self.apply_filters()
             self.notify("Biblioteca atualizada.")
-        for key, path in [("downloaded", "/api/gallery-items"), ("favorites", "/api/favorites"), ("ratings", "/api/ratings"), ("rated", "/api/rated-posts")]:
+        for key, path in [("downloaded", "/api/gallery-items"), ("favorites", "/api/favorites")]:
             self.api.request(path, lambda data, key=key: received(key, data))
         self.api.request("/api/collections", self.set_collections)
         self.api.request("/api/stats", self.set_stats)
@@ -413,7 +404,7 @@ class NativeWindow(QMainWindow):
         total, disk = data.get("total", 0), data.get("disk_mb", 0)
         self.disk_status.setText(f"{total} artes  ·  {disk} MB")
         rows = [("Artes no banco", total), ("Downloads (MB)", disk)]
-        for name, key in [("Fonte", "by_source"), ("Categoria", "by_category"), ("Avaliação", "by_rating")]:
+        for name, key in [("Fonte", "by_source"), ("Categoria", "by_category")]:
             rows.extend((f"{name} / {title}", value) for title, value in (data.get(key) or {}).items())
         self.stats.setRowCount(len(rows))
         for row, (title, value) in enumerate(rows):
@@ -468,7 +459,7 @@ class NativeWindow(QMainWindow):
         self.source_filter.blockSignals(False)
         options = {**self.filters, "query": self.query.text(), "source": self.source_filter.currentData(), "sort": self.sort.currentData(),
                    "hide_saved": self.section == "search" and self.hide_saved.isChecked(), "collection": self.collection_filter.currentData() if self.section == "gallery" else None}
-        visible = filter_posts(posts, options, self.ratings, self.saved)
+        visible = filter_posts(posts, options, saved=self.saved)
         if visible != self.model.posts:
             selected = {uid(post) for post in self.selected()}
             current = self.grid.currentIndex().data(Qt.ItemDataRole.UserRole)
@@ -655,23 +646,16 @@ class NativeWindow(QMainWindow):
         self.notify(f"Baixando {len(posts)} arte(s)…")
         self.api.request("/api/download", lambda data: (self.refresh_library(), self.notify(data.get("message", "Download concluído."))), method="POST", data={"posts": [canonical(p) for p in posts]})
 
-    def rate(self, post, value):
-        value = "" if self.ratings.get(uid(post)) == value else value
-        def rated(_):
-            if value:
-                self.ratings[uid(post)] = value
-            else:
-                self.ratings.pop(uid(post), None)
-            self.notify("Avaliação salva." if value else "Avaliação removida.")
-            self.apply_filters()
-        self.api.request("/api/ratings", rated, method="POST", data={**canonical(post), "aval": value})
-
     def open_source(self, post):
         url = post.get("page_url") or ""
         if urlsplit(url).scheme.lower() in {"http", "https"}:
             QDesktopServices.openUrl(QUrl(url))
         else:
             self.notify("Esta arte não informa um link de origem válido.")
+
+    def open_legacy_interface(self):
+        if not QDesktopServices.openUrl(QUrl(self.api.base_url + "/")):
+            self.notify("Não foi possível abrir a interface legada.")
 
     def open_downloads(self):
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.download_dir)))
@@ -687,9 +671,6 @@ class NativeWindow(QMainWindow):
         menu = QMenu(self)
         for title, callback in [("Abrir", lambda: self.open_viewer(index.row())), ("Guardar", lambda: self.save(post)), ("Baixar", lambda: self.download([post])), ("Ver na fonte", lambda: self.open_source(post))]:
             menu.addAction(title, callback)
-        menu.addSeparator()
-        for value, title in [("usar", "Usar"), ("talvez", "Talvez"), ("depois", "Rever depois"), ("nao", "Não gostei")]:
-            menu.addAction(title, lambda value=value: self.rate(post, value))
         menu.addSeparator()
         if post.get("favorite"):
             menu.addAction("Remover dos guardados", lambda: self.remove_favorite(post))

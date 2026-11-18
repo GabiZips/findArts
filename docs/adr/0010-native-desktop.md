@@ -63,7 +63,7 @@ O verificador de distribuição rejeita esse conflito e um navegador embutido.
 
 `tests/test_native_ui.py` usa o serviço real com banco temporário e fontes
 simuladas. Cobre busca, cookie local, cancelamento, filtros, identidades de
-arquivos baixados, salvamento, avaliações, categorias e revelação de NSFW.
+arquivos baixados, salvamento, categorias e revelação de NSFW.
 Defina `ARTFINDER_NATIVE_SCREENSHOTS` para salvar capturas com dados sintéticos.
 `ARTFINDER_TEST_VIDEO` pode apontar para um vídeo sintético local para testar
 reprodução efetiva (e não apenas a importação do componente). Esse teste também

@@ -7,8 +7,13 @@ from PySide6.QtWidgets import QApplication, QAbstractButton, QComboBox, QLabel, 
 
 
 NATIVE_EN = {
-    "Encontre sua próxima referência.": "Find your next reference.",
-    "Busque por tags ou combine categorias e fontes em Busca avançada.": "Search by tags or combine categories and sources in Advanced search.",
+    "Buscar artes": "Search artwork",
+    "Digite tags ou escolha categorias e fontes em Busca avançada.": "Enter tags or choose categories and sources in Advanced search.",
+    "Filtre as artes que já estão na tela.": "Filter the artwork already on screen.",
+    "Aplicar filtros": "Apply filters",
+    "Abrir interface legada": "Open legacy interface",
+    "Abre no navegador enquanto o ArtFinder estiver aberto.": "Opens in your browser while ArtFinder is running.",
+    "Não foi possível abrir a interface legada.": "Could not open the legacy interface.",
     "Digite tags, personagens ou artistas…": "Enter tags, characters or artists…",
     "Busca avançada": "Advanced search",
     "Tamanho": "Size",

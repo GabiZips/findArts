@@ -87,18 +87,6 @@
   .tag-pill.rating-nsfw.on{color:#fca5a5;background:rgba(239,68,68,.12)}
   .tag-pill.content.on{color:#a5b4fc;background:rgba(99,102,241,.12)}
   .tag-pill[data-group="media"].on,.tag-pill[data-galmedia].on{color:#c4b5fd;background:rgba(124,58,237,.14)}
-  .tag-pill.aval-none.on{color:#a7f3d0;background:rgba(16,185,129,.12)}
-  .tag-pill.aval-usar.on{color:#fbbf24;background:rgba(234,179,8,.14)}
-  .tag-pill.aval-talvez.on{color:#93c5fd;background:rgba(59,130,246,.13)}
-  .tag-pill.aval-depois.on{color:#c4b5fd;background:rgba(139,92,246,.14)}
-  .tag-pill.aval-nao.on{color:#fca5a5;background:rgba(239,68,68,.13)}
-  .badge-aval-usar{background:rgba(234,179,8,.3);color:#fde047}
-  .badge-aval-talvez{background:rgba(59,130,246,.3);color:#93c5fd}
-  .badge-aval-depois{background:rgba(139,92,246,.32);color:#c4b5fd}
-  .badge-aval-nao{background:rgba(239,68,68,.3);color:#fca5a5}
-  .lb-rate{padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font-size:11px;cursor:pointer;transition:all .12s}
-  .lb-rate:hover{background:rgba(255,255,255,.16)}
-  .lb-rate.active{border-color:var(--accent);background:rgba(139,92,246,.4);box-shadow:0 0 10px rgba(139,92,246,.4)}
   /* modo comparação */
   #compareOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:450;align-items:center;justify-content:center;cursor:zoom-out;padding:var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)}
   #compareOverlay.open{display:flex}
@@ -106,7 +94,6 @@
   .cmp-item{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
   .cmp-item img{flex:1;min-height:0;object-fit:contain;width:100%;border-radius:8px;background:rgba(255,255,255,.03)}
   .cmp-cap{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,.55)}
-  .cmp-rates{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
   .tag-suggest{position:absolute;left:0;right:0;top:100%;z-index:60;background:var(--surface2);border:1px solid var(--border);border-radius:7px;max-height:210px;overflow-y:auto;box-shadow:0 8px 22px rgba(0,0,0,.55);margin-top:3px}
   .tag-sug-item{padding:6px 10px;font-size:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
   .tag-sug-item:hover,.tag-sug-item.active{background:var(--accent);color:#fff}
@@ -407,7 +394,6 @@
   :focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:6px}
   button:focus-visible,.tab:focus-visible,.side-tab:focus-visible,.tag-pill:focus-visible,
   .btn-sm:focus-visible,.btn-hdr:focus-visible,.btn-export:focus-visible,.gal-pill:focus-visible,
-  .period-pill:focus-visible,.page-btn:focus-visible,.lb-rate:focus-visible,.lb-btn:focus-visible{
     outline:2px solid var(--accent3);outline-offset:2px}
   input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   a:focus-visible{outline:2px solid var(--accent3);outline-offset:2px}
@@ -461,7 +447,6 @@
   }
 </style>
 <link rel="stylesheet" href="/ui/viewer.css">
-<link rel="stylesheet" href="/ui/desktop.css">
 </head>
 <body>
 
@@ -562,19 +547,6 @@
         <div id="sideFiltros" style="display:none;flex-direction:column;gap:10px">
         <div style="font-size:10px;color:var(--muted);line-height:1.5;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 9px">Estes filtros aplicam <b style="color:var(--accent2)">na hora</b> sobre os resultados — sem precisar buscar de novo.</div>
 
-        <!-- Avaliação (triagem) -->
-        <div>
-          <div class="sl">Avaliação</div>
-          <div class="tag-pills">
-            <span class="tag-pill aval-none on"   data-group="aval" data-val="none">Não avaliadas</span>
-            <span class="tag-pill aval-usar on"   data-group="aval" data-val="usar">Usar</span>
-            <span class="tag-pill aval-talvez on" data-group="aval" data-val="talvez">Talvez</span>
-            <span class="tag-pill aval-depois"    data-group="aval" data-val="depois">Rever depois</span>
-            <span class="tag-pill aval-nao"       data-group="aval" data-val="nao">Não gostei</span>
-          </div>
-          <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.5">Avalie no zoom com as teclas <b>1</b> Usar · <b>2</b> Talvez · <b>3</b> Rever depois · <b>4</b> Não gostei. Repetir a tecla remove a avaliação.</div>
-        </div>
-        <div class="divider"></div>
         <!-- Rating -->
         <div>
           <div class="sl">Classificação</div>
@@ -719,15 +691,6 @@
       <span style="font-size:10px;color:var(--muted);margin-left:10px">Ver:</span>
       <span class="tag-pill on" id="galViewDownloaded" onclick="toggleGalView(this,'downloaded')">⬇ Baixados (Disco)</span>
       <span class="tag-pill on" id="galViewFavorites"  onclick="toggleGalView(this,'favorite')">📌 Guardados (Só URL)</span>
-      <span class="tag-pill" id="galViewRated" onclick="toggleGalView(this,'rated')" title="Artes avaliadas na triagem que não foram baixadas nem guardadas">★ Avaliadas</span>
-      <select class="sort-select" id="galAvalFilter" onchange="renderGallery()" title="Filtrar pela pilha de triagem">
-        <option value="">Pilha: todas</option>
-        <option value="usar">Usar</option>
-        <option value="talvez">Talvez</option>
-        <option value="depois">Rever depois</option>
-        <option value="nao">Não gostei</option>
-        <option value="none">Sem avaliação</option>
-      </select>
       <select class="sort-select" id="galCollectionFilter" onchange="onGalCollectionChange()" title="Filtrar por coleção">
         <option value="">Coleções: todas</option>
       </select>
@@ -751,13 +714,6 @@
       <div class="stats-grid" id="statsGrid">
         <div class="stat-card"><div class="stat-card-label">Total no banco</div><div class="stat-card-val" id="statsTotal">—</div><div class="stat-card-sub">imagens únicas</div></div>
         <div class="stat-card"><div class="stat-card-label">Espaço no disco</div><div class="stat-card-val" id="statsDisk">—</div><div class="stat-card-sub">MB em downloads/</div></div>
-      </div>
-      <div class="bar-section-title">Triagem</div>
-      <div class="stats-grid" id="statsTriagem" style="padding-top:4px">
-        <div class="stat-card"><div class="stat-card-label">Usar</div><div class="stat-card-val" id="stAvalUsar">0</div><div class="stat-card-sub">escolhidas</div></div>
-        <div class="stat-card"><div class="stat-card-label">Talvez</div><div class="stat-card-val" id="stAvalTalvez">0</div><div class="stat-card-sub">em dúvida</div></div>
-        <div class="stat-card"><div class="stat-card-label">Rever depois</div><div class="stat-card-val" id="stAvalDepois">0</div><div class="stat-card-sub">adiadas</div></div>
-        <div class="stat-card"><div class="stat-card-label">Não gostei</div><div class="stat-card-val" id="stAvalNao">0</div><div class="stat-card-sub">descartadas (reversível)</div></div>
       </div>
       <div class="bar-section-title">Por fonte</div>
       <div class="bar-chart" id="barSource"></div>
@@ -818,13 +774,6 @@
     <img id="lbImg" src="" alt="" draggable="false">
     <video id="lbVideo" controls loop preload="none" style="display:none; max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,.8); z-index:10"></video>
     <button type="button" id="lbNsfwReveal" onclick="event.stopPropagation();revealLightboxNsfw()"><span>Mostrar imagem</span></button>
-  </div>
-  <div class="lb-bar" onclick="event.stopPropagation()" id="lbRateBar">
-    <span class="lb-info" style="margin-right:2px">Triagem:</span>
-    <button class="lb-rate" data-aval="usar"   onclick="lbRate('usar')"   title="tecla 1">1 · Usar</button>
-    <button class="lb-rate" data-aval="talvez" onclick="lbRate('talvez')" title="tecla 2">2 · Talvez</button>
-    <button class="lb-rate" data-aval="depois" onclick="lbRate('depois')" title="tecla 3">3 · Rever depois</button>
-    <button class="lb-rate" data-aval="nao"    onclick="lbRate('nao')"    title="tecla 4">4 · Não gostei</button>
   </div>
   <div class="lb-bar" onclick="event.stopPropagation()">
     <button class="lb-btn" onclick="lbZoomBy(-.25)" title="Diminuir zoom">−</button>
@@ -1052,8 +1001,6 @@ let searchAbortController=null;
 let hideGalleryItems=true,downloadedIds=new Set(),favoriteUids=new Set();
 let galleryData=[],collections=[],galFilter="all",minScore=0,activePeriodDays=0;
 let isMobileApp=false;
-let ratingsMap={};   // uid -> 'usar'|'talvez'|'depois'|'nao'
-const AVAL_LABEL={usar:"Usar",talvez:"Talvez",depois:"Rever depois",nao:"Não gostei"};
 let galRendered=[], galLbIdx=-1;   // lista renderizada da galeria + posição no lightbox
 
 // Escape de HTML para dados vindos de APIs externas (nomes de artista, tags).
@@ -1104,7 +1051,6 @@ function bindSecurityActions(root){
       case "save-art": doSaveSingle(findArtwork(el.dataset.uid)); break;
       case "download-art": {const post=findArtwork(el.dataset.uid);if(post)doDownload([post]);break;}
       case "delete": deleteGalImage(card.dataset.rel,card); break;
-      case "unrate": unrateGal(card.dataset.source,card.dataset.pid,card); break;
       case "unfavorite": removeFavGrid(card.dataset.source,card.dataset.pid,card); break;
       case "export": exportGalImage(card.dataset.rel,el); break;
       case "duplicate": dupDelete(el.dataset.rel,el); break;
@@ -1119,8 +1065,7 @@ function galleryCardHtml(it,index,mobile=false){
   const pid=it.post_id||it.uid?.split(":")[1]||"";
   const hidden=["questionable","q","explicit","e","nsfw","sensitive","s"].includes(String(it.rating||"sfw").toLowerCase());
   const sourceClass=String(it.source||"").toLowerCase().replace(/[^a-z0-9_-]/g,"");
-  const ratingClass=String(it.aval||"").replace(/[^a-z0-9_-]/g,"");
-  const action=downloaded ? "delete" : it._type==="rated" ? "unrate" : "unfavorite";
+  const action=downloaded ? "delete" : "unfavorite";
   return `<div class="gal-card${hidden?" nsfw-blur":""}" data-uid="${esc(uid)}" data-rel="${esc(it.rel_path||"")}" data-type="${esc(it._type||"")}" data-source="${esc(it.source||"")}" data-pid="${esc(pid)}" data-index="${Number(index)}" onclick="openGalLbIdx(Number(this.dataset.index))" oncontextmenu="showCtxMenuGal(event,this.dataset.uid)">
     <img src="${esc(img)}" data-fallback="${esc(full)}" loading="lazy" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback=''}else{onImgError(this)}">
     ${hidden?artworkPrivacyControls():""}
@@ -1128,11 +1073,10 @@ function galleryCardHtml(it,index,mobile=false){
     <div class="gal-actions">
       ${!downloaded&&it._type!=="favorite"?`<button type="button" class="card-btn art-primary art-save" data-ui-action="save-art" data-uid="${esc(uid)}" title="Adicionar à coleção">Guardar</button>`:'<span class="art-saved-label">Guardado</span>'}
       ${!downloaded?`<button type="button" class="card-btn art-primary" data-ui-action="download-art" data-uid="${esc(uid)}" title="Baixar no dispositivo">Baixar</button>`:(mobile&&!it.public_uri?'<button type="button" class="card-btn art-primary" data-ui-action="export">Salvar no celular</button>':'<span class="art-saved-label">Baixada</span>')}
-      ${artworkMoreActions(it.page_url,it.orig_url||it.url||img,`<button type="button" class="card-btn art-danger" data-ui-action="${action}">${downloaded?"Apagar do dispositivo":it._type==="rated"?"Remover avaliação":"Remover dos guardados"}</button>`)}
+      ${artworkMoreActions(it.page_url,it.orig_url||it.url||img,`<button type="button" class="card-btn art-danger" data-ui-action="${action}">${downloaded?"Apagar do dispositivo":"Remover dos guardados"}</button>`)}
     </div>
     <div class="art-credit">${artistBadge(it.artist)||'<span class="art-unknown">Artista desconhecido</span>'}</div>
     <div class="gal-card-meta">
-      ${it.aval?`<span class="badge badge-aval-${ratingClass}">${esc(AVAL_LABEL[it.aval]||"")}</span>`:""}
       <span class="badge badge-source-${sourceClass}">${esc(it.source)}</span>
       ${Number(it.width)>=1280?`<span class="badge badge-res">${Number(it.width)>=3840?"4K":Number(it.width)>=1920?"FHD":"HD"}</span>`:""}
       ${it._type==="favorite"&&!downloaded?'<span class="badge">📌 Guardado</span>':""}
@@ -1252,7 +1196,6 @@ function closeSidebarIfMobile(){
 
 // ══ SIDEBAR TOGGLE ════════════════════════════════════════════════
 function toggleSidebar(){
-  if(window.desktopUI?.enabled){ window.desktopUI.openSearch(); return; }
   sidebarCollapsed=!sidebarCollapsed;
   document.getElementById("sidebar").classList.toggle("collapsed",sidebarCollapsed);
   // No mobile o painel é um drawer sobreposto: controla backdrop e trava de scroll.
@@ -1852,7 +1795,6 @@ async function doSearch(){
   const pages=parseInt(document.getElementById("pagesSlider").value);
   if(!cats.length){toast("Selecione ao menos uma categoria.","error");return}
   if(!srcs.length){toast("Selecione ao menos uma fonte.","error");return}
-  window.desktopUI?.closeSearch();
 
   const btn=document.getElementById("btnSearch");
   const btnCancel=document.getElementById("btnCancel");
@@ -1870,14 +1812,12 @@ async function doSearch(){
   allPosts=[];
 
   try{
-    const [dl, favs, rt]=await Promise.all([
+    const [dl, favs]=await Promise.all([
       fetch("/api/downloaded-ids").then(r=>r.json()),
       fetch("/api/favorites").then(r=>r.json()),
-      fetch("/api/ratings").then(r=>r.json()),
     ]);
     downloadedIds=new Set(dl.ids||[]);
     favoriteUids=new Set((favs.favorites||[]).map(f=>`${f.source}:${f.post_id}`));
-    ratingsMap=rt.ratings||{};
   }catch(e){downloadedIds=new Set();favoriteUids=new Set()}
 
   const body={categories:cats,sources:srcs,pages,custom_categories:[], min_score: minScore};
@@ -2031,11 +1971,6 @@ function getFilteredPosts(){
     });
   }
 
-  // Triagem: cada post cai numa das 5 categorias (none = não avaliada)
-  const av=getActive("aval");
-  if(av.length<5){
-    posts=posts.filter(p=>av.includes(ratingsMap[`${p.source}:${p.id||p.post_id}`]||"none"));
-  }
 
   const am=getActive("media");
   if(am.length<4) posts=posts.filter(p=>am.includes(mediaTypeOf(p.url||p.orig_url||p.preview_url)));
@@ -2165,7 +2100,6 @@ function renderPage(page){
       </div>
       <div class="art-credit">${artistHtml||'<span class="art-unknown">Artista desconhecido</span>'}</div>
       <div class="card-meta">
-        ${ratingsMap[uid]?`<span class="badge badge-aval-${esc(ratingsMap[uid])}">${esc(AVAL_LABEL[ratingsMap[uid]])}</span>`:""}
         <span class="badge badge-source-${esc(src)}">${esc(p.source)}</span>
         <span class="badge badge-${esc(p.rating||"sfw")}">${rl}</span>
         ${resBadge}
@@ -2250,14 +2184,6 @@ function lbStep(d){
   const n=lbIdx+d;
   if(n>=0 && n<filteredPosts.length) openLb(n);
 }
-function lbCurUid(){
-  if(lbMode==="gallery"){
-    const it=galRendered[galLbIdx];
-    return it ? (it.uid||`${it.source}:${it.post_id}`) : null;
-  }
-  const p=filteredPosts[lbIdx];
-  return p ? `${p.source}:${p.id||p.post_id}` : null;
-}
 function currentArtwork(){
   if(lbMode==="gallery"){const item=galRendered[galLbIdx];return item?findArtwork(item.uid||`${item.source}:${item.post_id||item.source_id}`):null;}
   return filteredPosts[lbIdx]||null;
@@ -2265,56 +2191,6 @@ function currentArtwork(){
 function saveCurrentArtwork(){const post=currentArtwork();if(post)doSaveSingle(post);}
 function downloadCurrentArtwork(){const post=currentArtwork();if(post)doDownload([post]);}
 
-function updateLbRateBtns(){
-  const uid=lbCurUid();
-  const cur=uid?ratingsMap[uid]:null;
-  document.querySelectorAll("#lbRateBar .lb-rate").forEach(b=>{
-    b.classList.toggle("active", b.dataset.aval===cur);
-  });
-}
-
-async function lbRate(aval){
-  const emGaleria = lbMode==="gallery";
-  const p = emGaleria ? galRendered[galLbIdx] : filteredPosts[lbIdx];
-  if(!p) return;
-  const uid = emGaleria ? (p.uid||`${p.source}:${p.post_id}`) : `${p.source}:${p.id||p.post_id}`;
-  const removing = ratingsMap[uid]===aval;   // repetir = remover avaliação
-
-  if(removing) delete ratingsMap[uid];
-  else ratingsMap[uid]=aval;
-  p.aval = removing ? null : aval;
-
-  // Persiste em background (não trava a triagem)
-  const payload = {...p, id: p.id||p.post_id, aval: removing?"":aval};
-  fetch("/api/ratings",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload)})
-    .catch(()=>toast("Erro ao salvar avaliação","error"));
-
-  toast(removing?"Avaliação removida":`${AVAL_LABEL[aval]} ✓`,"info");
-
-  if(emGaleria){
-    const oldIdx=galLbIdx;
-    renderGallery();   // atualiza badges e refiltra (galRendered é recriado)
-    if(!galRendered.length){ closeLb(); return; }
-    const still=galRendered.findIndex(x=>(x.uid||`${x.source}:${x.post_id}`)===uid);
-    const next=still>=0 ? Math.min(still+1, galRendered.length-1)
-                        : Math.min(oldIdx, galRendered.length-1);
-    openGalLbIdx(next);
-    return;
-  }
-
-  // A imagem continua visível com o filtro atual?
-  const visiveis=new Set(getActive("aval"));
-  const aindaVisivel=visiveis.has(ratingsMap[uid]||"none");
-
-  const oldIdx=lbIdx;
-  applyFilterAndSort(true);   // atualiza grade + badges
-
-  if(!filteredPosts.length){ closeLb(); return; }
-  // Se saiu da lista, o próximo já ocupa o índice atual; senão avança 1
-  const next=Math.min(aindaVisivel?oldIdx+1:oldIdx, filteredPosts.length-1);
-  openLb(next);
-}
 function openLb(idxOrUid){
   let idx = typeof idxOrUid === 'number' ? idxOrUid : filteredPosts.findIndex(x=>`${x.source}:${x.id||x.post_id}`===idxOrUid);
   if(idx < 0) return;
@@ -2341,10 +2217,8 @@ function openLb(idxOrUid){
   document.getElementById("lbLink").style.display=safeExternalUrl(p.page_url)?"":"none";
   document.getElementById("lbSauce").href=`https://saucenao.com/search.php?url=${encodeURIComponent(p.url)}`;
   document.getElementById("lbInfo").textContent=`${idx+1}/${filteredPosts.length} · ${p.source} · ${p.width||"?"}×${p.height||"?"} · score: ${p.score||0}`;
-  document.getElementById("lbRateBar").style.display="";
   document.getElementById("lbPrev").classList.toggle("hidden", idx<=0);
   document.getElementById("lbNext").classList.toggle("hidden", idx>=filteredPosts.length-1);
-  updateLbRateBtns();
   document.getElementById("lightbox").classList.add("open");
   // pré-carrega a próxima imagem para navegação instantânea
   const nx=filteredPosts[idx+1];
@@ -2371,8 +2245,6 @@ function onKeyDown(e){
     if(["INPUT","TEXTAREA","SELECT","BUTTON"].includes(e.target.tagName)||e.target.isContentEditable)return;
     if(e.key==="ArrowRight"){e.preventDefault();lbStep(1);}
     if(e.key==="ArrowLeft"){e.preventDefault();lbStep(-1);}
-    const aval={"1":"usar","2":"talvez","3":"depois","4":"nao"}[e.key];
-    if(aval){e.preventDefault();lbRate(aval);}
     return;
   }
   if(["INPUT","TEXTAREA","SELECT","BUTTON"].includes(e.target.tagName)||e.target.isContentEditable) return;
@@ -2593,25 +2465,6 @@ async function loadGallery(){
       }
     });
 
-    // Avaliadas (triagem): pilhas direto do banco, sem precisar buscar
-    try{
-      const rt = await(await fetch("/api/ratings")).json();
-      ratingsMap = rt.ratings||{};
-      const rated = await(await fetch("/api/rated-posts")).json().then(d=>d.items||[]);
-      const haveUids = new Set(galleryData.map(i=>i.uid||`${i.source}:${i.post_id}`));
-      rated.forEach(r=>{
-        if(!haveUids.has(r.uid) && (r.url||r.preview_url)){
-          galleryData.push({...r, _type:"rated", rel_path:null,
-            downloaded_at: r.rated_at||0});
-        }
-      });
-      // Anota a pilha em TODOS os itens (baixados e guardados também)
-      galleryData.forEach(i=>{
-        i.uid = i.uid || `${i.source}:${i.post_id}`;
-        i.aval = ratingsMap[i.uid] || null;
-      });
-    }catch(e){ console.error("ratings:", e); }
-
     // Rebuild filter pills
 
     const cats=[...new Set(galleryData.map(i=>{
@@ -2653,13 +2506,9 @@ function renderGallery(){
     syncSourceFilter("gallerySourceFilter",galleryData);
     let items=filterBySource([...galleryData],document.getElementById("gallerySourceFilter").value);
 
-    // Filtro: view (downloaded / favorites / rated)
+    // Filtro: view (downloaded / favorites)
     items=items.filter(i=>galActiveViews.has(i._type));
     if(collectionId) items=items.filter(i=>(i.collection_ids||[]).map(Number).includes(collectionId));
-
-    // Filtro: pilha de triagem
-    const pile=document.getElementById("galAvalFilter")?.value||"";
-    if(pile) items=items.filter(i=> pile==="none" ? !i.aval : i.aval===pile);
 
     // Filtro: rating
     items=items.filter(i=>galActiveRatings.has(i.rating||"sfw"));
@@ -2714,25 +2563,10 @@ function openGalLbIdx(i){
   const full = isDl ? `/api/file?rel_path=${encodeURIComponent(it.rel_path)}`
                     : `/api/proxy-image?url=${encodeURIComponent(it.url||it.preview_url||"")}`;
   openGalLb(full, it.page_url||"", (it.source||"").toLowerCase(), it.score||0, it.orig_url||it.url||"", it.rating||"sfw", it.uid||`${it.source}:${it.post_id||it.source_id}`);
-  // Habilita navegação e triagem (openGalLb esconde por padrão p/ compat)
+  // Habilita navegação (openGalLb esconde por padrão p/ compat)
   document.getElementById("lbPrev").classList.toggle("hidden", i<=0);
   document.getElementById("lbNext").classList.toggle("hidden", i>=galRendered.length-1);
-  document.getElementById("lbRateBar").style.display="";
   document.getElementById("lbInfo").textContent=`${i+1}/${galRendered.length} · ${it.source||""} · score: ${it.score||0}`;
-  updateLbRateBtns();
-}
-
-async function unrateGal(source, postId, card){
-  try{
-    await fetch("/api/ratings",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({source, id:postId, aval:""})});
-    delete ratingsMap[`${source}:${postId}`];
-    galleryData=galleryData.filter(i=>!(i._type==="rated"&&i.source===source&&String(i.post_id)===String(postId)));
-    galleryData.forEach(i=>{ if(i.uid===`${source}:${postId}`) i.aval=null; });
-    if(card) card.remove();
-    toast("Avaliação removida","info");
-    renderGallery();
-  }catch(e){ toast("Erro: "+e.message,"error"); }
 }
 
 function openGalLb(src,pageUrl,source,score,origUrl,rating,uid=""){
@@ -2742,7 +2576,6 @@ function openGalLb(src,pageUrl,source,score,origUrl,rating,uid=""){
     resetLbZoom();
     document.getElementById("lbPrev").classList.add("hidden");
     document.getElementById("lbNext").classList.add("hidden");
-    document.getElementById("lbRateBar").style.display="none";
     let checkUrl = origUrl || src;
     const isVid = mediaTypeOf(checkUrl)==="video";
     if(isVid) {
@@ -3035,11 +2868,6 @@ async function loadStats(){
     const s=await(await fetch("/api/stats")).json();
     document.getElementById("statsTotal").textContent=s.total||0;
     document.getElementById("statsDisk").textContent=(s.disk_mb||0)+" MB";
-    const br=s.by_rating||{};
-    document.getElementById("stAvalUsar").textContent   = br.usar||0;
-    document.getElementById("stAvalTalvez").textContent = br.talvez||0;
-    document.getElementById("stAvalDepois").textContent = br.depois||0;
-    document.getElementById("stAvalNao").textContent    = br.nao||0;
     const bySource=s.by_source||{};
     const maxS=Math.max(1,...Object.values(bySource));
     document.getElementById("barSource").innerHTML=Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
@@ -3196,6 +3024,5 @@ function blockArtistAction(artist){
   });
 }
 </script>
-<script src="/ui/desktop.js"></script>
 </body>
 </html>

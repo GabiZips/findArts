@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QApplication, QButtonGroup, QGridLayout, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
+    QApplication, QButtonGroup, QGridLayout, QCheckBox, QComboBox, QDialog, QFormLayout,
     QHBoxLayout, QInputDialog, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
     QPlainTextEdit, QScrollArea, QSpinBox, QSplitter, QTabWidget, QVBoxLayout, QWidget,
 )
@@ -92,46 +92,59 @@ class FiltersDialog(QDialog):
     def __init__(self, window):
         super().__init__(window)
         self.setWindowTitle("Filtros")
-        self.resize(600, 620)
+        self.setObjectName("artworkFilters")
+        self.resize(470, 390)
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 14, 18, 16)
+        layout.setSpacing(8)
         layout.addWidget(label("Refinar resultados", "dialogTitle"))
-        layout.addWidget(label("Os filtros são aplicados às artes carregadas, sem uma nova busca.", "muted"))
+        layout.addWidget(label("Filtre as artes que já estão na tela.", "muted"))
         self.groups = {}
         for key, title, values in [
             ("ratings", "Classificação", [("sfw", "SFW"), ("sensitive", "Sensível"), ("nsfw", "NSFW")]),
             ("media", "Mídia", [("image", "Imagem"), ("gif", "GIF"), ("webp", "WebP"), ("video", "Vídeo")]),
-            ("assessments", "Avaliação", [("none", "Não avaliadas"), ("usar", "Usar"), ("talvez", "Talvez"), ("depois", "Rever depois"), ("nao", "Não gostei")]),
         ]:
             layout.addWidget(label(title, "sectionTitle"))
             row = QHBoxLayout()
+            row.setSpacing(6)
             self.groups[key] = []
             for value, text in values:
-                box = QCheckBox(text)
+                box = button(text)
+                box.setObjectName("filterChip")
+                box.setProperty("filterValue", value)
+                box.setCheckable(True)
                 box.setChecked(value in window.filters.get(key, [v[0] for v in values]))
                 row.addWidget(box)
                 self.groups[key].append((value, box))
+            row.addStretch()
             layout.addLayout(row)
         form = QFormLayout()
+        form.setVerticalSpacing(8)
+        form.setHorizontalSpacing(12)
         self.score = QSpinBox()
         self.score.setRange(0, 10000000)
+        self.score.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
         self.score.setValue(window.filters.get("score", 0))
-        form.addRow("Score mínimo", self.score)
+        form.addRow(label("Score mínimo"), self.score)
         self.period = QComboBox()
         for title, days in [("Qualquer período", 0), ("7 dias", 7), ("30 dias", 30), ("3 meses", 90), ("1 ano", 365)]:
             self.period.addItem(title, days)
         self.period.setCurrentIndex(max(0, self.period.findData(window.filters.get("days", 0))))
-        form.addRow("Período", self.period)
+        form.addRow(label("Período"), self.period)
         self.blacklist = QPlainTextEdit(window.filters.get("blacklist", ""))
         self.blacklist.setPlaceholderText("Tags separadas por vírgula")
-        self.blacklist.setMaximumHeight(90)
-        form.addRow("Excluir tags", self.blacklist)
+        self.blacklist.setFixedHeight(54)
+        form.addRow(label("Excluir tags"), self.blacklist)
         layout.addLayout(form)
         layout.addWidget(label("Artes sem data informada continuam visíveis no filtro de período.", "muted"))
         layout.addStretch()
-        actions = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        actions.accepted.connect(self.accept)
-        actions.rejected.connect(self.reject)
-        layout.addWidget(actions)
+        actions = QHBoxLayout()
+        actions.addStretch()
+        actions.addWidget(button("Cancelar", self.reject))
+        apply = button("Aplicar filtros", self.accept, True, icon="check")
+        apply.setDefault(True)
+        actions.addWidget(apply)
+        layout.addLayout(actions)
 
     def values(self):
         values = {key: [value for value, box in boxes if box.isChecked()] for key, boxes in self.groups.items()}
@@ -364,6 +377,8 @@ class SettingsDialog(QDialog):
         self.blur_box.setChecked(window.blur)
         self.blur_box.toggled.connect(window.set_blur)
         general_layout.addRow(self.blur_box)
+        general_layout.addRow(button("Abrir interface legada", window.open_legacy_interface, icon="open"))
+        general_layout.addRow(label("Abre no navegador enquanto o ArtFinder estiver aberto.", "muted"))
         tabs.addTab(general, "Geral")
         sources = QWidget()
         self.form = QFormLayout(sources)

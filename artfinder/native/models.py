@@ -40,8 +40,8 @@ def media_type(post):
     return "image"
 
 
-def filter_posts(posts, options, ratings=None, saved=None):
-    ratings, saved = ratings or {}, saved or set()
+def filter_posts(posts, options, saved=None):
+    saved = saved or set()
     query = options.get("query", "").casefold().strip()
     blocked = [s.strip().replace("_", " ").casefold() for s in options.get("blacklist", "").split(",") if s.strip()]
     result = []
@@ -51,8 +51,6 @@ def filter_posts(posts, options, ratings=None, saved=None):
         if rating(p) not in options.get("ratings", ["sfw", "sensitive", "nsfw"]):
             continue
         if media_type(p) not in options.get("media", ["image", "gif", "webp", "video"]):
-            continue
-        if ratings.get(uid(p), "none") not in options.get("assessments", ["none", "usar", "talvez", "depois", "nao"]):
             continue
         if (p.get("score") or 0) < options.get("score", 0):
             continue

@@ -23,7 +23,7 @@ de várias fontes em uma só interface.
   Bluesky e DeviantArt.
 - Tags específicas por fonte por meio de `source_tags`.
 - Categorias personalizadas sem alterações no código.
-- Favoritos, avaliações, blacklist e histórico armazenados localmente em
+- Favoritos, blacklist e histórico armazenados localmente em
   SQLite.
 - Biblioteca, coleções, visualizador com zoom e filtros de conteúdo.
 - Download com limite de tamanho, validação do arquivo e deduplicação por hash
@@ -100,7 +100,9 @@ Grafite, Floresta e Claro. O aplicativo inicia com fundo escuro.
 
 As preferências da interface nativa ficam em `native-ui.ini` na pasta de dados.
 As preferências visuais antigas do WebView não são importadas; categorias,
-credenciais, downloads, coleções e avaliações continuam usando os dados existentes.
+credenciais, downloads e coleções continuam usando os dados existentes.
+Para acessar o layout anterior, use **Configurações → Geral → Abrir interface legada**.
+Ele abre no navegador e usa a biblioteca local enquanto o ArtFinder estiver aberto.
 O Android nativo permanece independente. Consulte a
 [arquitetura da interface nativa](docs/adr/0010-native-desktop.md).
 

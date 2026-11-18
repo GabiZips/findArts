@@ -136,7 +136,8 @@ Night, Graphite, Forest and Light themes, with a dark default.
 
 Native visual preferences live in `native-ui.ini`; categories, credentials,
 downloads and library records keep using the existing data. Previous WebView
-visual preferences are not imported. Android remains unchanged.
+visual preferences are not imported. Open the previous layout from **Settings → General → Open legacy interface**.
+It opens in your browser and uses the local library while ArtFinder is running.
 
 ## Optional credentials
 

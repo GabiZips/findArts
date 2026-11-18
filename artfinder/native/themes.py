@@ -3,9 +3,9 @@ from PySide6.QtGui import QColor, QPalette
 
 # Keep stable keys so existing user preferences continue to work.
 THEMES = {
-    "night": {"name": "Noturno", "bg": "#121625", "surface": "#1c2339", "rail": "#171e34",
-              "text": "#f4f5ff", "muted": "#bdc8e0", "border": "#3c4968", "accent": "#ff9d50",
-              "ink": "#27170f", "hover": "#35466c", "selected": "#393052", "error": "#ffb5ad"},
+    "night": {"name": "Noturno", "bg": "#101014", "surface": "#19191f", "rail": "#151519",
+              "text": "#e6e8f0", "muted": "#a7a7b7", "border": "#373743", "accent": "#bd9aff",
+              "ink": "#211232", "hover": "#30293c", "selected": "#30243f", "error": "#ffb5ad"},
     "graphite": {"name": "Grafite", "bg": "#222222", "surface": "#303030", "rail": "#282828",
                  "text": "#f6f1e9", "muted": "#bdbdbd", "border": "#4e4e4e", "accent": "#e9c48c",
                  "ink": "#302211", "hover": "#4e463b", "selected": "#584a33", "error": "#ffb5ad"},
@@ -18,7 +18,7 @@ THEMES = {
 }
 
 CONTROLS = {
-    "night": {"control": "#283654", "controlEdge": "#60749d"},
+    "night": {"control": "#212129", "controlEdge": "#505060"},
     "graphite": {"control": "#48423b", "controlEdge": "#a09380"},
     "forest": {"control": "#43553f", "controlEdge": "#8fa284"},
     "light": {"control": "#dce7eb", "controlEdge": "#73909c"},
@@ -28,7 +28,7 @@ STYLE_TEMPLATE = """
 QWidget { background: @bg; color: @text; font-family: 'Source Sans 3', 'Segoe UI'; font-size: 15px; }
 QMainWindow, QDialog { background: @bg; }
 QLabel, QCheckBox { background: transparent; }
-QLabel#brand { font-family: 'Archivo'; font-size: 24px; font-weight: 800; }
+QLabel#brand { font-family: 'Archivo'; font-size: 21px; font-weight: 750; }
 QLabel#title { font-family: 'Archivo'; font-size: 24px; font-weight: 750; }
 QLabel#dialogTitle, QLabel#emptyTitle { font-size: 25px; font-weight: 600; padding: 8px 0; }
 QLabel#sectionTitle { font-size: 15px; font-weight: 600; padding: 12px 0 6px; }
@@ -36,8 +36,8 @@ QLabel#muted, QStatusBar { color: @muted; }
 QLabel#error { color: @error; }
 QPushButton {
     color: @text; background: @control;
-    border: 1px solid @controlEdge; border-radius: 8px;
-    padding: 7px 13px; min-height: 21px; font-weight: 650;
+    border: 1px solid @controlEdge; border-radius: 7px;
+    padding: 6px 11px; min-height: 20px; font-weight: 600;
 }
 QPushButton:hover { background: @hover; border-color: @accent; }
 QPushButton:pressed, QPushButton:checked { background: @selected; border: 1px solid @accent; }
@@ -49,7 +49,6 @@ QPushButton:focus, QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus { bord
 QPushButton[primary=true]:focus { background: @accent; color: @ink; border: 1px solid @text; }
 QLineEdit, QPlainTextEdit, QSpinBox, QComboBox { background: @surface; border: 1px solid @border; border-radius: 6px; padding: 7px; selection-background-color: @selected; selection-color: @text; }
 QComboBox { min-width: 90px; }
-QComboBox::drop-down { border: none; width: 22px; }
 QComboBox QAbstractItemView { background: @surface; color: @text; selection-background-color: @selected; selection-color: @text; }
 QListView, QTableWidget { background: @bg; border: 1px solid @border; border-radius: 8px; outline: none; }
 QListWidget::item { padding: 10px; border-radius: 5px; }
@@ -75,9 +74,20 @@ QPushButton#navTab:hover { background: @hover; border-color: @controlEdge; }
 QPushButton#navTab:checked { background: @surface; border: 1px solid @border; border-bottom: 3px solid @accent; }
 QPushButton#navTab:focus { border-color: @accent; }
 QLabel#resultCount { color: @muted; padding: 2px 10px; background: @surface; border-radius: 6px; }
-QWidget#searchCover { background: #304cc7; border-radius: 14px; }
-QLabel#coverTitle { color: #ffffff; font-family: 'Archivo'; font-size: 46px; font-weight: 800; }
-QLabel#coverCopy { color: #eff2ff; font-size: 17px; }
+QWidget#searchCover { background: @surface; border: 1px solid @border; border-radius: 9px; }
+QLabel#coverTitle { color: @text; font-size: 20px; font-weight: 700; }
+QDialog#artworkFilters QLabel#dialogTitle { padding: 0; font-size: 23px; }
+QDialog#artworkFilters QLabel#sectionTitle { padding: 7px 0 0; }
+QPushButton#filterChip {
+    border-radius: 14px; padding: 4px 13px; min-height: 20px;
+    background: @bg; border: 1px solid @controlEdge; color: @muted;
+}
+QPushButton#filterChip:hover { color: @text; border-color: @accent; }
+QPushButton#filterChip:checked { background: @selected; border-color: @accent; color: @text; }
+QPushButton#filterChip[filterValue=sfw]:checked { background: #20332b; color: #a7efbc; border-color: #79c294; }
+QPushButton#filterChip[filterValue=sensitive]:checked { background: #352e20; color: #f8db8f; border-color: #d9b56b; }
+QPushButton#filterChip[filterValue=nsfw]:checked { background: #38242b; color: #ffc3cd; border-color: #db8b9d; }
+QPushButton#filterChip:focus { border-color: @text; }
 QLabel#emptyTitle { font-family: 'Archivo'; font-size: 26px; font-weight: 700; }
 QWidget#inspector { background: @surface; border-left: 1px solid @border; }
 QWidget#inspector QLabel { border: none; }

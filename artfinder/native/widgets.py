@@ -13,7 +13,7 @@ from .studio import nav_icon
 from .models import media_type, rating, uid
 
 
-def button(text, callback, primary=False, *, icon=None):
+def button(text, callback=None, primary=False, *, icon=None):
     widget = QPushButton(text)
     widget.setCursor(Qt.CursorShape.PointingHandCursor)
     widget.setProperty("primary", primary)
@@ -30,7 +30,8 @@ def button(text, callback, primary=False, *, icon=None):
         widget.setProperty("iconName", icon)
         widget.setIcon(nav_icon(icon, color))
         widget.setIconSize(QSize(19, 19))
-    widget.clicked.connect(callback)
+    if callback is not None:
+        widget.clicked.connect(callback)
     return widget
 
 
@@ -253,18 +254,18 @@ class Viewer(QDialog):
         controls.addWidget(self.seek, 1)
         layout.addWidget(self.video_controls)
         tools = QHBoxLayout()
-        for title, callback in [("−", lambda: self.image.zoom(1 / 1.2)), ("Ajustar", self.image.fit), ("+", lambda: self.image.zoom(1.2)),
-                                ("Guardar", lambda: window.save(self.current)), ("Baixar", lambda: window.download([self.current])),
-                                ("Ver na fonte", lambda: window.open_source(self.current)), ("Ocultar imagem", self.hide_protected)]:
-            tools.addWidget(button(title, callback))
+        self.zoom_buttons = []
+        for title, callback in [("−", lambda: self.image.zoom(1 / 1.2)), ("Ajustar", self.image.fit), ("+", lambda: self.image.zoom(1.2))]:
+            control = button(title, callback)
+            self.zoom_buttons.append(control)
+            tools.addWidget(control)
+        tools.addStretch(1)
+        tools.addWidget(button("Ver na fonte", lambda: window.open_source(self.current), icon="open"))
+        tools.addWidget(button("Baixar", lambda: window.download([self.current])))
+        tools.addWidget(button("Guardar", lambda: window.save(self.current), True))
+        self.hide_preview = button("Ocultar imagem", self.hide_protected)
+        tools.addWidget(self.hide_preview)
         layout.addLayout(tools)
-        assessments = QHBoxLayout()
-        for number, (value, title) in enumerate([("usar", "Usar"), ("talvez", "Talvez"), ("depois", "Rever depois"), ("nao", "Não gostei")], 1):
-            callback = lambda checked=False, value=value: self.window.rate(self.current, value)
-            assessments.addWidget(button(f"{number} · {title}", callback))
-            shortcut = QShortcut(QKeySequence(str(number)), self)
-            shortcut.activated.connect(callback)
-        layout.addLayout(assessments)
         for key, offset in [("Left", -1), ("Right", 1)]:
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(lambda offset=offset: self.step(offset))
@@ -303,6 +304,9 @@ class Viewer(QDialog):
         self.stack.setCurrentWidget(self.message)
         protected = self.window.blur and rating(post) == "nsfw" and uid(post) not in self.window.revealed
         self.reveal.setVisible(protected)
+        self.hide_preview.setVisible(self.window.blur and rating(post) == "nsfw" and not protected)
+        for control in self.zoom_buttons:
+            control.setEnabled(False)
         self.video_controls.hide()
         self.message.setText("Conteúdo NSFW oculto. Revele somente se desejar visualizar." if protected else "Carregando…")
         if protected:
@@ -339,6 +343,8 @@ class Viewer(QDialog):
             return
         self.image.set_pixmap(image)
         self.stack.setCurrentWidget(self.image)
+        for control in self.zoom_buttons:
+            control.setEnabled(True)
         self.media_buffer = QBuffer(self)
         self.media_buffer.setData(QByteArray(raw))
         self.media_buffer.open(QIODevice.OpenModeFlag.ReadOnly)
