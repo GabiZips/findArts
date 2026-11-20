@@ -461,6 +461,7 @@
   }
 </style>
 <link rel="stylesheet" href="/ui/viewer.css">
+<link rel="stylesheet" href="/ui/desktop.css">
 </head>
 <body>
 
@@ -646,6 +647,9 @@
           <span id="pageInfo" style="font-size:10px;color:var(--muted);display:none">pág <b id="curPage">1</b>/<b id="totalPages">1</b></span>
         </div>
         <div class="toolbar-right">
+      <select class="sort-select" id="resultSourceFilter" onchange="applyFilterAndSort()" aria-label="Filtrar por site" title="Filtrar por site" style="min-height:44px;max-width:100%">
+        <option value="">Todos os sites</option>
+      </select>
           <select class="sort-select" id="sortSelect" onchange="applyFilterAndSort()">
             <option value="score_desc">Score ↓</option>
             <option value="score_asc">Score ↑</option>
@@ -681,6 +685,9 @@
       <span class="select-count"><b id="galleryCount">0</b> imagens</span>
       <input id="galSearchInput" type="text" placeholder="🔍 artista, fonte, tags..." oninput="galDebounce()"
         style="flex:1;min-width:150px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--text);outline:none">
+      <select class="sort-select" id="gallerySourceFilter" onchange="renderGallery()" aria-label="Filtrar por site" title="Filtrar por site" style="min-height:44px;max-width:100%">
+        <option value="">Todos os sites</option>
+      </select>
       <select class="sort-select" id="gallerySortSelect" onchange="renderGallery()">
         <option value="date_desc">📅 Mais recentes</option>
         <option value="score_desc">⭐ Score ↓</option>
@@ -1245,6 +1252,7 @@ function closeSidebarIfMobile(){
 
 // ══ SIDEBAR TOGGLE ════════════════════════════════════════════════
 function toggleSidebar(){
+  if(window.desktopUI?.enabled){ window.desktopUI.openSearch(); return; }
   sidebarCollapsed=!sidebarCollapsed;
   document.getElementById("sidebar").classList.toggle("collapsed",sidebarCollapsed);
   // No mobile o painel é um drawer sobreposto: controla backdrop e trava de scroll.
@@ -1844,6 +1852,7 @@ async function doSearch(){
   const pages=parseInt(document.getElementById("pagesSlider").value);
   if(!cats.length){toast("Selecione ao menos uma categoria.","error");return}
   if(!srcs.length){toast("Selecione ao menos uma fonte.","error");return}
+  window.desktopUI?.closeSearch();
 
   const btn=document.getElementById("btnSearch");
   const btnCancel=document.getElementById("btnCancel");
@@ -1987,10 +1996,31 @@ function getBlacklist(){
     .split(",").map(t=>t.trim().toLowerCase().replace(/ /g,"_")).filter(Boolean);
 }
 
+function artworkSource(item){
+  const source=String(item.source||"").trim().toLowerCase();
+  return source==="bsky"?"bluesky":source;
+}
+
+function syncSourceFilter(id,items){
+  const select=document.getElementById(id);
+  const selected=select.value;
+  const sources=[...new Set(items.map(artworkSource).filter(Boolean))].sort();
+  // Keep a selection while results stream in or the library is refreshed.
+  if(selected&&!sources.includes(selected)) sources.push(selected);
+  const labels={bluesky:"Bluesky",deviantart:"DeviantArt",pixiv:"Pixiv",tumblr:"Tumblr",danbooru:"Danbooru",gelbooru:"Gelbooru",safebooru:"Safebooru",e621:"e621"};
+  select.innerHTML=`<option value="">${esc(t("Todos os sites"))}</option>`+sources.map(source=>`<option value="${esc(source)}">${esc(labels[source]||source)}</option>`).join("");
+  select.value=selected;
+}
+
+function filterBySource(items,source){
+  return source?items.filter(item=>artworkSource(item)===source):items;
+}
+
 function getFilteredPosts(){
+  syncSourceFilter("resultSourceFilter",allPosts);
   const blacklist=getBlacklist();
   const ar=getActive("rating");
-  let posts=[...allPosts];
+  let posts=filterBySource([...allPosts],document.getElementById("resultSourceFilter").value);
   if(ar.length<3) {
     posts=posts.filter(p=>{
       let r=(p.rating||"sfw").toLowerCase();
@@ -2583,7 +2613,7 @@ async function loadGallery(){
     }catch(e){ console.error("ratings:", e); }
 
     // Rebuild filter pills
-    const sources=[...new Set(galleryData.map(i=>i.source))].filter(Boolean);
+
     const cats=[...new Set(galleryData.map(i=>{
       if(i._type==="downloaded" && i.rel_path){
         const m=i.rel_path.match(/^([^/]+)\//);
@@ -2594,7 +2624,6 @@ async function loadGallery(){
     const bar=document.getElementById("galFilterBar");
     if(bar) {
       bar.innerHTML=`<span class="gal-pill on" data-gf="all" data-ui-action="filter">Todas</span>`
-        +sources.map(s=>`<span class="gal-pill" data-gf="src:${esc(s)}" data-ui-action="filter">  ${esc(s)}</span>`).join("")
         +cats.map(c=>`<span class="gal-pill" data-gf="cat:${esc(c)}" data-ui-action="filter">  ${esc(c.replace(/_/g," "))}</span>`).join("");
       bindSecurityActions(bar);
     }
@@ -2621,7 +2650,8 @@ function renderGallery(){
     const minRes=parseInt(document.getElementById("galResFilter")?.value)||0;
     const collectionId=Number(document.getElementById("galCollectionFilter")?.value||0);
 
-    let items=[...galleryData];
+    syncSourceFilter("gallerySourceFilter",galleryData);
+    let items=filterBySource([...galleryData],document.getElementById("gallerySourceFilter").value);
 
     // Filtro: view (downloaded / favorites / rated)
     items=items.filter(i=>galActiveViews.has(i._type));
@@ -3166,5 +3196,6 @@ function blockArtistAction(artist){
   });
 }
 </script>
+<script src="/ui/desktop.js"></script>
 </body>
 </html>
