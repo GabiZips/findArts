@@ -123,8 +123,19 @@ venv\Scripts\python -m pip install -r requirements-desktop.txt
 venv\Scripts\python desktop.py
 ```
 
-On Linux, use the equivalent `python3` and `venv/bin/python` commands. The
-Linux dependency selects the PySide6 backend for pywebview.
+On Linux, use the equivalent `python3` and `venv/bin/python` commands. Desktop
+now uses native Qt Widgets through PySide6, including its dialogs and media
+viewer. It does not embed a browser, HTML renderer, WebView or Electron.
+The existing FastAPI service remains private to the computer on a random port.
+The workspace combines sidebar collections, adjustable thumbnails and a
+resizable artwork inspector. Select an artwork to see its artist, source,
+dimensions and tags; double-click to open it. Search directly by tags or choose
+categories and sources in **New search**. **Settings → Appearance** offers
+Night, Graphite, Forest and Light themes, with a dark default.
+
+Native visual preferences live in `native-ui.ini`; categories, credentials,
+downloads and library records keep using the existing data. Previous WebView
+visual preferences are not imported. Android remains unchanged.
 
 ## Optional credentials
 
