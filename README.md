@@ -85,8 +85,24 @@ venv\Scripts\python -m pip install -r requirements-desktop.txt
 venv\Scripts\python desktop.py
 ```
 
-Isso abre uma janela própria. O servidor interno da versão desktop usa uma
-porta aleatória e aceita conexões somente do computador.
+Isso abre a interface nativa em **Qt Widgets / PySide6**, com galeria, janelas de
+busca, categorias, coleções e configurações. A interface de PC não usa HTML,
+WebView, Electron ou navegador embutido. Imagens, GIFs e vídeos usam componentes Qt.
+O serviço interno FastAPI continua em uma porta aleatória, acessível somente
+no próprio computador, para reutilizar as fontes e o banco existentes.
+
+A área de trabalho reúne coleções na lateral, uma grade de miniaturas com
+tamanho ajustável e um painel de detalhes redimensionável. Selecione uma arte
+para consultar autor, fonte, dimensões e tags; use duplo clique para abrir.
+A busca inicial aceita tags diretamente, e **Nova busca** permite escolher
+categorias e fontes. Em **Configurações → Aparência**, escolha entre Noturno,
+Grafite, Floresta e Claro. O aplicativo inicia com fundo escuro.
+
+As preferências da interface nativa ficam em `native-ui.ini` na pasta de dados.
+As preferências visuais antigas do WebView não são importadas; categorias,
+credenciais, downloads, coleções e avaliações continuam usando os dados existentes.
+O Android nativo permanece independente. Consulte a
+[arquitetura da interface nativa](docs/adr/0010-native-desktop.md).
 
 ## Gerar o executável
 
