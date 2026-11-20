@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import sys
+from pathlib import PureWindowsPath
 
 from PyInstaller.utils.hooks import collect_submodules
 
@@ -22,16 +23,28 @@ a = Analysis(
         ("palettes", "palettes"),
         ("assets/artfinder-icon.png", "assets"),
         ("assets/artfinder.ico", "assets"),
+        ("assets/fonts", "assets/fonts"),
         ("defaults/categories.json", "defaults"),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=["webview", "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets",
+              "PySide6.QtWebEngineQuick", "PySide6.QtPdf", "PySide6.QtPdfWidgets"],
     noarchive=False,
     optimize=0,
 )
+if sys.platform == "win32":
+    # Qt 6 uses the Windows ICU API (unversioned exports such as ucnv_open).
+    # A foreign icuuc.dll on PATH, e.g. from Poppler/Conda, exposes renamed
+    # symbols and shadows the OS library in a frozen app (WinError 127).
+    # Windows 10+ supplies these libraries; never bundle a PATH lookalike.
+    a.binaries = [
+        entry for entry in a.binaries
+        if PureWindowsPath(entry[0]).name.lower() not in {"icu.dll", "icuuc.dll", "icuin.dll"}
+        and not PureWindowsPath(entry[0]).name.lower().startswith("icudt")
+    ]
 pyz = PYZ(a.pure)
 
 exe = EXE(

@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -50,16 +50,42 @@ jobs:
           node-version: "22"
 
       - name: Test frontend security
-        run: node --test tests/frontend_security.test.js
+        run: node --test tests/frontend_security.test.js tests/frontend_source_filter.test.js
 
       - name: Audit Python dependencies
         run: pip-audit -r requirements-core.lock
+
+  native:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      QT_QPA_PLATFORM: offscreen
+      ARTFINDER_DATA_DIR: ${{ github.workspace }}/build/native-ci/data
+      ARTFINDER_NATIVE_SCREENSHOTS: ${{ github.workspace }}/build/native-ci/screenshots
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-windows.lock
+      - name: Install desktop and test dependencies
+        run: python -m pip install --require-hashes -r requirements-windows.lock
+      - name: Test native desktop flows
+        run: python -m unittest discover -s tests -p test_native_ui.py -v
+      - name: Upload native UI captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ui-captures
+          path: build/native-ci/screenshots
+          if-no-files-found: ignore
 
   android:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
