@@ -1,7 +1,7 @@
 """Native desktop launcher for ArtFinder.
 
-FastAPI remains the application core, but it is bound to a random loopback
-port and displayed inside a native pywebview window.
+FastAPI remains the private application service on a random loopback port.
+Qt Widgets renders the desktop UI directly, without a browser or WebView.
 """
 
 from __future__ import annotations
@@ -99,6 +99,20 @@ def _run_packaged_smoke_test() -> int:
             raise RuntimeError("Packaged pairing payload did not round-trip")
     finally:
         session.close()
+    # Packaging must also include the actual native renderer and media plugins.
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication, QLabel
+    from PySide6.QtMultimedia import QMediaPlayer
+    from PySide6.QtMultimediaWidgets import QVideoWidget
+    from artfinder.native.window import NativeWindow
+    application = QApplication.instance() or QApplication([])
+    probe = QLabel("ArtFinder native desktop")
+    probe.show()
+    player = QMediaPlayer()
+    video = QVideoWidget()
+    player.setVideoOutput(video)
+    application.processEvents()
+    probe.close()
     return 0
 
 
@@ -142,7 +156,7 @@ def main() -> int:
         return _run_packaged_smoke_test()
 
     try:
-        import webview
+        from artfinder.native.window import run_native
     except ImportError:
         _show_fatal_error(
             "A interface desktop nao esta instalada.\n\n"
@@ -178,23 +192,9 @@ def main() -> int:
         _show_fatal_error("Nao foi possivel iniciar o ArtFinder." + detail)
         return 1
 
-    webview.create_window(
-        "ArtFinder",
-        url=url,
-        js_api=DesktopApi(),
-        width=1440,
-        height=900,
-        min_size=(1024, 700),
-        confirm_close=True,
-    )
     exit_code = 0
     try:
-        webview.start(
-            debug=os.getenv("ARTFINDER_DEBUG", "").strip() == "1",
-            private_mode=False,
-            storage_path=str(Path(DATA_DIR) / "webview"),
-            icon=str(window_icon(RESOURCE_DIR)),
-        )
+        exit_code = run_native(url, DATA_DIR, DOWNLOAD_DIR, RESOURCE_DIR)
     except Exception as exc:
         exit_code = 1
         _show_fatal_error(f"A janela do ArtFinder encontrou um erro.\n\n{exc}")
