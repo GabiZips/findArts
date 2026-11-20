@@ -31,7 +31,7 @@ jobs:
       - name: Build executable
         run: python -m PyInstaller --noconfirm --clean artfinder.spec
 
-      - name: Smoke-test packaged pairing
+      - name: Smoke-test native UI and packaged pairing
         shell: pwsh
         run: |
           $env:ARTFINDER_SMOKE_TEST = '1'
