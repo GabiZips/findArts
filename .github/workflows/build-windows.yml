@@ -10,69 +10,47 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements-windows.lock
+      - name: Set up Rust for Windows x64
+        run: |
+          rustup toolchain install stable-x86_64-pc-windows-msvc --profile minimal --component rustfmt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustup default stable-x86_64-pc-windows-msvc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustc --version
 
-      - name: Install dependencies
-        run: python -m pip install --require-hashes -r requirements-windows.lock
+      - name: Check formatting and run Rust tests
+        working-directory: desktop-rust
+        run: |
+          cargo fmt --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --release --locked
 
-      - name: Run tests
-        run: python -m unittest discover -s tests -v
-
-      - name: Build executable
-        run: python -m PyInstaller --noconfirm --clean artfinder.spec
-
-      - name: Smoke-test packaged pairing
+      - name: Build and test the portable release binary
         shell: pwsh
         run: |
-          $env:ARTFINDER_SMOKE_TEST = '1'
-          $env:ARTFINDER_DATA_DIR = Join-Path $env:RUNNER_TEMP 'artfinder-smoke-data'
-          $process = Start-Process -FilePath dist/ArtFinder.exe -PassThru -Wait -WindowStyle Hidden
-          if ($process.ExitCode -ne 0) {
-            throw "Packaged pairing smoke test failed with exit code $($process.ExitCode)."
-          }
-
-      - name: Verify clean package contents
-        shell: pwsh
-        run: |
-          $contents = & pyi-archive_viewer -r -b dist/ArtFinder.exe | Out-String
-          if ($contents -notmatch 'defaults[\\]+categories\.json') {
-            throw 'Empty category defaults are missing from the executable.'
-          }
-          if ($contents -notmatch 'utils[\\.]pairing' -or $contents -notmatch 'cryptography') {
-            throw 'Encrypted pairing dependencies are missing from the executable.'
-          }
-          if ($contents -match 'user_categories\.json|''\.env''') {
-            throw 'The executable contains local user data or credentials.'
-          }
+          cargo build --release --locked --manifest-path desktop-rust/Cargo.toml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item desktop-rust/target/release/artfinder-desktop.exe dist/ArtFinder.exe
+          $process = Start-Process -FilePath dist/ArtFinder.exe -ArgumentList '--smoke-test' -PassThru -Wait -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) { throw "Rust smoke test failed with exit code $($process.ExitCode)." }
 
       - name: Build Windows installer
         shell: pwsh
         run: |
-          python scripts/verify-windows-package.py dist/ArtFinder.exe
-          if ($LASTEXITCODE -ne 0) { throw 'Package verification failed.' }
           $compiler = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'
-          if (-not (Test-Path $compiler)) {
+          if (-not (Test-Path -LiteralPath $compiler)) {
             choco install innosetup --yes --no-progress
             if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed.' }
           }
-          $gradle = Get-Content android-native/app/build.gradle.kts -Raw
-          if ($gradle -notmatch 'versionName\s*=\s*"([^"]+)"') { throw 'App version missing.' }
-          $version = $Matches[1]
-          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid app version.' }
-          $executable = (Resolve-Path dist/ArtFinder.exe).Path
-          & $compiler "/DAppVersion=$version" "/DAppExecutable=$executable" packaging/windows/artfinder.iss
-          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
-          Copy-Item "dist/review/ArtFinder-Setup-$version.exe" dist/ArtFinder-Windows-Setup.exe
+          $installer = ./scripts/build-windows-installer.ps1 -SkipBuild -IsccPath $compiler
+          Copy-Item -LiteralPath $installer.FullName -Destination dist/ArtFinder-Windows-Setup.exe
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4

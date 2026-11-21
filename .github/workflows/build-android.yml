@@ -82,7 +82,15 @@ jobs:
           build_tools="$ANDROID_HOME/build-tools/36.0.0"
           badging="$($build_tools/aapt dump badging "$apk")"
           printf '%s\n' "$badging"
-          grep -q "package: name='io.github.gabizips.artfinder' versionCode='100002' versionName='0.10.2'" <<< "$badging"
+          gradle=android-native/app/build.gradle.kts
+          version_code="$(sed -nE 's/^[[:space:]]*versionCode = ([0-9]+)$/\1/p' "$gradle")"
+          version_name="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)"$/\1/p' "$gradle")"
+          test -n "$version_code"
+          test -n "$version_name"
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            test "$GITHUB_REF_NAME" = "v$version_name"
+          fi
+          grep -Fq "package: name='io.github.gabizips.artfinder' versionCode='$version_code' versionName='$version_name'" <<< "$badging"
           grep -q "sdkVersion:'29'" <<< "$badging"
           grep -q "targetSdkVersion:'36'" <<< "$badging"
           listing="$(unzip -Z1 "$apk")"

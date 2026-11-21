@@ -1,4 +1,4 @@
-; Per-user installation. User data stays in %LOCALAPPDATA%\ArtFinder.
+; Per-user installation. ArtFinder Rust data stays in %LOCALAPPDATA%\ArtFinder-Rust.
 #ifndef AppVersion
   #define AppVersion "0.0.0-dev"
 #endif
