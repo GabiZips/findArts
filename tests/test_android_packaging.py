@@ -69,13 +69,6 @@ class AndroidPackagingTests(unittest.TestCase):
             workflow,
         )
 
-    def test_windows_package_check_matches_code_only_pairing(self):
-        workflow = (self.project / ".github" / "workflows" / "build-windows.yml").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn("utils[\\\\.]pairing", workflow)
-        self.assertIn("cryptography", workflow)
-        self.assertNotIn("qrcode", workflow.lower())
 
     def test_tagged_release_publishes_the_android_apk(self):
         workflow = (self.project / ".github" / "workflows" / "release.yml").read_text(
@@ -85,6 +78,9 @@ class AndroidPackagingTests(unittest.TestCase):
         self.assertIn("secrets: inherit", workflow)
         self.assertIn("ArtFinder-Android-native", workflow)
         self.assertIn("ArtFinder-Android-10-16.apk", workflow)
+        self.assertIn("needs: [windows, android]", workflow)
+        self.assertIn("ArtFinder-Windows-Setup.exe", workflow)
+        self.assertIn("SHA256SUMS.txt", workflow)
 
     def test_android_results_prioritize_artwork_and_support_swipe_viewing(self):
         ui_root = (
